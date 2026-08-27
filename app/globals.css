@@ -336,3 +336,87 @@ button { font: inherit; }
   .event-v2-venue-copy { padding:75px 22px; }
   .event-v2-venue-copy h2 { font-size:clamp(56px,16vw,90px); }
 }
+
+/* Mobile overflow safety v3 */
+@media (max-width: 900px) {
+  html, body, main { max-width:100%; overflow-x:hidden; }
+  img { max-width:100%; }
+  h1, h2, h3, p, a, span, strong, b { max-width:100%; }
+
+  /* Home */
+  .hero-content { width:100%; min-width:0; padding-left:18px; padding-right:18px; }
+  .hero h1 {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(42px, 13.5vw, 76px);
+    line-height:.9;
+    letter-spacing:-.055em;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+  .hero-bottom { width:100%; min-width:0; }
+  .hero-bottom p { min-width:0; max-width:calc(100% - 58px); overflow-wrap:anywhere; }
+  .intro-grid, .event-feature, .archive-grid, .event-detail-grid { min-width:0; }
+  .intro h2, .statement h2, .final-cta h2 {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(43px, 13.5vw, 78px);
+    letter-spacing:-.055em;
+    overflow-wrap:anywhere;
+  }
+  .intro-copy, .event-copy, .event-description { min-width:0; max-width:100%; }
+  .format-item { min-width:0; }
+  .format-item strong {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(29px, 10.5vw, 56px);
+    letter-spacing:-.045em;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+  .event-copy h2 { width:100%; max-width:100%; font-size:clamp(54px, 16vw, 82px); letter-spacing:-.055em; overflow-wrap:anywhere; }
+  .event-meta { max-width:100%; overflow-wrap:anywhere; }
+  .footer, .footer-links, .footer-bottom { min-width:0; }
+
+  /* Event page */
+  .event-v2-hero-content { width:100%; min-width:0; padding-left:18px; padding-right:18px; }
+  .event-v2-hero h1 {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(62px, 18vw, 96px);
+    line-height:.78;
+    letter-spacing:-.065em;
+    overflow-wrap:anywhere;
+  }
+  .event-v2-hero-bottom { width:100%; min-width:0; gap:12px; }
+  .event-v2-hero-bottom p { min-width:0; max-width:calc(100% - 56px); overflow-wrap:anywhere; }
+  .event-v2-intro-grid { width:100%; min-width:0; }
+  .event-v2-intro h2, .event-v2-section-head h2, .event-v2-final h2 {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(42px, 13.5vw, 76px);
+    line-height:.88;
+    letter-spacing:-.055em;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+  .event-v2-copy { min-width:0; max-width:100%; }
+  .event-v2-copy p, .event-v2-section-head p, .event-v2-venue-copy p { max-width:100%; overflow-wrap:anywhere; }
+  .tag-row { max-width:100%; }
+  .tag-row span { max-width:100%; overflow-wrap:anywhere; }
+  .ticket-card, .ticket-card-bottom { min-width:0; }
+  .ticket-card h3 { overflow-wrap:anywhere; }
+  .program-row, .program-row strong { min-width:0; max-width:100%; }
+  .program-row strong { overflow-wrap:anywhere; }
+  .event-v2-venue-copy h2 { width:100%; max-width:100%; font-size:clamp(48px, 14vw, 80px); letter-spacing:-.055em; overflow-wrap:anywhere; }
+  .button-link, .text-link { max-width:100%; }
+}
+
+@media (max-width:380px) {
+  .site-header, .inner-header, .event-header-v2 { padding-left:15px; padding-right:15px; }
+  .hero-content, .event-v2-hero-content, .section-pad { padding-left:15px; padding-right:15px; }
+  .hero h1 { font-size:clamp(39px, 12.8vw, 62px); }
+  .intro h2, .statement h2, .final-cta h2,
+  .event-v2-intro h2, .event-v2-section-head h2, .event-v2-final h2 { font-size:clamp(38px, 12.8vw, 62px); }
+  .event-v2-hero h1 { font-size:clamp(56px, 17.5vw, 78px); }
+}
