@@ -1,38 +1,28 @@
 import Link from "next/link";
 import Image from "next/image";
-
-const photos = [
-  ["1516450360452-9312f5e86fc7", "AGAYO NIGHT"],
-  ["1506157786151-b8491531f063", "SUMMER / 01"],
-  ["1501386761578-eac5c94b800a", "CLUBSHOW"],
-  ["1492684223066-81342ee5ff30", "AGAYO NIGHT"],
-  ["1524368535928-5b5e00ddc76b", "SUMMER / 01"],
-  ["1514525253161-7a46d19cd819", "CLUBSHOW"],
-].map(([id, event]) => ({
-  event,
-  src: `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1200&q=85`,
-}));
+import FavoriteButton from "@/components/FavoriteButton";
+import SiteHeader from "@/components/SiteHeader";
+import { galleryPhotos } from "@/lib/photos";
 
 export default function GalleryPage() {
   return (
     <main className="inner-page">
-      <header className="inner-header">
-        <Link href="/" className="brand">AGAYO<span className="brand-dot">.</span></Link>
-        <Link href="/profile" className="header-action">Профиль</Link>
-      </header>
+      <SiteHeader />
       <div className="inner-wrap">
         <div className="section-label">02 / ГАЛЕРЕЯ</div>
-        <h1 className="inner-title">ТЕ САМЫЕ<br />ВЕЧЕРА.</h1>
-        <p className="inner-lead">Фотографии моментов, которые уже стали воспоминаниями.</p>
+        <h1 className="inner-title">ТЕ САМЫЕ<br />ВЕЧЕРА</h1>
+        <p className="inner-lead">Нажми на сердце — фотография сохранится в избранное этого браузера. После подключения аккаунтов избранное переедет в базу и будет синхронизироваться между устройствами.</p>
         <div className="gallery-grid">
-          {photos.map((photo, index) => (
-            <Link href={`/events/${index % 2 ? "summer-01" : "agayo-night"}`} className="gallery-card" key={`${photo.event}-${index}`}>
+          {galleryPhotos.map((photo) => (
+            <article className="gallery-card" key={photo.id}>
               <div className="gallery-image-wrap">
-                <Image src={photo.src} alt={photo.event} fill sizes="(max-width: 700px) 100vw, 50vw" className="gallery-image" />
-                <span className="gallery-heart">♡</span>
+                <Link href={`/events/${photo.eventSlug}`} className="card-image-link" aria-label={`Открыть ${photo.eventTitle}`}>
+                  <Image src={photo.src} alt={photo.eventTitle} fill sizes="(max-width: 700px) 100vw, 50vw" className="gallery-image" />
+                </Link>
+                <FavoriteButton photoId={photo.id} />
               </div>
-              <div className="gallery-caption"><span>{photo.event}</span><span>↗</span></div>
-            </Link>
+              <Link href={`/events/${photo.eventSlug}`} className="gallery-caption"><span>{photo.eventTitle}</span><span>↗</span></Link>
+            </article>
           ))}
         </div>
       </div>

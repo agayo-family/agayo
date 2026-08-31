@@ -1,0 +1,35 @@
+# AGAYO ticket platform — architecture checkpoint
+
+## Public routes
+- `/` — home
+- `/events` — events list/archive
+- `/events/[slug]` — event page
+- `/events/[slug]/checkout` — reserved for purchase flow
+- `/gallery` — gallery + favorites
+- `/profile` — user profile
+- `/profile/favorites` — saved photos
+- `/legal` — seller/legal info
+
+## Domain requirements already represented in the code model
+- Ticket modes: free entry / zones / assigned seats.
+- Per-category pricing.
+- Manually controlled "hot tickets" displayed count (1–4), separate from real inventory.
+- Published/draft/cancelled event state.
+- Open/closed/coming-soon sales state.
+
+## Backend that must be implemented before real sales
+1. PostgreSQL as source of truth for events, users, orders, tickets, favorites and audit log.
+2. Passwordless Email authentication.
+3. YooKassa payment creation + server-side webhook verification + refunds.
+4. 10-minute seat/zone inventory holds where applicable.
+5. One ticket = one cryptographically random QR token; never put personal data in QR.
+6. Scanner API with atomic redemption to prevent simultaneous double entry.
+7. Roles: owner, admin, organizer, controller.
+8. Admin event editor: copy, poster, date/time, venue, ticket mode, categories, discounts, promo codes, hot-ticket display, program, gallery and reviews.
+9. Ticket states: reserved, paid, valid, used, refunded, cancelled.
+10. Notification jobs: Email, Telegram, in-app.
+11. Transfer rules per event and transfer audit history.
+12. Export CSV/XLSX and financial/attendance reporting.
+
+## Important security rule
+YooKassa secret, database credentials, Email-provider token and Telegram bot token are server-only. They must never be exposed through `NEXT_PUBLIC_*` variables or client components.

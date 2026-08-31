@@ -1,20 +1,20 @@
 import Link from "next/link";
+import SiteHeader from "@/components/SiteHeader";
+import FavoriteSummary from "@/components/FavoriteSummary";
 
 export default function ProfilePage() {
   return (
     <main className="inner-page">
-      <header className="inner-header">
-        <Link href="/" className="brand">AGAYO<span className="brand-dot">.</span></Link>
-        <Link href="/events" className="header-action">Мероприятия</Link>
-      </header>
+      <SiteHeader />
       <div className="inner-wrap profile-page">
-        <div className="section-label">04 / ПРОФИЛЬ</div>
-        <h1 className="inner-title">ТВОЙ<br />AGAYO.</h1>
+        <div className="section-label">03 / ПРОФИЛЬ</div>
+        <h1 className="inner-title">ТВОЙ<br />AGAYO</h1>
+        <p className="inner-lead">Сейчас это интерфейс прототипа. Реальные билеты, история и уровень будут привязаны к Email-аккаунту после подключения backend.</p>
         <div className="profile-grid">
-          <Link href="/events/agayo-night" className="profile-card"><span>БИЛЕТЫ</span><strong>1</strong><small>Ближайшее событие ↗</small></Link>
-          <Link href="/gallery" className="profile-card"><span>ИЗБРАННОЕ</span><strong>♡</strong><small>Твои фотографии ↗</small></Link>
-          <div className="profile-card"><span>УРОВЕНЬ</span><strong>СВОЙ</strong><small>Твоя история только начинается</small></div>
-          <div className="profile-card"><span>ПОСЕЩЕНИЯ</span><strong>0</strong><small>Будем исправлять ↗</small></div>
+          <div className="profile-card"><span>БИЛЕТЫ</span><strong>—</strong><small>Появятся после авторизации и покупки</small></div>
+          <Link href="/profile/favorites" className="profile-card"><span>ИЗБРАННОЕ</span><FavoriteSummary /><small>Твои фотографии ↗</small></Link>
+          <div className="profile-card"><span>УРОВЕНЬ</span><strong>СВОЙ</strong><small>Название уровня будет редактироваться владельцем</small></div>
+          <div className="profile-card"><span>ПОСЕЩЕНИЯ</span><strong>—</strong><small>Будут считаться по фактическим проходам</small></div>
         </div>
       </div>
     </main>
