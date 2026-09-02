@@ -1,4 +1,4 @@
-export type TicketMode = "free-entry" | "zones" | "seats";
+export type TicketMode = "general-admission" | "zones" | "seats";
 export type SalesState = "open" | "closed" | "coming-soon";
 
 export type TicketCategory = {
@@ -9,6 +9,11 @@ export type TicketCategory = {
   hotTickets?: {
     enabled: boolean;
     displayedRemaining: 1 | 2 | 3 | 4;
+  };
+  theme?: {
+    primary: string;
+    secondary: string;
+    accent: string;
   };
 };
 
@@ -49,14 +54,14 @@ export const events: AgayoEvent[] = [
     alcoholFree: true,
     status: "published",
     salesState: "open",
-    ticketMode: "free-entry",
+    ticketMode: "general-admission",
     heroImage: "/events/vernite-lampovost-poster.jpg",
     posterImage: "/events/vernite-lampovost-poster.jpg",
     ticketTheme: { primary: "#220708", secondary: "#751013", accent: "#e12622" },
     description: "Тёплая клубная ночь AGAYO — про людей, музыку и то самое ощущение, ради которого хочется возвращаться.",
     secondaryDescription: "17:30—21:00. Без алкоголя. Приходи за атмосферой, которая останется после последнего трека.",
     tickets: [
-      { id: "standard", name: "STANDARD", price: 700, note: "Вход на мероприятие" },
+      { id: "standard", name: "STANDARD", price: 700, note: "Вход на мероприятие", theme: { primary: "#2b0809", secondary: "#7c1518", accent: "#e12622" } },
     ],
     program: [
       ["17:30", "Открытие дверей"],
@@ -110,7 +115,7 @@ export const events: AgayoEvent[] = [
     alcoholFree: true,
     status: "published",
     salesState: "closed",
-    ticketMode: "free-entry",
+    ticketMode: "general-admission",
     heroImage: "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1600&q=85",
     description: "Летний вечер AGAYO, который уже стал частью нашей истории.",
     secondaryDescription: "Фотографии и воспоминания с события остаются в архиве AGAYO.",
@@ -128,7 +133,7 @@ export const events: AgayoEvent[] = [
     alcoholFree: true,
     status: "published",
     salesState: "closed",
-    ticketMode: "free-entry",
+    ticketMode: "general-admission",
     heroImage: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=85",
     description: "Клабшоу AGAYO из архива прошедших событий.",
     secondaryDescription: "Событие завершено, но его фотографии остаются в галерее.",

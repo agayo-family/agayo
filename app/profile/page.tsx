@@ -94,11 +94,12 @@ export default function ProfilePage() {
             <div><div className="section-label">06 / АККАУНТ</div><h2>НАСТРОЙКИ</h2></div>
           </div>
           <div className="profile-settings-list">
-            <div className="profile-setting-row"><span>EMAIL</span><strong>НЕ ПОДКЛЮЧЁН</strong><b>→</b></div>
+            <Link href="/auth" className="profile-setting-row"><span>EMAIL / ТЕЛЕФОН</span><strong>ВОЙТИ ПО КОДУ</strong><b>→</b></Link>
             <div className="profile-setting-row"><span>TELEGRAM</span><strong>ПОЗЖЕ</strong><b>→</b></div>
             <div className="profile-setting-row"><span>УВЕДОМЛЕНИЯ</span><strong>ПОСЛЕ АВТОРИЗАЦИИ</strong><b>→</b></div>
+            <button type="button" className="profile-setting-row profile-logout" disabled><span>АККАУНТ</span><strong>ВЫЙТИ</strong><b>→</b></button>
           </div>
-          <p className="profile-backend-note">Сейчас это визуальная версия профиля. Авторизация по Email-коду, реальные билеты, QR, история посещений и уведомления подключаются на backend-этапе.</p>
+          <p className="profile-backend-note">Сейчас это визуальная версия профиля. Авторизация без пароля по Email или телефону, реальные билеты, QR, история посещений и уведомления подключаются на backend-этапе. После покупки профиль будет автоматически создаваться по указанной почте.</p>
         </section>
       </div>
     </main>

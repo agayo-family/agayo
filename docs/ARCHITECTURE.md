@@ -52,3 +52,19 @@ Production rules:
 
 ## Ticket visual derived from event poster
 Each event may store `posterImage` and a compact `ticketTheme` (`primary`, `secondary`, `accent`). The digital ticket consumes these values and builds a CSS gradient/ambient background plus a small poster collage element. In production, the admin event constructor should derive or let the organizer adjust these colors after uploading the poster. The QR/data layer remains structurally independent so visual themes cannot affect ticket validity.
+
+## Purchase, identity and delivery contract
+- Checkout collects a delivery email on every order. Tickets are issued only after server-side YooKassa confirmation.
+- If the email does not belong to an AGAYO account, create the profile automatically and attach the paid order/tickets to it.
+- Passwords are not used. Authentication is OTP-based: email code first, phone/SMS code supported as an alternative after an SMS provider is connected.
+- Logout invalidates the active session; sign-in creates a new session only after OTP verification.
+- Paid tickets are emailed to the checkout email. Email should contain event summary + secure link to the ticket; QR generation remains server-side.
+- If Telegram is linked and ticket delivery is enabled, mirror the ticket notification/link to Telegram. This can be connected in a later integration stage without changing the order model.
+- Multiple tickets in one paid order produce multiple ticket records and separate QR tokens.
+- Never mark an order paid from a browser redirect alone. Trust YooKassa webhook/status verification.
+
+## Poster-driven visual theming
+- Event poster drives `ticketTheme` / `eventTheme`: primary, secondary, accent.
+- Public event page uses the palette while preserving AGAYO typography, contrast and accessibility.
+- Ticket categories use variants of the same event palette rather than unrelated colors.
+- The digital ticket and checkout summary use the same palette and poster fragments, preserving visual continuity from event discovery to entry.
