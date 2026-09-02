@@ -26,10 +26,10 @@ export default function DemoQr() {
   return (
     <div className="ticket-qr" aria-label="Демонстрационный QR-код">
       <svg viewBox="0 0 21 21" role="img" aria-hidden="true">
-        <rect width="21" height="21" fill="white" />
+        <rect className="qr-bg" width="21" height="21" />
         {pattern.flatMap((row, y) =>
           [...row].map((cell, x) =>
-            cell === "1" ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#0b0b0c" /> : null,
+            cell === "1" ? <rect className="qr-cell" key={`${x}-${y}`} x={x} y={y} width="1" height="1" /> : null,
           ),
         )}
       </svg>

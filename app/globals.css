@@ -833,3 +833,91 @@ button { font: inherit; }
   .poster-driven-ticket .ticket-event-copy h1 { font-size:clamp(42px,13.4vw,58px); }
   .ticket-poster-polaroid { width:116px; }
 }
+
+/* ===== Mobile hardening + event-colour QR ===== */
+.poster-driven-ticket .ticket-qr-wrap {
+  color: #f4ddd3;
+  background:
+    radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--ticket-accent) 24%, transparent), transparent 38%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--ticket-primary) 88%, #171010),
+      color-mix(in srgb, var(--ticket-secondary) 64%, #120b0b));
+  border-left: 1px solid rgba(255,235,226,.14);
+}
+.poster-driven-ticket .ticket-qr {
+  background: color-mix(in srgb, var(--ticket-accent) 9%, #f3e3db);
+  border: 1px solid color-mix(in srgb, var(--ticket-accent) 36%, #b9948a);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.34),
+    0 0 44px color-mix(in srgb, var(--ticket-accent) 16%, transparent);
+}
+.poster-driven-ticket .ticket-qr .qr-bg {
+  fill: color-mix(in srgb, var(--ticket-accent) 9%, #f3e3db);
+}
+.poster-driven-ticket .ticket-qr .qr-cell {
+  fill: color-mix(in srgb, var(--ticket-primary) 88%, #120707);
+}
+.poster-driven-ticket .ticket-qr > span {
+  color: color-mix(in srgb, var(--ticket-primary) 92%, #100606);
+  background: color-mix(in srgb, var(--ticket-accent) 9%, #f3e3db);
+  border-color: color-mix(in srgb, var(--ticket-primary) 88%, #120707);
+}
+.poster-driven-ticket .ticket-qr-wrap p { color:#d9bbb1; }
+
+@media (max-width: 900px) {
+  .event-feature,
+  .event-copy,
+  .event-copy h2,
+  .ticket-page-shell,
+  .digital-ticket,
+  .ticket-main-grid,
+  .ticket-event-copy,
+  .ticket-data-grid,
+  .digital-ticket-footer { min-width:0; max-width:100%; }
+
+  .event-copy h2 {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(40px, 11.8vw, 68px);
+    line-height:.88;
+    letter-spacing:-.055em;
+    overflow-wrap:normal;
+    word-break:normal;
+    hyphens:none;
+    text-wrap:balance;
+  }
+
+  .poster-driven-ticket .ticket-qr-wrap {
+    border-left:0;
+    border-top:1px solid rgba(255,235,226,.14);
+    padding:34px 20px 38px;
+  }
+  .poster-driven-ticket .ticket-qr { width:min(76vw, 278px); padding:15px; }
+  .poster-driven-ticket .ticket-event-copy h1 {
+    overflow-wrap:normal;
+    word-break:normal;
+    hyphens:none;
+    text-wrap:balance;
+  }
+  .ticket-poster-polaroid { max-width:42vw; }
+  .digital-ticket-topline { flex-wrap:wrap; gap:7px 16px; padding-block:14px; }
+  .digital-ticket-topline span,
+  .digital-ticket-topline strong { min-width:0; }
+  .ticket-demo-note { max-width:100%; overflow-wrap:anywhere; }
+}
+
+@media (max-width: 430px) {
+  .event-copy h2 { font-size:clamp(37px, 11.3vw, 49px); }
+  .event-meta { line-height:1.5; }
+  .button-link { max-width:100%; }
+  .poster-driven-ticket .ticket-event-copy { padding-inline:18px; min-height:450px; }
+  .poster-driven-ticket .ticket-event-copy h1 { font-size:clamp(39px, 12.2vw, 54px); }
+  .ticket-poster-polaroid { width:108px; right:14px; top:46px; }
+  .ticket-qr-wrap p { max-width:240px; line-height:1.45; }
+}
+
+@media (max-width: 340px) {
+  .event-copy h2 { font-size:35px; }
+  .poster-driven-ticket .ticket-event-copy h1 { font-size:38px; }
+  .ticket-poster-polaroid { width:98px; }
+}
