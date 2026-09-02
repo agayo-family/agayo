@@ -33,3 +33,19 @@
 
 ## Important security rule
 YooKassa secret, database credentials, Email-provider token and Telegram bot token are server-only. They must never be exposed through `NEXT_PUBLIC_*` variables or client components.
+
+## Digital ticket contract
+
+The public ticket UI is now represented by `/tickets/demo-agayo-night` as a visual prototype. Production tickets must be server-backed and must not trust client-controlled status or QR data.
+
+Required ticket states: `valid`, `used`, `refunded`, `cancelled`.
+
+Production rules:
+- ticket is created/finalized only after confirmed payment;
+- one ticket has one unique QR token and grants one entry;
+- first successful scan marks the ticket as used with scan time/controller;
+- repeated scans show that the ticket was already used;
+- refund/cancellation invalidates the QR;
+- used tickets render as a memory state (“Ты был здесь”) with a link to the event gallery;
+- owner/category/zone/seat/status come from the backend, never from URL params or localStorage;
+- QR payload should contain an opaque signed/random token, not personal data.

@@ -37,7 +37,7 @@ export default function ProfilePage() {
           </div>
           <div className="profile-empty profile-ticket-empty">
             <div className="profile-empty-number">00</div>
-            <div><span>АКТИВНЫХ БИЛЕТОВ НЕТ</span><p>Когда ты купишь билет, он появится здесь вместе с QR-кодом, категорией и датой события.</p><Link href="/events" className="button-link">Найти событие <b>↗</b></Link></div>
+            <div><span>АКТИВНЫХ БИЛЕТОВ НЕТ</span><p>Когда ты купишь билет, он появится здесь вместе с QR-кодом, категорией и датой события.</p><div className="profile-ticket-actions"><Link href="/events" className="button-link">Найти событие <b>↗</b></Link><Link href="/tickets/demo-agayo-night" className="profile-demo-link">Посмотреть демо билета</Link></div></div>
           </div>
         </section>
 
