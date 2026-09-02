@@ -49,3 +49,6 @@ Production rules:
 - used tickets render as a memory state (“Ты был здесь”) with a link to the event gallery;
 - owner/category/zone/seat/status come from the backend, never from URL params or localStorage;
 - QR payload should contain an opaque signed/random token, not personal data.
+
+## Ticket visual derived from event poster
+Each event may store `posterImage` and a compact `ticketTheme` (`primary`, `secondary`, `accent`). The digital ticket consumes these values and builds a CSS gradient/ambient background plus a small poster collage element. In production, the admin event constructor should derive or let the organizer adjust these colors after uploading the poster. The QR/data layer remains structurally independent so visual themes cannot affect ticket validity.

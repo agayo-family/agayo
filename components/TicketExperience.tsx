@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import DemoQr from "@/components/DemoQr";
 import { demoTicket, ticketStatusLabels, type TicketStatus } from "@/lib/tickets";
+import { getEvent } from "@/lib/events";
 
 const statuses: TicketStatus[] = ["valid", "used", "refunded", "cancelled"];
 
 export default function TicketExperience() {
   const [status, setStatus] = useState<TicketStatus>(demoTicket.status);
   const isUsed = status === "used";
+  const event = getEvent(demoTicket.eventSlug);
+  const poster = event?.posterImage ?? event?.heroImage;
+  const theme = event?.ticketTheme ?? { primary: "#0f0f10", secondary: "#4b0f19", accent: "#c21f39" };
+  const ticketStyle = {
+    "--ticket-primary": theme.primary,
+    "--ticket-secondary": theme.secondary,
+    "--ticket-accent": theme.accent,
+  } as CSSProperties;
 
   return (
     <>
@@ -24,7 +33,10 @@ export default function TicketExperience() {
         </div>
       </div>
 
-      <article className={`digital-ticket status-${status} ${isUsed ? "is-memory" : ""}`}>
+      <article className={`digital-ticket poster-driven-ticket status-${status} ${isUsed ? "is-memory" : ""}`} style={ticketStyle}>
+        <div className="digital-ticket-art" aria-hidden="true">
+          {poster ? <img src={poster} alt="" /> : null}
+        </div>
         <div className="digital-ticket-topline">
           <span>AGAYO / DIGITAL TICKET</span>
           <strong>{ticketStatusLabels[status]}</strong>
@@ -32,7 +44,7 @@ export default function TicketExperience() {
 
         {isUsed ? (
           <div className="ticket-memory-panel">
-            <p>29.08.26 · ЙОШКАР-ОЛА</p>
+            <p>{demoTicket.eventDate} · {demoTicket.city.toUpperCase()}</p>
             <h1>ТЫ БЫЛ<br />ЗДЕСЬ</h1>
             <span>QR больше не нужен. Теперь это часть твоей истории AGAYO.</span>
             <Link href="/gallery">Открыть фотографии события <b>↗</b></Link>
@@ -42,6 +54,12 @@ export default function TicketExperience() {
             <div className="ticket-main-grid">
               <div className="ticket-event-copy">
                 <span className="ticket-overline">14+ · ALCOHOL FREE</span>
+                {poster ? (
+                  <div className="ticket-poster-polaroid" aria-hidden="true">
+                    <img src={poster} alt="" />
+                    <span>AGAYO / {demoTicket.eventDate}</span>
+                  </div>
+                ) : null}
                 <h1>{demoTicket.eventTitle}</h1>
                 <p>{demoTicket.eventDate}<br />{demoTicket.eventTime}<br />{demoTicket.city}</p>
               </div>

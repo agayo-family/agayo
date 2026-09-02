@@ -25,6 +25,12 @@ export type AgayoEvent = {
   salesState: SalesState;
   ticketMode: TicketMode;
   heroImage: string;
+  posterImage?: string;
+  ticketTheme?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
   description: string;
   secondaryDescription: string;
   tickets: TicketCategory[];
@@ -32,6 +38,33 @@ export type AgayoEvent = {
 };
 
 export const events: AgayoEvent[] = [
+  {
+    slug: "vernite-lampovost",
+    title: "ВЕРНИТЕ ЛАМПОВОСТЬ",
+    dateLabel: "12.09.26",
+    startsAt: "2026-09-12T17:30:00+03:00",
+    timeLabel: "17:30—21:00",
+    ageLabel: "14+",
+    city: "Йошкар-Ола",
+    alcoholFree: true,
+    status: "published",
+    salesState: "open",
+    ticketMode: "free-entry",
+    heroImage: "/events/vernite-lampovost-poster.jpg",
+    posterImage: "/events/vernite-lampovost-poster.jpg",
+    ticketTheme: { primary: "#220708", secondary: "#751013", accent: "#e12622" },
+    description: "Тёплая клубная ночь AGAYO — про людей, музыку и то самое ощущение, ради которого хочется возвращаться.",
+    secondaryDescription: "17:30—21:00. Без алкоголя. Приходи за атмосферой, которая останется после последнего трека.",
+    tickets: [
+      { id: "standard", name: "STANDARD", price: 700, note: "Вход на мероприятие" },
+    ],
+    program: [
+      ["17:30", "Открытие дверей"],
+      ["18:00", "Начало программы"],
+      ["20:30", "Финальный блок"],
+      ["21:00", "Завершение"],
+    ],
+  },
   {
     slug: "agayo-night",
     title: "AGAYO NIGHT",

@@ -16,15 +16,15 @@ export type DigitalTicket = {
 };
 
 export const demoTicket: DigitalTicket = {
-  id: "AGY-260829-PREM-0047",
-  eventSlug: "agayo-night",
-  eventTitle: "AGAYO NIGHT",
-  eventDate: "29.08.26",
-  eventTime: "18:00—21:00",
+  id: "AGY-260912-STD-0047",
+  eventSlug: "vernite-lampovost",
+  eventTitle: "ВЕРНИТЕ ЛАМПОВОСТЬ",
+  eventDate: "12.09.26",
+  eventTime: "17:30—21:00",
   city: "Йошкар-Ола",
   ownerName: "СЕРГЕЙ",
-  category: "PREMIUM",
-  zone: "A",
+  category: "STANDARD",
+  zone: "DANCE FLOOR",
   status: "valid",
 };
 

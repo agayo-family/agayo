@@ -772,3 +772,64 @@ button { font: inherit; }
   .ticket-data-grid > div:last-child { border-bottom:0 !important; }
   .ticket-memory-panel h1 { font-size:clamp(66px,21vw,96px); }
 }
+
+/* ===== Poster-driven digital ticket ===== */
+.poster-driven-ticket {
+  --ticket-primary:#120607;
+  --ticket-secondary:#651014;
+  --ticket-accent:#d52520;
+  isolation:isolate;
+  background:
+    radial-gradient(ellipse at 88% 8%, color-mix(in srgb,var(--ticket-accent) 62%,transparent), transparent 34%),
+    radial-gradient(ellipse at 10% 72%, color-mix(in srgb,var(--ticket-secondary) 72%,transparent), transparent 38%),
+    linear-gradient(135deg,var(--ticket-primary) 0%,#10090a 44%,var(--ticket-secondary) 110%);
+}
+.poster-driven-ticket::before {
+  width:65%; height:75%; right:-22%; top:-24%;
+  background:var(--ticket-accent); opacity:.20; filter:blur(85px); z-index:-1;
+}
+.poster-driven-ticket::after {
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:.34;
+  background-image:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px),
+    radial-gradient(circle at 20% 10%,rgba(255,255,255,.07) 0 1px,transparent 1.4px);
+  background-size:auto,7px 7px;
+  mix-blend-mode:soft-light;
+}
+.digital-ticket-art { position:absolute; inset:0; overflow:hidden; z-index:-2; opacity:.17; }
+.digital-ticket-art::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,var(--ticket-primary) 8%,rgba(10,5,6,.7) 47%,var(--ticket-secondary)); }
+.digital-ticket-art img { width:100%; height:100%; object-fit:cover; filter:saturate(1.3) contrast(1.12) blur(1px); transform:scale(1.08); }
+.poster-driven-ticket .digital-ticket-topline,
+.poster-driven-ticket .ticket-event-copy,
+.poster-driven-ticket .ticket-data-grid,
+.poster-driven-ticket .digital-ticket-footer { border-color:rgba(255,235,226,.17); }
+.poster-driven-ticket .ticket-main-grid { position:relative; }
+.poster-driven-ticket .ticket-event-copy { position:relative; overflow:hidden; }
+.poster-driven-ticket .ticket-event-copy h1 { position:relative; z-index:2; max-width:700px; font-size:clamp(62px,7.5vw,122px); line-height:.79; text-wrap:balance; }
+.poster-driven-ticket .ticket-overline { color:#ff665c; position:relative; z-index:3; }
+.poster-driven-ticket .ticket-event-copy p { position:relative; z-index:3; color:#ded3ca; }
+.ticket-poster-polaroid {
+  position:absolute; z-index:1; width:210px; right:42px; top:52px; padding:9px 9px 28px;
+  background:#d9d3c7; transform:rotate(7deg); box-shadow:0 18px 55px rgba(0,0,0,.45);
+  opacity:.78;
+}
+.ticket-poster-polaroid::before { content:""; position:absolute; width:72px; height:23px; left:-25px; top:-8px; background:rgba(213,205,187,.72); transform:rotate(-17deg); }
+.ticket-poster-polaroid img { display:block; width:100%; aspect-ratio:3/4; object-fit:cover; filter:contrast(1.08) saturate(.86); }
+.ticket-poster-polaroid span { position:absolute; left:10px; bottom:8px; color:#181414; font-size:7px; font-weight:700; letter-spacing:.1em; }
+.poster-driven-ticket .ticket-qr-wrap { position:relative; background:rgba(239,234,224,.94); backdrop-filter:blur(10px); }
+.poster-driven-ticket .ticket-data-grid { background:rgba(11,7,7,.32); backdrop-filter:blur(10px); }
+.poster-driven-ticket .digital-ticket-footer { background:rgba(8,5,5,.42); backdrop-filter:blur(10px); }
+.poster-driven-ticket .ticket-memory-panel { background:radial-gradient(circle at 72% 28%,color-mix(in srgb,var(--ticket-accent) 42%,transparent),transparent 38%); }
+
+@media (max-width:760px) {
+  .poster-driven-ticket .ticket-event-copy { min-height:480px; }
+  .poster-driven-ticket .ticket-event-copy h1 { max-width:100%; margin-top:170px; font-size:clamp(48px,14.2vw,76px); line-height:.82; letter-spacing:-.065em; }
+  .ticket-poster-polaroid { width:132px; right:18px; top:50px; padding:6px 6px 20px; transform:rotate(6deg); opacity:.8; }
+  .ticket-poster-polaroid span { left:7px; bottom:5px; font-size:5px; }
+  .digital-ticket-art { opacity:.15; }
+}
+
+@media (max-width:380px) {
+  .poster-driven-ticket .ticket-event-copy h1 { font-size:clamp(42px,13.4vw,58px); }
+  .ticket-poster-polaroid { width:116px; }
+}
