@@ -68,3 +68,8 @@ Each event may store `posterImage` and a compact `ticketTheme` (`primary`, `seco
 - Public event page uses the palette while preserving AGAYO typography, contrast and accessibility.
 - Ticket categories use variants of the same event palette rather than unrelated colors.
 - The digital ticket and checkout summary use the same palette and poster fragments, preserving visual continuity from event discovery to entry.
+
+## Service area UI
+`/admin` is now the visual shell for the closed service area. It contains dashboard, event constructor, tickets/scanner shell, buyers, promo codes, media/reviews, team roles and integrations/settings.
+
+This version deliberately does not persist admin edits in localStorage and does not pretend that admin authorization exists. The next backend step must protect `/admin` on the server by staff role and connect the event constructor to PostgreSQL/object storage. Poster upload will feed event poster storage plus palette extraction; public event pages and ticket category themes will consume those stored colors.

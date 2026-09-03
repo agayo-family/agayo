@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import MobileNav from "./MobileNav";
 
@@ -6,7 +5,7 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
   return (
     <header className={overlay ? "site-header" : "inner-header"}>
       <Link className="brand-logo" href="/" aria-label="AGAYO — главная">
-        <Image src="/agayo-logo.svg" alt="AGAYO" width={118} height={32} priority />
+        <span className="brand-logo-mark" aria-hidden="true" />
       </Link>
       {overlay ? (
         <>
