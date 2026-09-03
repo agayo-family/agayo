@@ -7,7 +7,7 @@ export default async function CheckoutPage({ params, searchParams }: { params: P
   const { slug } = await params;
   const query = await searchParams;
   const event = await getEventServer(slug);
-  if (!event || event.salesState !== "open" || event.tickets.length === 0) notFound();
+  if (!event || event.salesState !== "open" || event.tickets.filter((ticket) => !ticket.soldOut).length === 0) notFound();
   if (!event) return null;
   return <main className="inner-page checkout-page"><SiteHeader /><section className="checkout-shell"><div className="section-label">ПОКУПКА / {event.title}</div><CheckoutExperience event={event} initialCategory={query.category} /></section></main>;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import TeamAccessPanel from './TeamAccessPanel';
+import AdminEventsManager, { type StoredEvent } from './AdminEventsManager';
 import { AdminPermission, AdminRole, ROLE_LABELS } from '@/lib/admin-permissions';
 
 type Tab = 'overview' | 'events' | 'tickets' | 'buyers' | 'promo' | 'media' | 'team' | 'settings';
@@ -18,7 +19,7 @@ const tabs: Array<[Tab, string]> = [
 ];
 
 
-type AdminAccessView = {
+export type AdminAccessView = {
   userId: string;
   agayoId: string;
   email: string | null;
@@ -41,12 +42,15 @@ const tabPermissions: Record<Tab, AdminPermission[]> = {
   settings: ['manage_system'],
 };
 
-const statCards = [
-  ['ВЫРУЧКА', '0 ₽', 'после реальных продаж'],
-  ['ПРОДАНО', '00', 'оплаченных билетов'],
-  ['ПРОШЛИ', '00', 'отсканированных QR'],
-  ['ВОЗВРАТЫ', '00', 'билетов'],
-];
+type DashboardData = {
+  metrics: { revenue: number; sold: number; used: number; refunds: number };
+  today: { newOrders: number; newUsers: number; paymentErrors: number };
+  upcoming: { slug: string; title: string; starts_at: string; status: string; sales_state: string; age_label: string } | null;
+};
+
+type PromoView = { id:string; code:string; event_slug:string|null; discount_type:'fixed'|'percent'; discount_value:number; usage_limit:number|null; used_count:number; expires_at:string|null; is_active:boolean };
+type TicketSearchView = { id:string; public_id:string; event_slug:string; owner_name:string; category_name:string; status:string; used_at:string|null; email:string|null; phone:string|null; agayo_id:string|null };
+type BuyerView = { id:string; agayo_id:string|null; display_name:string|null; email:string|null; phone:string|null; loyalty_level:string; tickets:number; visits:number };
 
 export default function AdminDashboard({ access, previewMode = false }: { access: AdminAccessView; previewMode?: boolean }) {
   const initialTab = tabs.find(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission)))?.[0] ?? 'overview';
@@ -56,7 +60,20 @@ export default function AdminDashboard({ access, previewMode = false }: { access
   const [ticketMode, setTicketMode] = useState<'zones' | 'seats' | 'free-entry'>('zones');
   const [eventSaving, setEventSaving] = useState(false);
   const [eventMessage, setEventMessage] = useState("");
-  const [storedEvents, setStoredEvents] = useState<Array<{id:string;slug:string;title:string;starts_at:string;ends_at:string|null;status:string;sales_state:string;ticket_mode:string}>>([]);
+  const [storedEvents, setStoredEvents] = useState<StoredEvent[]>(previewMode ? [
+    { id:'preview-lamp', slug:'vernite-lampovost', title:'ВЕРНИТЕ ЛАМПОВОСТЬ', starts_at:'2026-09-12T17:30:00+03:00', ends_at:'2026-09-12T21:00:00+03:00', status:'published', sales_state:'open', ticket_mode:'general-admission' },
+    { id:'preview-night', slug:'agayo-night', title:'AGAYO NIGHT', starts_at:'2026-08-29T18:00:00+03:00', ends_at:'2026-08-29T21:00:00+03:00', status:'published', sales_state:'closed', ticket_mode:'zones' },
+  ] : []);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [promos, setPromos] = useState<PromoView[]>([]);
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [ticketQuery, setTicketQuery] = useState('');
+  const [ticketResults, setTicketResults] = useState<TicketSearchView[]>([]);
+  const [ticketSearching, setTicketSearching] = useState(false);
+  const [buyerQuery, setBuyerQuery] = useState('');
+  const [buyers, setBuyers] = useState<BuyerView[]>([]);
+  const [buyerSearching, setBuyerSearching] = useState(false);
 
   useEffect(() => {
     if (previewMode || !can("manage_events")) return;
@@ -66,6 +83,77 @@ export default function AdminDashboard({ access, previewMode = false }: { access
     }).catch(() => undefined);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode || !can('view_dashboard')) return;
+    fetch('/api/admin/dashboard', { cache: 'no-store' }).then(async (response) => {
+      const data = await response.json();
+      if (response.ok) setDashboard(data);
+    }).catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode || !can('manage_promos')) return;
+    fetch('/api/admin/promos', { cache: 'no-store' }).then(async (response) => {
+      const data = await response.json();
+      if (response.ok) setPromos(data.promos || []);
+    }).catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode || !can('view_buyers')) return;
+    void searchBuyers('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewMode]);
+
+  async function createPromo() {
+    if (previewMode) { setPromoMessage('Предпросмотр: промокод не записан в базу.'); return; }
+    const shell = document.querySelector<HTMLElement>('.admin-promo-editor');
+    if (!shell) return;
+    const input = (name:string) => (shell.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${name}"]`)?.value ?? '').trim();
+    setPromoSaving(true); setPromoMessage('');
+    try {
+      const response = await fetch('/api/admin/promos', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        code:input('promoCode'), discountType:input('promoType'), discountValue:Number(input('promoValue')), usageLimit:input('promoLimit') ? Number(input('promoLimit')) : null, expiresAt:input('promoExpires') || null, eventSlug:input('promoEvent') || null,
+      }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Не удалось создать промокод');
+      setPromos((current) => [data.promo, ...current]);
+      setPromoMessage(`Промокод ${data.promo.code} создан`);
+      const codeInput = shell.querySelector<HTMLInputElement>('[name="promoCode"]');
+      if (codeInput) codeInput.value='';
+    } catch (cause) { setPromoMessage(cause instanceof Error ? cause.message : 'Ошибка'); } finally { setPromoSaving(false); }
+  }
+
+  async function togglePromo(promo: PromoView) {
+    if (previewMode) return;
+    const response = await fetch('/api/admin/promos', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:promo.id,isActive:!promo.is_active}) });
+    const data = await response.json();
+    if (response.ok) setPromos((current) => current.map((item) => item.id === promo.id ? data.promo : item));
+    else setPromoMessage(data.error || 'Не удалось изменить промокод');
+  }
+
+  async function searchTickets() {
+    if (previewMode || ticketQuery.trim().length < 2) { setTicketResults([]); return; }
+    setTicketSearching(true);
+    try {
+      const response = await fetch(`/api/admin/tickets?q=${encodeURIComponent(ticketQuery.trim())}`, { cache:'no-store' });
+      const data = await response.json();
+      if (response.ok) setTicketResults(data.tickets || []);
+    } finally { setTicketSearching(false); }
+  }
+
+  async function searchBuyers(query = buyerQuery) {
+    if (previewMode) return;
+    setBuyerSearching(true);
+    try {
+      const response = await fetch(`/api/admin/buyers?q=${encodeURIComponent(query.trim())}`, { cache:'no-store' });
+      const data = await response.json();
+      if (response.ok) setBuyers(data.buyers || []);
+    } finally { setBuyerSearching(false); }
+  }
 
   async function saveEvent(status: "draft" | "published") {
     if (previewMode) { setEventMessage("Предпросмотр: форма выглядит и ведёт себя как настоящая, но ничего не записывает в базу."); return; }
@@ -142,148 +230,85 @@ export default function AdminDashboard({ access, previewMode = false }: { access
             <span>AGAYO / УПРАВЛЕНИЕ</span>
             <h1>{title}</h1>
           </div>
-          {tab === 'events' && canCreateEvents && (
-            <button className="admin-primary" type="button" onClick={() => setCreating((v) => !v)}>
-              {creating ? 'Закрыть редактор' : '＋ Создать событие'}
-            </button>
-          )}
+
         </header>
 
         {tab === 'overview' && (
           <section className="admin-content">
             <div className="admin-metrics">
-              {statCards.filter(([label]) => label !== 'ВЫРУЧКА' || can('view_revenue')).map(([label, value, note]) => (
-                <article key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>
-              ))}
+              {can('view_revenue') ? <article><span>ВЫРУЧКА</span><strong>{new Intl.NumberFormat('ru-RU').format(dashboard?.metrics.revenue ?? 0)} ₽</strong><small>подтверждённые оплаты</small></article> : null}
+              <article><span>ПРОДАНО</span><strong>{String(dashboard?.metrics.sold ?? 0).padStart(2,'0')}</strong><small>действительных билетов</small></article>
+              <article><span>ПРОШЛИ</span><strong>{String(dashboard?.metrics.used ?? 0).padStart(2,'0')}</strong><small>отсканированных QR</small></article>
+              <article><span>ВОЗВРАТЫ / ОТМЕНЫ</span><strong>{String(dashboard?.metrics.refunds ?? 0).padStart(2,'0')}</strong><small>недействительных билетов</small></article>
             </div>
 
             <div className="admin-dashboard-grid">
               <article className="admin-panel admin-next-event">
-                <div className="admin-panel-head"><span>БЛИЖАЙШЕЕ СОБЫТИЕ</span><b>12.09.26</b></div>
-                <h2>ВЕРНИТЕ<br />ЛАМПОВОСТЬ</h2>
-                <div className="admin-event-status"><span>ОПУБЛИКОВАНО</span><span>ПРОДАЖИ ОТКРЫТЫ</span><span>14+</span></div>
+                <div className="admin-panel-head"><span>БЛИЖАЙШЕЕ СОБЫТИЕ</span><b>{dashboard?.upcoming ? new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'}).format(new Date(dashboard.upcoming.starts_at)) : '—'}</b></div>
+                <h2>{dashboard?.upcoming?.title ?? 'СОБЫТИЙ\nПОКА НЕТ'}</h2>
+                <div className="admin-event-status">{dashboard?.upcoming ? <><span>ОПУБЛИКОВАНО</span><span>{dashboard.upcoming.sales_state === 'open' ? 'ПРОДАЖИ ОТКРЫТЫ' : 'ПРОДАЖИ НЕ ОТКРЫТЫ'}</span><span>{dashboard.upcoming.age_label}</span></> : <span>СОЗДАЙ НОВОЕ СОБЫТИЕ</span>}</div>
               </article>
               <article className="admin-panel admin-operations">
                 <div className="admin-panel-head"><span>СЕГОДНЯ</span><b>LIVE</b></div>
-                <div className="admin-operation-row"><span>Новые заказы</span><strong>00</strong></div>
-                <div className="admin-operation-row"><span>Новые пользователи</span><strong>00</strong></div>
-                <div className="admin-operation-row"><span>Письма с билетами</span><strong>00</strong></div>
-                <div className="admin-operation-row"><span>Ошибки оплаты</span><strong>00</strong></div>
+                <div className="admin-operation-row"><span>Оплаченные заказы</span><strong>{String(dashboard?.today.newOrders ?? 0).padStart(2,'0')}</strong></div>
+                <div className="admin-operation-row"><span>Новые пользователи</span><strong>{String(dashboard?.today.newUsers ?? 0).padStart(2,'0')}</strong></div>
+                <div className="admin-operation-row"><span>Прошли по билетам</span><strong>{String(dashboard?.metrics.used ?? 0).padStart(2,'0')}</strong></div>
+                <div className="admin-operation-row"><span>Ошибки / отмены оплат</span><strong>{String(dashboard?.today.paymentErrors ?? 0).padStart(2,'0')}</strong></div>
               </article>
             </div>
 
             <div className="admin-quick-actions">
-              {canCreateEvents ? <button type="button" onClick={() => { setTab('events'); setCreating(true); }}>Создать событие ↗</button> : null}
-              {can('manual_ticket_search') || can('scan_tickets') ? <button type="button" onClick={() => setTab('tickets')}>Открыть билеты ↗</button> : null}
-              {can('manage_promos') ? <button type="button" onClick={() => setTab('promo')}>Создать промокод ↗</button> : null}
-              {can('manage_team') ? <button type="button" onClick={() => setTab('team')}>Добавить контролёра ↗</button> : null}
+              {canCreateEvents ? <button type="button" onClick={() => { setTab('events'); setCreating(true); }}>Создать событие <i className="admin-external-mark" aria-hidden="true" /></button> : null}
+              {can('manual_ticket_search') || can('scan_tickets') ? <button type="button" onClick={() => setTab('tickets')}>Открыть билеты <i className="admin-external-mark" aria-hidden="true" /></button> : null}
+              {can('manage_promos') ? <button type="button" onClick={() => setTab('promo')}>Создать промокод <i className="admin-external-mark" aria-hidden="true" /></button> : null}
+              {can('manage_team') ? <button type="button" onClick={() => setTab('team')}>Добавить контролёра <i className="admin-external-mark" aria-hidden="true" /></button> : null}
             </div>
           </section>
         )}
 
         {tab === 'events' && (
           <section className="admin-content">
-            {creating ? (
-              <div className="admin-editor">
-                <div className="admin-editor-title"><span>НОВОЕ СОБЫТИЕ</span><h2>СОЗДАТЬ<br />МЕРОПРИЯТИЕ</h2></div>
-
-                <div className="admin-editor-section">
-                  <div className="admin-section-heading"><span>01</span><div><b>ОСНОВНОЕ</b><small>То, что увидит гость на странице события.</small></div></div>
-                  <div className="admin-form-grid">
-                    <label><span>НАЗВАНИЕ</span><input name="title" placeholder="Название события" /></label>
-                    <label><span>ДАТА</span><input name="date" type="date" /></label>
-                    <label><span>НАЧАЛО</span><input name="start" type="time" /></label>
-                    <label><span>ОКОНЧАНИЕ</span><input name="end" type="time" /></label>
-                    <label><span>ВОЗРАСТ</span><input name="age" placeholder="14+" /></label>
-                    <label><span>ГОРОД</span><input name="city" defaultValue="Йошкар-Ола" /></label>
-                    <label><span>ПЛОЩАДКА</span><input name="venue" placeholder="Название площадки" /></label>
-                    <label><span>АДРЕС</span><input name="address" placeholder="Адрес" /></label>
-                    <label className="admin-wide"><span>ОПИСАНИЕ</span><textarea name="description" placeholder="Что человек должен почувствовать и узнать о событии?" /></label>
-                  </div>
-                </div>
-
-                <div className="admin-editor-section">
-                  <div className="admin-section-heading"><span>02</span><div><b>АФИША И АТМОСФЕРА</b><small>Афиша становится визуальной основой страницы и билетов.</small></div></div>
-                  <label className="admin-upload">
-                    <input type="file" name="poster" accept="image/*" />
-                    <strong>＋ ЗАГРУЗИТЬ АФИШУ</strong>
-                    <small>JPG / PNG / WEBP. После подключения хранилища изображение будет сохраняться на сервере.</small>
-                  </label>
-                  <div className="admin-theme-preview">
-                    <div><span>ПАЛИТРА ИЗ АФИШИ</span><small>Можно будет поправить вручную.</small></div>
-                    <div className="admin-swatches"><i /><i /><i /></div>
-                  </div>
-                </div>
-
-                <div className="admin-editor-section">
-                  <div className="admin-section-heading"><span>03</span><div><b>ТИП ПРОДАЖИ</b><small>Обычный вход, зоны или конкретные места.</small></div></div>
-                  <div className="admin-mode-grid">
-                    <button type="button" className={ticketMode === 'free-entry' ? 'is-active' : ''} onClick={() => setTicketMode('free-entry')}><b>ОБЩИЙ ВХОД</b><small>Без категорий и мест</small></button>
-                    <button type="button" className={ticketMode === 'zones' ? 'is-active' : ''} onClick={() => setTicketMode('zones')}><b>ЗОНЫ</b><small>STANDARD / PREMIUM / VIP</small></button>
-                    <button type="button" className={ticketMode === 'seats' ? 'is-active' : ''} onClick={() => setTicketMode('seats')}><b>МЕСТА</b><small>Конкретное кресло / стол</small></button>
-                  </div>
-                </div>
-
-                {ticketMode !== 'free-entry' && (
-                  <div className="admin-editor-section">
-                    <div className="admin-section-heading"><span>04</span><div><b>КАТЕГОРИИ БИЛЕТОВ</b><small>Каждый тип получит свою вариацию палитры события.</small></div></div>
-                    <div className="admin-ticket-row"><input name="ticketName" defaultValue="STANDARD" /><input name="ticketPrice" defaultValue="700" inputMode="numeric" /><input name="ticketInventory" placeholder="Количество" inputMode="numeric" /><button type="button">Удалить</button></div>
-                    <div className="admin-ticket-row"><input defaultValue="PREMIUM" /><input defaultValue="1200" inputMode="numeric" /><input placeholder="Количество" inputMode="numeric" /><button type="button">Удалить</button></div>
-                    <button className="admin-secondary" type="button">＋ Добавить категорию</button>
-                    <label className="admin-hot-toggle"><input type="checkbox" /> <span>🔥 Включить «Горячие билеты»</span><small>Отображаемый остаток задаётся отдельно от фактического.</small></label>
-                  </div>
-                )}
-
-                <div className="admin-editor-section">
-                  <div className="admin-section-heading"><span>05</span><div><b>ПУБЛИКАЦИЯ</b><small>Перед публикацией можно открыть предпросмотр.</small></div></div>
-                  <div className="admin-publish-options">
-                    <label><input type="checkbox" defaultChecked /> Продажи открыты</label>
-                    <label><input type="checkbox" /> Именные билеты</label>
-                    <label><input type="checkbox" /> Разрешить передачу билета</label>
-                  </div>
-                </div>
-
-                <div className="admin-editor-actions"><button className="admin-secondary" type="button">Предпросмотр</button><button className="admin-secondary" type="button" disabled={eventSaving} onClick={() => void saveEvent("draft")}>Сохранить черновик</button><button className="admin-primary" type="button" disabled={eventSaving} onClick={() => void saveEvent("published")}>{eventSaving ? "СОХРАНЯЕМ…" : "ОПУБЛИКОВАТЬ"}</button></div>
-                {eventMessage ? <p className="admin-event-message">{eventMessage}</p> : null}<p className="admin-dev-note">В защищённом /admin черновик и публикация сохраняются в PostgreSQL. Афиша загружается в Vercel Blob после подключения BLOB_READ_WRITE_TOKEN. В /admin-preview любые изменения специально отключены.</p>
-              </div>
-            ) : (
-              <div className="admin-event-list">
-                {storedEvents.length > 0 ? storedEvents.filter((event) => canEvent(event.slug)).map((event) => {
-                  const start = new Date(event.starts_at);
-                  const date = Number.isNaN(start.valueOf()) ? "—" : new Intl.DateTimeFormat("ru-RU", {day:"2-digit",month:"2-digit",year:"2-digit"}).format(start);
-                  return <article key={event.id} className={event.sales_state === "closed" ? "is-archive" : ""}><div><span>{date}</span><h2>{event.title}</h2><p>{event.status === "published" ? "Опубликовано" : "Черновик"} · {event.sales_state === "open" ? "продажи открыты" : event.sales_state === "closed" ? "продажи закрыты" : "продажи ещё не открыты"}</p></div><div className="admin-list-actions"><a href={`/events/${event.slug}`} target="_blank" rel="noreferrer">Открыть ↗</a>{can('view_statistics') ? <button type="button">Статистика ↗</button> : null}</div></article>;
-                }) : <>
-                  {canEvent('vernite-lampovost') ? <article><div><span>12.09.26 · 17:30—21:00</span><h2>ВЕРНИТЕ ЛАМПОВОСТЬ</h2><p>Опубликовано · продажи открыты · STANDARD 700 ₽</p></div><div className="admin-list-actions"><button type="button">Редактировать ↗</button>{can('view_statistics') ? <button type="button">Статистика ↗</button> : null}</div></article> : null}
-                  {canEvent('agayo-night') ? <article className="is-archive"><div><span>29.08.26</span><h2>AGAYO NIGHT</h2><p>Архив · продажи закрыты</p></div><div className="admin-list-actions"><button type="button">Открыть ↗</button></div></article> : null}
-                </>}
-              </div>
-            )}
+            <AdminEventsManager access={access} previewMode={previewMode} events={storedEvents} setEvents={setStoredEvents} />
           </section>
         )}
 
         {tab === 'tickets' && (
           <section className="admin-content">
-            <div className="admin-toolbar"><input placeholder="Номер билета, имя, email или телефон" /><button className="admin-secondary" type="button">Найти</button></div>
+            {can('manual_ticket_search') ? <div className="admin-toolbar"><input value={ticketQuery} onChange={(event) => setTicketQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchTickets(); }} placeholder="Номер билета, имя, email, телефон или AGAYO ID" /><button className="admin-secondary" type="button" disabled={ticketSearching} onClick={() => void searchTickets()}>{ticketSearching ? 'Ищем…' : 'Найти'}</button></div> : null}
             <div className="admin-table-card">
-              <div className="admin-table-head"><span>БИЛЕТ</span><span>СОБЫТИЕ</span><span>ВЛАДЕЛЕЦ</span><span>СТАТУС</span><span>ДЕЙСТВИЯ</span></div>
-              <div className="admin-table-empty"><strong>БИЛЕТОВ ПОКА НЕТ</strong><p>После первой подтверждённой оплаты здесь появятся реальные билеты, QR-статусы, возвраты и отмены.</p></div>
+              <div className="admin-table-head"><span>БИЛЕТ</span><span>СОБЫТИЕ</span><span>ВЛАДЕЛЕЦ</span><span>СТАТУС</span><span>КОНТАКТ</span></div>
+              {ticketResults.length ? <div className="admin-data-list">{ticketResults.map((ticket) => <article key={ticket.id} className="admin-data-row">
+                <div><small>БИЛЕТ</small><b>{ticket.public_id}</b><span>{ticket.category_name}</span></div>
+                <div><small>СОБЫТИЕ</small><b>{ticket.event_slug}</b></div>
+                <div><small>ВЛАДЕЛЕЦ</small><b>{ticket.owner_name}</b><span>{ticket.agayo_id || '—'}</span></div>
+                <div><small>СТАТУС</small><b>{ticket.status === 'valid' ? 'ДЕЙСТВИТЕЛЕН' : ticket.status === 'used' ? 'ИСПОЛЬЗОВАН' : ticket.status.toUpperCase()}</b>{ticket.used_at ? <span>{new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'short'}).format(new Date(ticket.used_at))}</span> : null}</div>
+                <div><small>КОНТАКТ</small><b>{ticket.email || ticket.phone || '—'}</b></div>
+              </article>)}</div> : <div className="admin-table-empty"><strong>{ticketQuery.trim().length >= 2 ? 'НИЧЕГО НЕ НАЙДЕНО' : 'НАЙДИ БИЛЕТ'}</strong><p>Поиск идёт по номеру, имени, email, телефону и AGAYO ID. Статус берётся только из базы.</p></div>}
             </div>
-            <div className="admin-scanner-card"><div><span>КОНТРОЛЬ ВХОДА</span><h2>SCANNER</h2><p>Мобильный сканер будет использовать тот же backend: первый проход помечает билет использованным, повторный показывает время и контролёра.</p></div><button className="admin-primary" type="button">Открыть сканер позже</button></div>
+            {can('scan_tickets') ? <div className="admin-scanner-card"><div><span>КОНТРОЛЬ ВХОДА</span><h2>SCANNER</h2><p>Backend сканера уже готов: первый успешный проход атомарно помечает билет использованным; повторный QR возвращает время предыдущего прохода, отменённый или возвращённый билет не пропускается.</p></div><a className="admin-primary admin-button-link" href="/admin/scanner">Открыть сканер</a></div> : null}
           </section>
         )}
 
         {tab === 'buyers' && (
           <section className="admin-content">
-            <div className="admin-toolbar"><input placeholder="Имя, email, телефон или AGAYO ID" /><button className="admin-secondary" type="button">Найти</button></div>
-            <div className="admin-table-card"><div className="admin-table-head buyers"><span>ПОЛЬЗОВАТЕЛЬ</span><span>КОНТАКТ</span><span>ПОСЕЩЕНИЯ</span><span>УРОВЕНЬ</span></div><div className="admin-table-empty"><strong>БАЗА ПОКУПАТЕЛЕЙ ПУСТА</strong><p>Профили будут создаваться автоматически после покупки или входа по одноразовому коду.</p></div></div>
+            <div className="admin-toolbar"><input value={buyerQuery} onChange={(event) => setBuyerQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchBuyers(); }} placeholder="Имя, email, телефон или AGAYO ID" /><button className="admin-secondary" type="button" disabled={buyerSearching} onClick={() => void searchBuyers()}>{buyerSearching ? 'Ищем…' : 'Найти'}</button></div>
+            <div className="admin-table-card">
+              <div className="admin-table-head buyers"><span>ПОЛЬЗОВАТЕЛЬ</span><span>КОНТАКТ</span><span>ПОСЕЩЕНИЯ</span><span>УРОВЕНЬ</span></div>
+              {buyers.length ? <div className="admin-data-list">{buyers.map((buyer) => <article key={buyer.id} className="admin-data-row buyers">
+                <div><small>ПОЛЬЗОВАТЕЛЬ</small><b>{buyer.display_name || 'Без имени'}</b><span>{buyer.agayo_id || '—'}</span></div>
+                <div><small>КОНТАКТ</small><b>{buyer.email || buyer.phone || '—'}</b></div>
+                <div><small>ПОСЕЩЕНИЯ</small><b>{buyer.visits}</b><span>{buyer.tickets} билетов всего</span></div>
+                <div><small>УРОВЕНЬ</small><b>{buyer.loyalty_level}</b></div>
+              </article>)}</div> : <div className="admin-table-empty"><strong>ПОКУПАТЕЛЕЙ ПОКА НЕТ</strong><p>После регистрации или первой покупки профиль появится здесь автоматически.</p></div>}
+            </div>
           </section>
         )}
 
         {tab === 'promo' && (
           <section className="admin-content">
-            <div className="admin-split">
-              <div className="admin-editor compact"><span className="admin-kicker">НОВЫЙ ПРОМОКОД</span><h2>СКИДКА</h2><div className="admin-form-grid"><label><span>КОД</span><input placeholder="AGAYO10" /></label><label><span>ТИП</span><select><option>Процент</option><option>Фиксированная сумма</option></select></label><label><span>ЗНАЧЕНИЕ</span><input placeholder="10" /></label><label><span>ЛИМИТ</span><input name="ticketInventory" placeholder="100" /></label><label><span>ДО ДАТЫ</span><input type="date" /></label><label><span>СОБЫТИЕ</span><select><option>Все события</option><option>ВЕРНИТЕ ЛАМПОВОСТЬ</option></select></label></div><button className="admin-primary" type="button">Создать промокод</button></div>
-              <div className="admin-table-card"><div className="admin-table-empty"><strong>АКТИВНЫХ ПРОМОКОДОВ НЕТ</strong><p>После подключения базы будут видны использование, лимиты и срок действия.</p></div></div>
+            <div className="admin-split admin-promo-layout">
+              <div className="admin-editor compact admin-promo-editor"><span className="admin-kicker">НОВЫЙ ПРОМОКОД</span><h2>СКИДКА</h2><div className="admin-form-grid"><label><span>КОД</span><input name="promoCode" placeholder="AGAYO10" autoCapitalize="characters" /></label><label><span>ТИП</span><select name="promoType" defaultValue="percent"><option value="percent">Процент</option><option value="fixed">Фиксированная сумма</option></select></label><label><span>ЗНАЧЕНИЕ</span><input name="promoValue" placeholder="10" inputMode="numeric" /></label><label><span>ЛИМИТ</span><input name="promoLimit" placeholder="Без лимита" inputMode="numeric" /></label><label><span>ДО ДАТЫ</span><input name="promoExpires" type="date" /></label><label><span>СОБЫТИЕ</span><select name="promoEvent"><option value="">Все доступные события</option>{storedEvents.filter((event) => canEvent(event.slug)).map((event) => <option key={event.id} value={event.slug}>{event.title}</option>)}</select></label></div><div className="admin-promo-submit"><button className="admin-primary" type="button" disabled={promoSaving} onClick={() => void createPromo()}>{promoSaving ? 'СОЗДАЁМ…' : 'Создать промокод'}</button>{promoMessage ? <p>{promoMessage}</p> : null}</div></div>
+              <div className="admin-table-card admin-promo-list">{promos.length ? <div className="admin-data-list">{promos.map((promo) => <article className="admin-promo-row" key={promo.id}><div><span>{promo.event_slug || 'ВСЕ СОБЫТИЯ'}</span><h3>{promo.code}</h3><p>{promo.discount_type === 'percent' ? `${promo.discount_value}%` : `${promo.discount_value} ₽`} · использовано {promo.used_count}{promo.usage_limit ? ` / ${promo.usage_limit}` : ''}{promo.expires_at ? ` · до ${new Intl.DateTimeFormat('ru-RU').format(new Date(promo.expires_at))}` : ''}</p></div><button className="admin-secondary" type="button" onClick={() => void togglePromo(promo)}>{promo.is_active ? 'Выключить' : 'Включить'}</button></article>)}</div> : <div className="admin-table-empty"><strong>ПРОМОКОДОВ ПОКА НЕТ</strong><p>Созданные промокоды будут храниться в PostgreSQL вместе с лимитом, использованием и сроком действия.</p></div>}</div>
             </div>
           </section>
         )}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
-import { getEvent } from "@/lib/events";
+import { getEventServer } from "@/lib/server/events";
 import { getPayment } from "@/lib/server/yookassa";
 import { publicId, randomToken } from "@/lib/server/security";
 import { sendTicketEmail } from "@/lib/server/email";
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!order || order.status === "paid") return NextResponse.json({ ok: true });
     if (Number(payment.amount.value) !== Number(order.total)) return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
     const items = await sql`SELECT * FROM order_items WHERE order_id=${order.id}`;
-    const event = getEvent(order.event_slug);
+    const event = await getEventServer(String(order.event_slug));
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 500 });
 
     const createdTickets: Array<{ public_id: string; qr_token: string }> = [];
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       const locked = await tx`SELECT status FROM orders WHERE id=${order.id} FOR UPDATE`;
       if (locked[0]?.status === "paid") return;
       await tx`UPDATE orders SET status='paid', paid_at=now() WHERE id=${order.id}`;
+      await tx`UPDATE ticket_inventory_reservations SET consumed_at=now() WHERE order_id=${order.id} AND released_at IS NULL`;
       for (const item of items) {
         for (let i = 0; i < Number(item.quantity); i++) {
           const ticketId = publicId("TKT"); const qr = randomToken(24);

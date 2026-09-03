@@ -52,7 +52,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               <article className={`ticket-card ticket-tone-${index % 3} ${ticket.hotTickets?.enabled && salesOpen ? "ticket-card-hot" : ""}`} key={ticket.id}>
                 <div className="ticket-card-top"><span>0{index + 1}</span>{ticket.hotTickets?.enabled && salesOpen && <b>ГОРЯЧИЕ БИЛЕТЫ · ОСТАЛОСЬ {ticket.hotTickets.displayedRemaining}</b>}</div>
                 <h3>{ticket.name}</h3><p>{ticket.note}</p>
-                <div className="ticket-card-bottom"><strong>{formatPrice(ticket.price)}</strong>{salesOpen ? <Link className="ticket-select" href={`/events/${event.slug}/checkout?category=${ticket.id}`}>Выбрать ↗</Link> : <span className="ticket-closed">Закрыто</span>}</div>
+                <div className="ticket-card-bottom"><strong>{formatPrice(ticket.price)}</strong>{salesOpen && !ticket.soldOut ? <Link className="ticket-select" href={`/events/${event.slug}/checkout?category=${ticket.id}`}>Выбрать ↗</Link> : <span className="ticket-closed">{ticket.soldOut ? "SOLD OUT" : "Закрыто"}</span>}</div>
               </article>
             ))}
           </div>

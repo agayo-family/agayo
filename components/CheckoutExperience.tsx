@@ -8,7 +8,9 @@ import { formatPrice } from "@/lib/events";
 type Props = { event: AgayoEvent; initialCategory?: string };
 
 export default function CheckoutExperience({ event, initialCategory }: Props) {
-  const [categoryId, setCategoryId] = useState(initialCategory || event.tickets[0]?.id || "");
+  const firstAvailable = event.tickets.find((item) => !item.soldOut);
+  const requested = event.tickets.find((item) => item.id === initialCategory && !item.soldOut);
+  const [categoryId, setCategoryId] = useState(requested?.id || firstAvailable?.id || "");
   const [quantity, setQuantity] = useState(1);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -17,7 +19,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const category = event.tickets.find((item) => item.id === categoryId) ?? event.tickets[0];
+  const category = event.tickets.find((item) => item.id === categoryId && !item.soldOut) ?? firstAvailable;
   const total = (category?.price ?? 0) * quantity;
   const theme = event.ticketTheme ?? { primary: "#111111", secondary: "#4b0f19", accent: "#c21f39" };
   const style = {
@@ -59,10 +61,11 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
                 <button
                   type="button"
                   key={ticket.id}
-                  className={`checkout-ticket-option ticket-tone-${index % 3} ${categoryId === ticket.id ? "is-selected" : ""}`}
-                  onClick={() => setCategoryId(ticket.id)}
+                  className={`checkout-ticket-option ticket-tone-${index % 3} ${categoryId === ticket.id ? "is-selected" : ""} ${ticket.soldOut ? "is-sold-out" : ""}`}
+                  disabled={ticket.soldOut}
+                  onClick={() => !ticket.soldOut && setCategoryId(ticket.id)}
                 >
-                  <span>{ticket.name}</span><strong>{formatPrice(ticket.price)}</strong><small>{ticket.note}</small>
+                  <span>{ticket.name}</span><strong>{ticket.soldOut ? "SOLD OUT" : formatPrice(ticket.price)}</strong><small>{ticket.note}{ticket.remaining != null && ticket.remaining > 0 && ticket.remaining < 5 ? ` · осталось ${ticket.remaining}` : ""}</small>
                 </button>
               ))}
             </div>

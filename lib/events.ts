@@ -6,6 +6,9 @@ export type TicketCategory = {
   name: string;
   price: number;
   note: string;
+  inventory?: number | null;
+  remaining?: number | null;
+  soldOut?: boolean;
   hotTickets?: {
     enabled: boolean;
     displayedRemaining: 1 | 2 | 3 | 4;

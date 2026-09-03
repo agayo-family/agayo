@@ -27,3 +27,7 @@ Phone login is represented in the API/UI but intentionally returns "provider not
 6. `admin_audit_log` фиксирует выдачу, изменение и отзыв служебного доступа.
 
 Роль — это только удобный пресет галочек. Реальное разрешение на действие определяется сохранённым набором permissions. OWNER не может быть снят с собственного bootstrap-доступа через интерфейс.
+
+## Operational admin stage
+After `db/003_events.sql`, apply `db/004_admin_operations.sql`.
+It adds scanner controller attribution and indexes used by the live admin dashboard, ticket search and promo operations.
