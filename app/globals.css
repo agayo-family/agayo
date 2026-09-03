@@ -1134,3 +1134,87 @@ html,body{max-width:100%;overflow-x:hidden}main,section,header,footer,div,articl
 .admin-preview-banner{padding:10px 4vw;border-bottom:1px solid rgba(255,255,255,.12);background:#61141e;color:#f2f0ea;font-size:9px;letter-spacing:.12em;line-height:1.4}
 .admin-event-message{margin-top:18px;padding:12px 14px;border:1px solid rgba(255,255,255,.14);color:#d7d0c7;font-size:11px;line-height:1.5}
 .admin-list-actions a{background:transparent;color:#fff;border:0;border-bottom:1px solid #555;padding:8px 0;text-decoration:none;white-space:nowrap;font-size:inherit}
+
+/* Mobile admin experience v2 — dedicated phone navigation and overflow-safe layout */
+.admin-sidebar-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.admin-mobile-menu-toggle{display:none}
+.admin-nav-chevron{display:block;width:7px;height:7px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg);flex:0 0 auto;margin-right:3px}
+.admin-external-mark{display:inline-block;width:7px;height:7px;border-top:1px solid currentColor;border-right:1px solid currentColor;margin-left:7px;transform:translateY(-1px)}
+
+@media(max-width:900px){
+  .admin-app,.admin-main,.admin-content,.admin-sidebar,.admin-top,.admin-panel,.admin-editor,.admin-table-card,.admin-feature-card,.admin-scanner-card{min-width:0;max-width:100%}
+  .admin-app{display:block;width:100%;overflow-x:clip}
+  .admin-sidebar{position:sticky;top:0;z-index:80;width:100%;height:auto;padding:14px 16px 0;border:0;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(17,17,18,.96);backdrop-filter:blur(18px)}
+  .admin-sidebar-head{align-items:center}
+  .admin-brand{margin:0!important}
+  .admin-brand .brand-logo-mark{width:112px}
+  .admin-mobile-menu-toggle{display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.14);background:#151516;color:#e9e3dc;padding:10px 12px;font:inherit;font-size:9px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+  .admin-mobile-menu-toggle>i{position:relative;display:block;width:14px;height:12px}
+  .admin-mobile-menu-toggle>i>span{position:absolute;left:0;width:14px;height:1px;background:currentColor;transition:transform .2s ease,top .2s ease}
+  .admin-mobile-menu-toggle>i>span:first-child{top:3px}.admin-mobile-menu-toggle>i>span:last-child{top:8px}
+  .admin-sidebar.is-mobile-open .admin-mobile-menu-toggle>i>span:first-child{top:6px;transform:rotate(45deg)}
+  .admin-sidebar.is-mobile-open .admin-mobile-menu-toggle>i>span:last-child{top:6px;transform:rotate(-45deg)}
+  .admin-role{margin-top:12px;padding:10px 0 12px;font-size:8px}
+  .admin-sidebar nav{display:none;margin:0;padding:8px 0 4px;overflow:visible}
+  .admin-sidebar.is-mobile-open nav{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .admin-sidebar nav button{min-width:0;min-height:52px;padding:13px 12px;border:1px solid rgba(255,255,255,.09);background:#141415;color:#a29c95;align-items:center}
+  .admin-sidebar nav button span{font-size:11px;line-height:1.15}
+  .admin-sidebar nav button.is-active{background:#231114;border-color:#6c2731;color:#fff}
+  .admin-sidebar nav button.is-active .admin-nav-chevron{border-color:#d4a0a8}
+  .admin-public{display:none;margin:8px 0 12px;padding:13px 0;border-top:1px solid rgba(255,255,255,.07)}
+  .admin-sidebar.is-mobile-open .admin-public{display:block}
+
+  .admin-preview-banner{padding:9px 16px;font-size:8px}
+  .admin-top{padding:22px 16px 18px;gap:14px;align-items:flex-end}
+  .admin-top>div{min-width:0}
+  .admin-top h1{font-size:clamp(34px,11vw,58px);overflow-wrap:anywhere}
+  .admin-top .admin-primary{flex:0 0 auto;max-width:48%;white-space:normal;text-align:center}
+  .admin-content{padding:18px 16px 64px}
+  .admin-metrics{gap:8px}
+  .admin-metrics article{min-width:0;padding:15px;min-height:122px}
+  .admin-metrics strong{font-size:clamp(27px,9vw,42px)}
+  .admin-dashboard-grid{gap:8px;margin-top:10px}
+  .admin-panel{padding:20px 16px}
+  .admin-panel h2{font-size:clamp(40px,13vw,70px);overflow-wrap:anywhere}
+  .admin-operation-row{gap:10px}
+  .admin-quick-actions{gap:8px}
+  .admin-quick-actions button{min-width:0;min-height:64px;padding:14px;font-size:11px}
+  .admin-event-list article{min-width:0;padding:18px 16px;gap:18px}
+  .admin-event-list article>div{min-width:0;max-width:100%}
+  .admin-event-list h2{font-size:clamp(31px,11vw,54px);overflow-wrap:anywhere}
+  .admin-list-actions{width:100%;gap:14px;justify-content:flex-start}
+  .admin-editor{padding:22px 16px}
+  .admin-editor-title h2,.admin-editor.compact>h2{font-size:clamp(40px,12vw,62px);overflow-wrap:anywhere}
+  .admin-section-heading{grid-template-columns:30px minmax(0,1fr);gap:12px}
+  .admin-form-grid{gap:18px}
+  .admin-upload{min-height:170px;padding:18px}
+  .admin-ticket-row{grid-template-columns:minmax(0,1fr) 92px;gap:10px}
+  .admin-ticket-row>*{min-width:0}
+  .admin-publish-options{display:grid;gap:12px}
+  .admin-toolbar{gap:8px}
+  .admin-toolbar input{width:100%;font-size:16px}
+  .admin-table-card{min-height:280px}
+  .admin-table-empty{min-height:260px;padding:24px 18px}
+  .admin-scanner-card{padding:22px 16px}
+  .admin-scanner-card h2,.admin-feature-card h2{overflow-wrap:anywhere}
+  .admin-feature-card{padding:22px 16px;min-height:300px}
+  .admin-settings-list article{min-width:0}
+  .admin-settings-list article>div{min-width:0}
+  .admin-settings-list p{overflow-wrap:anywhere}
+  .admin-team-intro,.admin-access-editor{max-width:100%;overflow:hidden}
+  .admin-team-member{max-width:100%}
+}
+
+@media(max-width:520px){
+  .admin-sidebar.is-mobile-open nav{grid-template-columns:1fr 1fr}
+  .admin-top{align-items:flex-start;flex-direction:column}
+  .admin-top .admin-primary{width:100%;max-width:none}
+  .admin-metrics{grid-template-columns:1fr 1fr}
+  .admin-metrics article small{font-size:9px;line-height:1.35}
+  .admin-panel-head{gap:10px}
+  .admin-panel-head b{font-size:10px}
+  .admin-event-status{gap:6px}
+  .admin-event-status span{padding:8px 9px;font-size:8px}
+  .admin-role-choice{grid-template-columns:1fr}
+  .admin-current-owner,.admin-settings-list article{align-items:flex-start}
+}

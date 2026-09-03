@@ -51,6 +51,7 @@ const statCards = [
 export default function AdminDashboard({ access, previewMode = false }: { access: AdminAccessView; previewMode?: boolean }) {
   const initialTab = tabs.find(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission)))?.[0] ?? 'overview';
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [ticketMode, setTicketMode] = useState<'zones' | 'seats' | 'free-entry'>('zones');
   const [eventSaving, setEventSaving] = useState(false);
@@ -98,12 +99,24 @@ export default function AdminDashboard({ access, previewMode = false }: { access
 
   return (
     <div className="admin-app">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/" aria-label="AGAYO — сайт">
-          <span className="brand-logo-mark" aria-hidden="true" />
-        </a>
+      <aside className={`admin-sidebar ${mobileMenuOpen ? 'is-mobile-open' : ''}`}>
+        <div className="admin-sidebar-head">
+          <a className="admin-brand" href="/" aria-label="AGAYO — сайт">
+            <span className="brand-logo-mark" aria-hidden="true" />
+          </a>
+          <button
+            className="admin-mobile-menu-toggle"
+            type="button"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="admin-navigation"
+            onClick={() => setMobileMenuOpen((value) => !value)}
+          >
+            <span>{mobileMenuOpen ? 'Закрыть' : 'Разделы'}</span>
+            <i aria-hidden="true"><span /><span /></i>
+          </button>
+        </div>
         <div className="admin-role"><b>{ROLE_LABELS[access.role]}</b><span>{access.agayoId}</span></div>
-        <nav aria-label="Служебная навигация">
+        <nav id="admin-navigation" aria-label="Служебная навигация">
           {visibleTabs.map(([id, label]) => (
             <button
               type="button"
@@ -111,14 +124,15 @@ export default function AdminDashboard({ access, previewMode = false }: { access
               onClick={() => {
                 setTab(id);
                 setCreating(false);
+                setMobileMenuOpen(false);
               }}
               className={tab === id ? 'is-active' : ''}
             >
-              <span>{label}</span><b>↗</b>
+              <span>{label}</span><i className="admin-nav-chevron" aria-hidden="true" />
             </button>
           ))}
         </nav>
-        <a className="admin-public" href="/">Открыть публичный сайт ↗</a>
+        <a className="admin-public" href="/">Открыть публичный сайт <i className="admin-external-mark" aria-hidden="true" /></a>
       </aside>
 
       <main className="admin-main">
