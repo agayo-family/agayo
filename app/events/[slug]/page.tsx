@@ -3,15 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import SiteHeader from "@/components/SiteHeader";
-import { events, formatPrice, getEvent } from "@/lib/events";
+import { events, formatPrice } from "@/lib/events";
+import { getEventServer } from "@/lib/server/events";
 
+export const dynamic = "force-dynamic";
 export function generateStaticParams() {
   return events.map((event) => ({ slug: event.slug }));
 }
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const event = getEvent(slug);
+  const event = await getEventServer(slug);
   if (!event || event.status !== "published") notFound();
   if (!event) return null;
 

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
-import { events } from "@/lib/events";
+import { getPublishedEventsServer } from "@/lib/server/events";
 
-export default function EventsPage() {
+export const dynamic = "force-dynamic";
+export default async function EventsPage() {
+  const events = await getPublishedEventsServer();
   return (
     <main className="inner-page">
       <SiteHeader />

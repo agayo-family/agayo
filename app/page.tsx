@@ -3,13 +3,15 @@ import Link from "next/link";
 import FavoriteButton from "@/components/FavoriteButton";
 import SiteHeader from "@/components/SiteHeader";
 import VoiceReview from "@/components/VoiceReview";
-import { events, getUpcomingEvent } from "@/lib/events";
+import { getAllEventsServer, getUpcomingEventServer } from "@/lib/server/events";
 import { galleryPhotos } from "@/lib/photos";
 
-export default function Home() {
-  const upcoming = getUpcomingEvent();
+export const dynamic = "force-dynamic";
+export default async function Home() {
+  const events = await getAllEventsServer();
+  const upcoming = await getUpcomingEventServer();
   const heroEvent = upcoming ?? events[0];
-  const archive = events.filter((event) => event.salesState === "closed").slice(0, 2);
+  const archive = events.filter((event) => event.status === "published" && event.salesState === "closed").slice(0, 2);
 
   return (
     <main>

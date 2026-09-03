@@ -1109,3 +1109,28 @@ html,body{max-width:100%;overflow-x:hidden}main,section,header,footer,div,articl
 
 @media(max-width:900px){.brand-logo-mark{width:122px}.admin-brand .brand-logo-mark{width:150px}.admin-role-choice{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-permission-groups{grid-template-columns:1fr}.admin-team-member{grid-template-columns:1.5fr .8fr .6fr}.admin-team-member>div:nth-child(4){display:none}.admin-member-actions{grid-column:1/-1}.admin-team-intro h2{font-size:clamp(56px,14vw,92px)}}
 @media(max-width:560px){.admin-brand .brand-logo-mark{width:140px}.admin-identity-row{grid-template-columns:1fr}.admin-role-choice{grid-template-columns:1fr 1fr}.admin-event-permissions{grid-template-columns:1fr}.admin-team-member{grid-template-columns:1fr 1fr}.admin-team-member>.admin-member-person{grid-column:1/-1}.admin-team-member>div:nth-child(4){display:grid}.admin-member-actions{grid-column:1/-1}.admin-current-owner{align-items:flex-start;flex-direction:column}.admin-access-editor{padding:20px 15px}.admin-team-intro{padding:22px 16px}}
+
+/* vNext: show the full next-event title instead of clipping it on laptops */
+@media (min-width: 901px) {
+  .next-event .event-copy { overflow: visible !important; }
+  .next-event .event-copy h2 {
+    width: min(100%, 10.8em) !important;
+    max-width: 100% !important;
+    font-size: clamp(38px, 4.25vw, 68px) !important;
+    line-height: .9 !important;
+    letter-spacing: -.055em !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  .next-event .event-feature { grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr); }
+  .next-event .event-copy h2 { font-size: clamp(36px, 4vw, 50px) !important; letter-spacing: -.045em !important; }
+}
+.admin-preview-banner{padding:10px 4vw;border-bottom:1px solid rgba(255,255,255,.12);background:#61141e;color:#f2f0ea;font-size:9px;letter-spacing:.12em;line-height:1.4}
+.admin-event-message{margin-top:18px;padding:12px 14px;border:1px solid rgba(255,255,255,.14);color:#d7d0c7;font-size:11px;line-height:1.5}
+.admin-list-actions a{background:transparent;color:#fff;border:0;border-bottom:1px solid #555;padding:8px 0;text-decoration:none;white-space:nowrap;font-size:inherit}

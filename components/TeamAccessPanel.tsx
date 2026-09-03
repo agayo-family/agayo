@@ -31,7 +31,7 @@ type Member = {
 
 const GROUPS = [...new Set(ADMIN_PERMISSIONS.map((permission) => permission.group))];
 
-export default function TeamAccessPanel({ currentAccess }: { currentAccess: CurrentAccess }) {
+export default function TeamAccessPanel({ currentAccess, previewMode = false }: { currentAccess: CurrentAccess; previewMode?: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,7 +58,10 @@ export default function TeamAccessPanel({ currentAccess }: { currentAccess: Curr
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    if (previewMode) { setMembers([{id:"preview-controller",userId:"preview-2",agayoId:"AGY-7F3A19C2",email:"controller@agayo.preview",phone:null,displayName:"Контролёр",role:"controller",permissions:ROLE_DEFAULTS.controller,allEvents:false,eventSlugs:["vernite-lampovost"]}]); setLoading(false); return; }
+    void load();
+  }, [previewMode]);
 
   function applyRole(nextRole: AdminRole) {
     setRole(nextRole);
@@ -91,6 +94,7 @@ export default function TeamAccessPanel({ currentAccess }: { currentAccess: Curr
   }
 
   async function save() {
+    if (previewMode) { setError("Предпросмотр: здесь можно проверить интерфейс. Реальные права меняются только в защищённом /admin."); return; }
     if (!editingId && identifier.trim().length < 3) { setError("Укажи email, телефон или AGAYO ID"); return; }
     setSaving(true); setError("");
     try {
@@ -110,6 +114,7 @@ export default function TeamAccessPanel({ currentAccess }: { currentAccess: Curr
   }
 
   async function revoke(member: Member) {
+    if (previewMode) { setError("Предпросмотр не изменяет реальные доступы."); return; }
     if (!window.confirm(`Убрать служебный доступ у ${member.agayoId}?`)) return;
     setSaving(true); setError("");
     try {
