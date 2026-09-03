@@ -59,3 +59,13 @@ The `/admin` shell is now server-gated by AGAYO ID. Granular role permissions an
 - Poster upload is optional for saving: if Vercel Blob is not connected, all non-poster event changes still save.
 - Poster upload accepts `BLOB_READ_WRITE_TOKEN`, `agayo_BLOB_READ_WRITE_TOKEN`, or another connected variable ending in `_BLOB_READ_WRITE_TOKEN`.
 - Connect Vercel Blob to persist newly uploaded posters in production.
+
+## Dynamic event pages + poster auto-palette (v6)
+
+- Newly created PostgreSQL events are loaded directly by the public event routes instead of falling back to the static catalogue when UUID array typing differs in Neon/Postgres.
+- Dynamic event slugs are explicitly allowed on `/events/[slug]`.
+- Draft/cancelled events can be previewed from `/admin` through `?preview=admin`; the preview remains protected by the authenticated admin permissions and is not public.
+- Publicly published events keep their normal clean URL.
+- Selecting a poster in the event editor automatically extracts dominant colours in the browser and derives a dark primary, secondary, and accent palette suitable for readable event pages.
+- The generated palette is shown as swatches in the admin editor and is persisted with the event; there is no manual colour-picker step.
+- Replacing the poster automatically recalculates the event palette.

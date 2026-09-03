@@ -14,14 +14,26 @@ async function dbEvents(): Promise<AgayoEvent[]> {
     const sql = db();
     const rows = await sql`SELECT * FROM events ORDER BY starts_at DESC`;
     if (!rows.length) return [];
-    const ids = rows.map((row) => row.id);
+
+    // Do not pass a JS string[] into uuid = ANY($1): depending on the driver it can
+    // become text[] and make the whole public event loader fall back to static data.
+    // Reading all event children with a join is cheap for the admin-sized catalogue and
+    // keeps newly created DB events available immediately on /events/[slug].
     const tickets = await sql`
-      SELECT c.*,
-        COALESCE((SELECT COUNT(*)::int FROM tickets t WHERE t.event_slug=(SELECT slug FROM events e WHERE e.id=c.event_id) AND t.category_id=c.category_key AND t.status IN ('valid','used')),0)::int AS sold_count,
-        COALESCE((SELECT SUM(r.quantity)::int FROM ticket_inventory_reservations r WHERE r.event_slug=(SELECT slug FROM events e WHERE e.id=c.event_id) AND r.category_id=c.category_key AND r.consumed_at IS NULL AND r.released_at IS NULL),0)::int AS reserved_count
-      FROM event_ticket_categories c WHERE event_id = ANY(${ids}) ORDER BY sort_order
+      SELECT c.*, e.slug AS event_slug,
+        COALESCE((SELECT COUNT(*)::int FROM tickets t WHERE t.event_slug=e.slug AND t.category_id=c.category_key AND t.status IN ('valid','used')),0)::int AS sold_count,
+        COALESCE((SELECT SUM(r.quantity)::int FROM ticket_inventory_reservations r WHERE r.event_slug=e.slug AND r.category_id=c.category_key AND r.consumed_at IS NULL AND r.released_at IS NULL),0)::int AS reserved_count
+      FROM event_ticket_categories c
+      JOIN events e ON e.id=c.event_id
+      ORDER BY c.event_id, c.sort_order, c.name
     `;
-    const program = await sql`SELECT * FROM event_program_items WHERE event_id = ANY(${ids}) ORDER BY sort_order`;
+    const program = await sql`
+      SELECT p.*
+      FROM event_program_items p
+      JOIN events e ON e.id=p.event_id
+      ORDER BY p.event_id, p.sort_order
+    `;
+
     return rows.map((row) => {
       const start = new Date(row.starts_at as string);
       const end = row.ends_at ? new Date(row.ends_at as string) : null;

@@ -5,17 +5,26 @@ import type { CSSProperties } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import { events, formatPrice } from "@/lib/events";
 import { getEventServer } from "@/lib/server/events";
+import { canAccessEvent, getCurrentAdminAccess, hasPermission } from "@/lib/server/admin";
 
 export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 export function generateStaticParams() {
   return events.map((event) => ({ slug: event.slug }));
 }
 
-export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EventPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ preview?: string }> }) {
   const { slug } = await params;
+  const query = await searchParams;
   const event = await getEventServer(slug);
-  if (!event || event.status !== "published") notFound();
-  if (!event) return null;
+  if (!event) notFound();
+
+  let adminPreview = false;
+  if (event.status !== "published" && query.preview === "admin") {
+    const access = await getCurrentAdminAccess();
+    adminPreview = Boolean(access && hasPermission(access, "manage_events") && canAccessEvent(access, event.slug));
+  }
+  if (event.status !== "published" && !adminPreview) notFound();
 
   const salesOpen = event.salesState === "open";
   const isNight = event.slug === "agayo-night";
@@ -23,8 +32,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const eventStyle = { "--event-primary": theme.primary, "--event-secondary": theme.secondary, "--event-accent": theme.accent } as CSSProperties;
 
   return (
-    <main className={`event-page-v2 ${event.posterImage ? "event-page-themed" : ""}`} style={eventStyle}>
+    <main className={`event-page-v2 ${event.ticketTheme ? "event-page-themed" : ""}`} style={eventStyle}>
       <div className="event-header-shell"><SiteHeader /></div>
+      {adminPreview ? <div className="event-admin-preview-banner">ПРЕДПРОСМОТР · ЭТА СТРАНИЦА ЕЩЁ НЕ ОПУБЛИКОВАНА ДЛЯ ГОСТЕЙ</div> : null}
       <section className="event-v2-hero">
         <Image src={event.heroImage} alt={event.title} fill priority sizes="100vw" className="event-v2-hero-image" />
         <div className="event-v2-hero-overlay" />
