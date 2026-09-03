@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import TeamAccessPanel from './TeamAccessPanel';
+import { AdminPermission, AdminRole, ROLE_LABELS } from '@/lib/admin-permissions';
 
 type Tab = 'overview' | 'events' | 'tickets' | 'buyers' | 'promo' | 'media' | 'team' | 'settings';
 
@@ -15,6 +17,30 @@ const tabs: Array<[Tab, string]> = [
   ['settings', 'Настройки'],
 ];
 
+
+type AdminAccessView = {
+  userId: string;
+  agayoId: string;
+  email: string | null;
+  displayName: string | null;
+  role: AdminRole;
+  permissions: AdminPermission[];
+  allEvents: boolean;
+  eventSlugs: string[];
+  bootstrapOwner: boolean;
+};
+
+const tabPermissions: Record<Tab, AdminPermission[]> = {
+  overview: ['view_dashboard'],
+  events: ['manage_events', 'publish_events', 'manage_ticket_inventory'],
+  tickets: ['scan_tickets', 'manual_ticket_search', 'cancel_tickets', 'refund_tickets', 'issue_comp_tickets'],
+  buyers: ['view_buyers', 'manage_loyalty'],
+  promo: ['manage_promos'],
+  media: ['manage_media'],
+  team: ['manage_team'],
+  settings: ['manage_system'],
+};
+
 const statCards = [
   ['ВЫРУЧКА', '0 ₽', 'после реальных продаж'],
   ['ПРОДАНО', '00', 'оплаченных билетов'],
@@ -22,10 +48,15 @@ const statCards = [
   ['ВОЗВРАТЫ', '00', 'билетов'],
 ];
 
-export default function AdminDashboard() {
-  const [tab, setTab] = useState<Tab>('overview');
+export default function AdminDashboard({ access }: { access: AdminAccessView }) {
+  const initialTab = tabs.find(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission)))?.[0] ?? 'overview';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [creating, setCreating] = useState(false);
   const [ticketMode, setTicketMode] = useState<'zones' | 'seats' | 'free-entry'>('zones');
+  const can = (permission: AdminPermission) => access.role === 'owner' || access.permissions.includes(permission);
+  const canEvent = (slug: string) => access.role === 'owner' || access.allEvents || access.eventSlugs.includes(slug);
+  const canCreateEvents = can('manage_events') && (access.role === 'owner' || access.allEvents);
+  const visibleTabs = useMemo(() => tabs.filter(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission))), [access.role, access.permissions]);
   const title = useMemo(() => tabs.find(([id]) => id === tab)?.[1] ?? '', [tab]);
 
   return (
@@ -34,9 +65,9 @@ export default function AdminDashboard() {
         <a className="admin-brand" href="/" aria-label="AGAYO — сайт">
           <span className="brand-logo-mark" aria-hidden="true" />
         </a>
-        <div className="admin-role">OWNER / SERVICE AREA</div>
+        <div className="admin-role"><b>{ROLE_LABELS[access.role]}</b><span>{access.agayoId}</span></div>
         <nav aria-label="Служебная навигация">
-          {tabs.map(([id, label]) => (
+          {visibleTabs.map(([id, label]) => (
             <button
               type="button"
               key={id}
@@ -59,7 +90,7 @@ export default function AdminDashboard() {
             <span>AGAYO / УПРАВЛЕНИЕ</span>
             <h1>{title}</h1>
           </div>
-          {tab === 'events' && (
+          {tab === 'events' && canCreateEvents && (
             <button className="admin-primary" type="button" onClick={() => setCreating((v) => !v)}>
               {creating ? 'Закрыть редактор' : '＋ Создать событие'}
             </button>
@@ -69,7 +100,7 @@ export default function AdminDashboard() {
         {tab === 'overview' && (
           <section className="admin-content">
             <div className="admin-metrics">
-              {statCards.map(([label, value, note]) => (
+              {statCards.filter(([label]) => label !== 'ВЫРУЧКА' || can('view_revenue')).map(([label, value, note]) => (
                 <article key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>
               ))}
             </div>
@@ -90,10 +121,10 @@ export default function AdminDashboard() {
             </div>
 
             <div className="admin-quick-actions">
-              <button type="button" onClick={() => { setTab('events'); setCreating(true); }}>Создать событие ↗</button>
-              <button type="button" onClick={() => setTab('tickets')}>Открыть билеты ↗</button>
-              <button type="button" onClick={() => setTab('promo')}>Создать промокод ↗</button>
-              <button type="button" onClick={() => setTab('team')}>Добавить контролёра ↗</button>
+              {canCreateEvents ? <button type="button" onClick={() => { setTab('events'); setCreating(true); }}>Создать событие ↗</button> : null}
+              {can('manual_ticket_search') || can('scan_tickets') ? <button type="button" onClick={() => setTab('tickets')}>Открыть билеты ↗</button> : null}
+              {can('manage_promos') ? <button type="button" onClick={() => setTab('promo')}>Создать промокод ↗</button> : null}
+              {can('manage_team') ? <button type="button" onClick={() => setTab('team')}>Добавить контролёра ↗</button> : null}
             </div>
           </section>
         )}
@@ -165,8 +196,9 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="admin-event-list">
-                <article><div><span>12.09.26 · 17:30—21:00</span><h2>ВЕРНИТЕ ЛАМПОВОСТЬ</h2><p>Опубликовано · продажи открыты · STANDARD 700 ₽</p></div><div className="admin-list-actions"><button type="button">Редактировать ↗</button><button type="button">Статистика ↗</button></div></article>
-                <article className="is-archive"><div><span>29.08.26</span><h2>AGAYO NIGHT</h2><p>Архив · продажи закрыты</p></div><div className="admin-list-actions"><button type="button">Открыть ↗</button></div></article>
+                {canEvent('vernite-lampovost') ? <article><div><span>12.09.26 · 17:30—21:00</span><h2>ВЕРНИТЕ ЛАМПОВОСТЬ</h2><p>Опубликовано · продажи открыты · STANDARD 700 ₽</p></div><div className="admin-list-actions"><button type="button">Редактировать ↗</button>{can('view_statistics') ? <button type="button">Статистика ↗</button> : null}</div></article> : null}
+                {canEvent('agayo-night') ? <article className="is-archive"><div><span>29.08.26</span><h2>AGAYO NIGHT</h2><p>Архив · продажи закрыты</p></div><div className="admin-list-actions"><button type="button">Открыть ↗</button></div></article> : null}
+                {!canEvent('vernite-lampovost') && !canEvent('agayo-night') ? <div className="admin-table-empty"><strong>НЕТ ДОСТУПНЫХ МЕРОПРИЯТИЙ</strong><p>OWNER или администратор может открыть тебе конкретные события в разделе «Команда».</p></div> : null}
               </div>
             )}
           </section>
@@ -203,8 +235,8 @@ export default function AdminDashboard() {
           <section className="admin-content"><div className="admin-split"><article className="admin-feature-card"><span>ГАЛЕРЕЯ</span><h2>ФОТО</h2><p>Загрузка фотографий по событиям, сортировка, удаление и выбор кадров для главной.</p><button className="admin-secondary" type="button">Добавить фотографии</button></article><article className="admin-feature-card"><span>ОТЗЫВЫ</span><h2>VOICE / TEXT</h2><p>Текстовые и голосовые отзывы добавляет только команда AGAYO.</p><button className="admin-secondary" type="button">Добавить отзыв</button></article></div></section>
         )}
 
-        {tab === 'team' && (
-          <section className="admin-content"><div className="admin-feature-card"><span>РОЛИ И ДОСТУП</span><h2>КОМАНДА</h2><div className="admin-role-grid"><article><b>OWNER</b><p>Полный доступ ко всему.</p></article><article><b>ADMINISTRATOR</b><p>Почти полный доступ без критических настроек владельца.</p></article><article><b>ORGANIZER</b><p>События и контент без критических финансовых настроек.</p></article><article><b>CONTROLLER</b><p>Только сканирование и минимум данных гостя.</p></article></div><button className="admin-primary" type="button">＋ Добавить участника</button></div></section>
+        {tab === 'team' && can('manage_team') && (
+          <section className="admin-content"><TeamAccessPanel currentAccess={access} /></section>
         )}
 
         {tab === 'settings' && (

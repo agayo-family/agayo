@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AuthExperience() {
+export default function AuthExperience({ nextPath = "/profile" }: { nextPath?: string }) {
   const router = useRouter();
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [value, setValue] = useState("");
@@ -29,7 +29,8 @@ export default function AuthExperience() {
       const response = await fetch("/api/auth/verify-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method, value, code }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось войти");
-      router.push("/profile"); router.refresh();
+      const safeNext = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/profile";
+      router.push(safeNext); router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Ошибка"); }
     finally { setBusy(false); }
   }

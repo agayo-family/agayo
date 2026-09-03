@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const raw = randomToken();
     await sql`INSERT INTO sessions(user_id,token_hash,expires_at) VALUES(${user.id},${hash(raw)},now()+interval '30 days')`;
 
-    const response = NextResponse.json({ ok: true, user: { id: user.id, email: user.email, phone: user.phone, displayName: user.display_name } });
+    const response = NextResponse.json({ ok: true, user: { id: user.id, email: user.email, phone: user.phone, displayName: user.display_name, agayoId: user.agayo_id } });
     response.cookies.set(SESSION_COOKIE, raw, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
     return response;
   } catch (error) {

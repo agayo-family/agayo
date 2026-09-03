@@ -73,3 +73,13 @@ Each event may store `posterImage` and a compact `ticketTheme` (`primary`, `seco
 `/admin` is now the visual shell for the closed service area. It contains dashboard, event constructor, tickets/scanner shell, buyers, promo codes, media/reviews, team roles and integrations/settings.
 
 This version deliberately does not persist admin edits in localStorage and does not pretend that admin authorization exists. The next backend step must protect `/admin` on the server by staff role and connect the event constructor to PostgreSQL/object storage. Poster upload will feed event poster storage plus palette extraction; public event pages and ticket category themes will consume those stored colors.
+
+## RBAC / AGAYO ID admin access
+- `/admin` is server-gated; knowing the URL never grants access.
+- Passwordless AGAYO ID session remains the only login mechanism. No shared admin password is used.
+- Roles: OWNER, ADMINISTRATOR, ORGANIZER, CONTROLLER.
+- Roles provide presets, while actual authority is stored as granular permissions per membership.
+- Membership can be scoped to all events or an explicit set of event slugs.
+- Server APIs must call `requireAdminPermission(permission, eventSlug?)`; hiding a UI control is never considered authorization.
+- Non-owner administrators cannot delegate permissions or event scopes they do not possess themselves.
+- Team access mutations are recorded in `admin_audit_log`.

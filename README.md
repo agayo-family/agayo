@@ -20,3 +20,6 @@ The public UI and event-domain foundation are present. Real payments, authentica
 
 ## Backend stage
 This build contains the first real server foundation: PostgreSQL schema, passwordless email login, HttpOnly sessions, server-validated orders, YooKassa redirect/webhook verification, ticket issuance, real QR generation and email delivery. See `docs/BACKEND-SETUP.md` before enabling production payments.
+
+## Current service-access stage
+The `/admin` shell is now server-gated by AGAYO ID. Granular role permissions and per-event scope are stored in PostgreSQL using `db/002_admin_access.sql`. See `docs/ADMIN-ACCESS.md`.

@@ -10,7 +10,7 @@ export async function getCurrentUser() {
   if (!raw) return null;
   const sql = db();
   const rows = await sql`
-    SELECT u.id, u.email, u.phone, u.display_name, u.loyalty_level, u.telegram_chat_id
+    SELECT u.id, u.agayo_id, u.email, u.phone, u.display_name, u.loyalty_level, u.telegram_chat_id
     FROM sessions s JOIN users u ON u.id=s.user_id
     WHERE s.token_hash=${hash(raw)} AND s.expires_at > now()
     LIMIT 1
