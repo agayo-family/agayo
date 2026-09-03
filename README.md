@@ -17,3 +17,6 @@ The public UI and event-domain foundation are present. Real payments, authentica
 - Favorites preview uses the existing localStorage favorites system.
 - Mobile fixes included: home hero words no longer split inside words; Events archive label no longer overflows on mobile.
 - Real email auth, ticket data, QR, loyalty calculations and notifications remain backend work by design.
+
+## Backend stage
+This build contains the first real server foundation: PostgreSQL schema, passwordless email login, HttpOnly sessions, server-validated orders, YooKassa redirect/webhook verification, ticket issuance, real QR generation and email delivery. See `docs/BACKEND-SETUP.md` before enabling production payments.

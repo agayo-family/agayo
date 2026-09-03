@@ -14,6 +14,8 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [promo, setPromo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const category = event.tickets.find((item) => item.id === categoryId) ?? event.tickets[0];
   const total = (category?.price ?? 0) * quantity;
@@ -25,6 +27,22 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
   } as CSSProperties;
 
   const canContinue = useMemo(() => email.includes("@") && name.trim().length > 1 && !!category, [email, name, category]);
+
+  async function startPayment() {
+    if (!category || !canContinue) return;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventSlug: event.slug, categoryId: category.id, quantity, email, name, phone, promo }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Не удалось создать заказ");
+      if (!data.confirmationUrl) throw new Error("Не получена ссылка на оплату");
+      window.location.assign(data.confirmationUrl);
+    } catch (e) { setError(e instanceof Error ? e.message : "Ошибка оплаты"); setBusy(false); }
+  }
 
   return (
     <div className="checkout-experience" style={style}>
@@ -65,9 +83,10 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
 
           <section className="checkout-panel checkout-payment-panel">
             <div className="checkout-panel-head"><span>03</span><h2>ОПЛАТА</h2></div>
-            <p className="checkout-note">В рабочей версии кнопка создаст заказ на сервере и перенаправит в ЮKassa. Билет будет выпущен только после серверного подтверждения платежа.</p>
-            <button className="checkout-pay-button" type="button" disabled={!canContinue}>ПЕРЕЙТИ К ОПЛАТЕ · {formatPrice(total)}</button>
-            <small>Сейчас платёж отключён в прототипе — мы не имитируем успешную оплату без backend.</small>
+            <p className="checkout-note">Заказ создаётся на сервере и отправляется в ЮKassa. Билет выпускается только после подтверждённой оплаты и автоматически приходит на указанную почту.</p>
+            <button className="checkout-pay-button" type="button" onClick={startPayment} disabled={!canContinue || busy}>{busy ? "СОЗДАЁМ ЗАКАЗ…" : `ПЕРЕЙТИ К ОПЛАТЕ · ${formatPrice(total)}`}</button>
+            {error ? <p className="checkout-error" role="alert">{error}</p> : null}
+            <small>Если профиль с этой почтой ещё не существует, он будет создан автоматически вместе с заказом.</small>
           </section>
         </div>
 
