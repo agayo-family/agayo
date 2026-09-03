@@ -3,6 +3,8 @@ import SiteHeader from "@/components/SiteHeader";
 import CheckoutExperience from "@/components/CheckoutExperience";
 import { getEventServer } from "@/lib/server/events";
 
+export const dynamic = "force-dynamic";
+
 export default async function CheckoutPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ category?: string }> }) {
   const { slug } = await params;
   const query = await searchParams;

@@ -9,10 +9,16 @@ type HSL = { h: number; s: number; l: number };
 type Bucket = RGB & HSL & { count: number };
 
 const FALLBACK: EventPalette = {
-  primary: "#220708",
-  secondary: "#751013",
-  accent: "#e12622",
+  primary: "#0B0B0C",
+  secondary: "#6B1F2B",
+  accent: "#C21F39",
 };
+
+// The event palette is allowed to follow the poster, but never becomes a separate
+// visual identity. These anchors keep every generated page recognisably AGAYO.
+const AGAYO_BLACK: RGB = { r: 11, g: 11, b: 12 };
+const AGAYO_GRAPHITE: RGB = { r: 21, g: 21, b: 23 };
+const AGAYO_ACCENT: RGB = { r: 194, g: 31, b: 57 };
 
 function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -61,6 +67,40 @@ function hslToRgb({ h, s, l }: HSL): RGB {
 
 function hex({ r, g, b }: RGB) {
   return `#${[r, g, b].map((value) => clamp(Math.round(value), 0, 255).toString(16).padStart(2, "0")).join("")}`;
+}
+
+
+function parseHex(value: string): RGB {
+  const clean = value.replace("#", "");
+  return {
+    r: Number.parseInt(clean.slice(0, 2), 16),
+    g: Number.parseInt(clean.slice(2, 4), 16),
+    b: Number.parseInt(clean.slice(4, 6), 16),
+  };
+}
+
+function mixRgb(source: RGB, anchor: RGB, anchorWeight: number): RGB {
+  const weight = clamp(anchorWeight);
+  return {
+    r: Math.round(source.r * (1 - weight) + anchor.r * weight),
+    g: Math.round(source.g * (1 - weight) + anchor.g * weight),
+    b: Math.round(source.b * (1 - weight) + anchor.b * weight),
+  };
+}
+
+function alignWithAgayo(palette: EventPalette): EventPalette {
+  const rawPrimary = parseHex(palette.primary);
+  const rawSecondary = parseHex(palette.secondary);
+  const rawAccent = parseHex(palette.accent);
+  const accentHsl = rgbToHsl(rawAccent);
+
+  const primary = mixRgb(rawPrimary, AGAYO_BLACK, 0.28);
+  const secondary = mixRgb(rawSecondary, AGAYO_GRAPHITE, 0.12);
+  // Saturated poster accents stay almost untouched. Neutral posters receive a
+  // stronger AGAYO red influence so calls-to-action still feel like the brand.
+  const accent = mixRgb(rawAccent, AGAYO_ACCENT, accentHsl.s < 0.28 ? 0.34 : 0.08);
+
+  return { primary: hex(primary), secondary: hex(secondary), accent: hex(accent) };
 }
 
 function hueDistance(a: number, b: number) {
@@ -164,9 +204,9 @@ export async function extractEventPalette(file: File): Promise<EventPalette> {
       return scoreB - scoreA;
     })[0] ?? secondarySource;
 
-  return {
+  return alignWithAgayo({
     primary: themedColor(primarySource, "primary"),
     secondary: themedColor(secondarySource, "secondary"),
     accent: themedColor(accentSource, "accent"),
-  };
+  });
 }

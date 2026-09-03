@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
 import { ensureSeedEvents } from "@/lib/server/seed-events";
@@ -50,6 +51,9 @@ export async function POST(request: Request) {
       await sql`INSERT INTO event_program_items(event_id,time_label,title,sort_order) VALUES(${eventId},${label},${titleText},${i})`;
     }
     await writeAdminAudit(actor.userId,"event.create","event",eventId,{slug,title,status:desiredStatus});
+    revalidatePath("/");
+    revalidatePath("/events");
+    revalidatePath(`/events/${slug}`);
     return NextResponse.json({ok:true,slug,id:eventId});
   } catch(error){ console.error(error); const status=error instanceof AdminAccessError?error.status:500; return NextResponse.json({error:error instanceof Error?error.message:"Не удалось создать мероприятие"},{status}); }
 }

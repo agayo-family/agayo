@@ -3,15 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import SiteHeader from "@/components/SiteHeader";
-import { events, formatPrice } from "@/lib/events";
+import { formatPrice } from "@/lib/events";
 import { getEventServer } from "@/lib/server/events";
 import { canAccessEvent, getCurrentAdminAccess, hasPermission } from "@/lib/server/admin";
 
 export const dynamic = "force-dynamic";
-export const dynamicParams = true;
-export function generateStaticParams() {
-  return events.map((event) => ({ slug: event.slug }));
-}
 
 export default async function EventPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ preview?: string }> }) {
   const { slug } = await params;
