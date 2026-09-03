@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
+import { ensureSeedEvents } from "@/lib/server/seed-events";
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 80) || `event-${Date.now()}`;
@@ -10,6 +11,7 @@ function cleanHex(value: unknown, fallback: string) { const s=String(value||"").
 export async function GET() {
   try {
     await requireAdminPermission("manage_events");
+    await ensureSeedEvents();
     const sql=db();
     const rows=await sql`SELECT id,slug,title,starts_at,ends_at,status,sales_state,ticket_mode,poster_image,theme_primary,theme_secondary,theme_accent FROM events ORDER BY starts_at DESC`;
     return NextResponse.json({ events: rows });
@@ -36,10 +38,16 @@ export async function POST(request: Request) {
     `;
     const eventId=String(inserted[0].id);
     const categories=Array.isArray(body.tickets)?body.tickets.slice(0,20):[];
+    const program=Array.isArray(body.program)?body.program.slice(0,40):[];
     for(let i=0;i<categories.length;i++){
       const item=categories[i]; if(!item?.name) continue;
       await sql`INSERT INTO event_ticket_categories(event_id,category_key,name,price,note,inventory,hot_enabled,hot_displayed_remaining,theme_primary,theme_secondary,theme_accent,sort_order)
         VALUES(${eventId},${slugify(String(item.id||item.name))},${String(item.name)},${Math.max(0,Number(item.price)||0)},${String(item.note||"")},${item.inventory === "" || item.inventory == null ? null : Math.max(0,Number(item.inventory)||0)},${Boolean(item.hotEnabled)},${null},${cleanHex(item.themePrimary,cleanHex(body.themePrimary,"#220708"))},${cleanHex(item.themeSecondary,cleanHex(body.themeSecondary,"#751013"))},${cleanHex(item.themeAccent,cleanHex(body.themeAccent,"#e12622"))},${i})`;
+    }
+    for(let i=0;i<program.length;i++){
+      const item=program[i]; const label=String(item?.timeLabel||"").trim(); const titleText=String(item?.title||"").trim();
+      if(!titleText) continue;
+      await sql`INSERT INTO event_program_items(event_id,time_label,title,sort_order) VALUES(${eventId},${label},${titleText},${i})`;
     }
     await writeAdminAudit(actor.userId,"event.create","event",eventId,{slug,title,status:desiredStatus});
     return NextResponse.json({ok:true,slug,id:eventId});

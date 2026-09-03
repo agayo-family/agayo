@@ -54,6 +54,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const salesState = ["open", "closed", "coming-soon"].includes(body.salesState) ? body.salesState : "coming-soon";
     const ticketMode = ["zones", "seats"].includes(body.ticketMode) ? body.ticketMode : "general-admission";
     const categories = Array.isArray(body.tickets) ? body.tickets.slice(0, 20) : [];
+    const program = Array.isArray(body.program) ? body.program.slice(0, 40) : [];
     const sql = db();
 
     await sql.begin(async (tx: any) => {
@@ -94,6 +95,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           const used = await tx`SELECT 1 FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.event_slug=${current.slug} AND oi.ticket_category_id=${key} LIMIT 1`;
           if (!used[0]) await tx`DELETE FROM event_ticket_categories WHERE event_id=${id} AND category_key=${key}`;
         }
+      }
+      await tx`DELETE FROM event_program_items WHERE event_id=${id}`;
+      for (let i = 0; i < program.length; i++) {
+        const item = program[i]; const label = String(item?.timeLabel || "").trim(); const titleText = String(item?.title || "").trim();
+        if (!titleText) continue;
+        await tx`INSERT INTO event_program_items(event_id,time_label,title,sort_order) VALUES(${id},${label},${titleText},${i})`;
       }
     });
     await writeAdminAudit(actor.userId, "event.update", "event", id, { slug: current.slug, title, salesState, status: body.status });

@@ -1248,3 +1248,33 @@ html,body{max-width:100%;overflow-x:hidden}main,section,header,footer,div,articl
   .next-event .event-copy h2{font-size:clamp(30px,9.4vw,39px)!important;letter-spacing:-.035em!important}
 }
 @media(max-width:380px){.next-event .event-copy h2{font-size:29px!important}.admin-event-stats .admin-metrics{grid-template-columns:1fr}}
+
+/* Admin event program editor + mobile checkout title hardening */
+.admin-program-editor-list { display:grid; gap:10px; margin-bottom:12px; }
+.admin-program-editor-row { display:grid; grid-template-columns:120px minmax(0,1fr) auto; gap:10px; align-items:center; }
+.admin-program-editor-row input { min-width:0; width:100%; }
+.checkout-summary h1 { overflow-wrap:anywhere; word-break:break-word; max-width:100%; }
+.checkout-shell > .section-label { max-width:100%; overflow-wrap:anywhere; word-break:break-word; }
+@media (max-width: 700px) {
+  .admin-program-editor-row { grid-template-columns:88px minmax(0,1fr); }
+  .admin-program-editor-row button { grid-column:1 / -1; width:100%; }
+  .checkout-summary h1 { font-size:clamp(30px,10vw,46px); line-height:.88; letter-spacing:-.05em; }
+}
+@media (max-width: 390px) {
+  .checkout-summary h1 { font-size:clamp(27px,9.5vw,40px); }
+}
+
+/* Real-admin stabilization: long checkout event names must never leave the order card. */
+.checkout-summary h1 {
+  min-width:0;
+  width:100%;
+  font-size:clamp(30px,3.2vw,52px);
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+@media (max-width:900px) {
+  .checkout-summary h1 { font-size:clamp(28px,9vw,44px); }
+}
+@media (max-width:390px) {
+  .checkout-summary h1 { font-size:clamp(25px,8.4vw,36px); }
+}

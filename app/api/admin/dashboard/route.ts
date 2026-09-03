@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, canAccessEvent, requireAdminPermission } from "@/lib/server/admin";
+import { ensureSeedEvents } from "@/lib/server/seed-events";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const access = await requireAdminPermission("view_dashboard");
+    await ensureSeedEvents();
     const sql = db();
     const eventFilter = access.role === "owner" || access.allEvents ? null : access.eventSlugs;
 

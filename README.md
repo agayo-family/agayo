@@ -1,4 +1,4 @@
-# AGAYO 
+# AGAYO
 
 Frontend prototype of the AGAYO event and ticket platform.
 
@@ -41,6 +41,21 @@ The `/admin` shell is now server-gated by AGAYO ID. Granular role permissions an
 - Checkout respects sold-out categories; inventory-limited DB events create atomic inventory reservations before redirecting to YooKassa.
 - `db/005_event_inventory.sql` is required for inventory reservations.
 - `/admin-preview` contains non-persistent sample event + statistics data so the new service UI can be reviewed without a configured database.
-- Mobile correction: the home-page nearest-event title is clamped more aggressively so “ВЕРНИТЕ ЛАМПОВОСТЬ” stays inside the viewport. 
+- Mobile correction: the home-page nearest-event title is clamped more aggressively so “ВЕРНИТЕ ЛАМПОВОСТЬ” stays inside the viewport.
 
-Deployment refresh
+## Preview testing hotfix
+- /admin-preview event editor now persists test changes in browser localStorage.
+- Event program editing is supported and real /admin saves program items to PostgreSQL.
+- Ticket category name inputs keep focus while typing.
+- Poster replacement works locally in preview; real admin still uses Vercel Blob.
+- Preview dashboard seeds the upcoming event as VERNITE LAMPOVOST.
+- Checkout event title wraps safely on mobile.
+
+## Real admin stabilization (v5)
+
+- `/admin` seeds the built-in AGAYO events into PostgreSQL on first access without overwriting later owner edits.
+- Event/category/program/status changes are persisted through PostgreSQL.
+- Ticket category display names no longer mutate category identity while typing, preventing focus loss.
+- Poster upload is optional for saving: if Vercel Blob is not connected, all non-poster event changes still save.
+- Poster upload accepts `BLOB_READ_WRITE_TOKEN`, `agayo_BLOB_READ_WRITE_TOKEN`, or another connected variable ending in `_BLOB_READ_WRITE_TOKEN`.
+- Connect Vercel Blob to persist newly uploaded posters in production.

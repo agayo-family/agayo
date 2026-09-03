@@ -56,15 +56,29 @@ export default function AdminDashboard({ access, previewMode = false }: { access
   const initialTab = tabs.find(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission)))?.[0] ?? 'overview';
   const [tab, setTab] = useState<Tab>(initialTab);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [ticketMode, setTicketMode] = useState<'zones' | 'seats' | 'free-entry'>('zones');
-  const [eventSaving, setEventSaving] = useState(false);
-  const [eventMessage, setEventMessage] = useState("");
+  const [previewHydrated, setPreviewHydrated] = useState(!previewMode);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(previewMode ? {metrics:{revenue:60900,sold:87,used:54,refunds:0},today:{newOrders:3,newUsers:2,paymentErrors:0},upcoming:{slug:'vernite-lampovost',title:'ВЕРНИТЕ ЛАМПОВОСТЬ',starts_at:'2026-09-12T17:30:00+03:00',status:'published',sales_state:'open',age_label:'14+'}} : null);
   const [storedEvents, setStoredEvents] = useState<StoredEvent[]>(previewMode ? [
     { id:'preview-lamp', slug:'vernite-lampovost', title:'ВЕРНИТЕ ЛАМПОВОСТЬ', starts_at:'2026-09-12T17:30:00+03:00', ends_at:'2026-09-12T21:00:00+03:00', status:'published', sales_state:'open', ticket_mode:'general-admission' },
     { id:'preview-night', slug:'agayo-night', title:'AGAYO NIGHT', starts_at:'2026-08-29T18:00:00+03:00', ends_at:'2026-08-29T21:00:00+03:00', status:'published', sales_state:'closed', ticket_mode:'zones' },
   ] : []);
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+
+  useEffect(() => {
+    if (!previewMode) return;
+    try { const saved=window.localStorage.getItem('agayo-preview-events'); if(saved){ const parsed=JSON.parse(saved); if(Array.isArray(parsed)&&parsed.length) setStoredEvents(parsed); } } catch {} finally { setPreviewHydrated(true); }
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode && !previewHydrated) return;
+    if (previewMode) { try { window.localStorage.setItem('agayo-preview-events', JSON.stringify(storedEvents)); } catch {} }
+    const now=Date.now();
+    const upcoming=storedEvents.filter(e=>e.status==='published'&&new Date(e.starts_at).getTime()>=now).sort((a,b)=>new Date(a.starts_at).getTime()-new Date(b.starts_at).getTime())[0];
+    setDashboard(current=>({
+      metrics:current?.metrics??(previewMode?{revenue:60900,sold:87,used:54,refunds:0}:{revenue:0,sold:0,used:0,refunds:0}),
+      today:current?.today??(previewMode?{newOrders:3,newUsers:2,paymentErrors:0}:{newOrders:0,newUsers:0,paymentErrors:0}),
+      upcoming:upcoming?{slug:upcoming.slug,title:upcoming.title,starts_at:upcoming.starts_at,status:upcoming.status,sales_state:upcoming.sales_state,age_label:'14+'}:null
+    }));
+  }, [previewMode, previewHydrated, storedEvents]);
   const [promos, setPromos] = useState<PromoView[]>([]);
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoMessage, setPromoMessage] = useState('');
@@ -155,30 +169,6 @@ export default function AdminDashboard({ access, previewMode = false }: { access
     } finally { setBuyerSearching(false); }
   }
 
-  async function saveEvent(status: "draft" | "published") {
-    if (previewMode) { setEventMessage("Предпросмотр: форма выглядит и ведёт себя как настоящая, но ничего не записывает в базу."); return; }
-    const shell = document.querySelector<HTMLElement>(".admin-editor");
-    if (!shell) return;
-    const value = (name: string) => (shell.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)?.value ?? "").trim();
-    const posterInput = shell.querySelector<HTMLInputElement>('input[name="poster"]');
-    setEventSaving(true); setEventMessage("");
-    try {
-      let posterImage = "";
-      const file = posterInput?.files?.[0];
-      if (file) {
-        const fd = new FormData(); fd.append("file", file);
-        const upload = await fetch("/api/admin/upload-poster", { method: "POST", body: fd });
-        const uploadData = await upload.json();
-        if (!upload.ok) throw new Error(uploadData.error || "Не удалось загрузить афишу");
-        posterImage = uploadData.url;
-      }
-      const date=value("date"), start=value("start"), end=value("end");
-      const tickets = [{ id:"standard", name:value("ticketName") || "STANDARD", price:Number(value("ticketPrice")) || 0, note:"Вход на мероприятие", inventory:Number(value("ticketInventory")) || null, hotEnabled:false, themePrimary:"#2b0809",themeSecondary:"#7c1518",themeAccent:"#e12622" }];
-      const response = await fetch("/api/admin/events", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:value("title"),startsAt:date&&start?`${date}T${start}:00+03:00`:"",endsAt:date&&end?`${date}T${end}:00+03:00`:null,ageLabel:value("age")||"14+",city:value("city")||"Йошкар-Ола",venue:value("venue"),address:value("address"),description:value("description"),secondaryDescription:value("secondaryDescription"),posterImage,status,salesState:status==="published"?"open":"coming-soon",ticketMode,tickets,themePrimary:"#220708",themeSecondary:"#751013",themeAccent:"#e12622"})});
-      const data=await response.json(); if(!response.ok) throw new Error(data.error||"Не удалось сохранить событие");
-      setEventMessage(status === "published" ? `Опубликовано: /events/${data.slug}` : "Черновик сохранён в PostgreSQL");
-    } catch(cause) { setEventMessage(cause instanceof Error ? cause.message : "Ошибка"); } finally { setEventSaving(false); }
-  }
   const can = (permission: AdminPermission) => access.role === 'owner' || access.permissions.includes(permission);
   const canEvent = (slug: string) => access.role === 'owner' || access.allEvents || access.eventSlugs.includes(slug);
   const canCreateEvents = can('manage_events') && (access.role === 'owner' || access.allEvents);
@@ -211,7 +201,6 @@ export default function AdminDashboard({ access, previewMode = false }: { access
               key={id}
               onClick={() => {
                 setTab(id);
-                setCreating(false);
                 setMobileMenuOpen(false);
               }}
               className={tab === id ? 'is-active' : ''}
@@ -224,7 +213,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
       </aside>
 
       <main className="admin-main">
-        {previewMode ? <div className="admin-preview-banner">ПРЕДПРОСМОТР СЛУЖЕБНОЙ ЧАСТИ · ДАННЫЕ НЕ ИЗМЕНЯЮТСЯ · РЕАЛЬНЫЙ /admin ОСТАЁТСЯ ЗАЩИЩЁН</div> : null}
+        {previewMode ? <div className="admin-preview-banner">ТЕСТОВАЯ ПЕСОЧНИЦА · ИЗМЕНЕНИЯ СОХРАНЯЮТСЯ ТОЛЬКО В ЭТОМ БРАУЗЕРЕ · РЕАЛЬНЫЙ /admin ОСТАЁТСЯ ЗАЩИЩЁН</div> : null}
         <header className="admin-top">
           <div>
             <span>AGAYO / УПРАВЛЕНИЕ</span>
@@ -258,7 +247,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
             </div>
 
             <div className="admin-quick-actions">
-              {canCreateEvents ? <button type="button" onClick={() => { setTab('events'); setCreating(true); }}>Создать событие <i className="admin-external-mark" aria-hidden="true" /></button> : null}
+              {canCreateEvents ? <button type="button" onClick={() => setTab('events')}>Создать событие <i className="admin-external-mark" aria-hidden="true" /></button> : null}
               {can('manual_ticket_search') || can('scan_tickets') ? <button type="button" onClick={() => setTab('tickets')}>Открыть билеты <i className="admin-external-mark" aria-hidden="true" /></button> : null}
               {can('manage_promos') ? <button type="button" onClick={() => setTab('promo')}>Создать промокод <i className="admin-external-mark" aria-hidden="true" /></button> : null}
               {can('manage_team') ? <button type="button" onClick={() => setTab('team')}>Добавить контролёра <i className="admin-external-mark" aria-hidden="true" /></button> : null}
