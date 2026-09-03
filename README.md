@@ -1,4 +1,4 @@
-# AGAYO
+# AGAYO 
 
 Frontend prototype of the AGAYO event and ticket platform.
 
@@ -41,4 +41,6 @@ The `/admin` shell is now server-gated by AGAYO ID. Granular role permissions an
 - Checkout respects sold-out categories; inventory-limited DB events create atomic inventory reservations before redirecting to YooKassa.
 - `db/005_event_inventory.sql` is required for inventory reservations.
 - `/admin-preview` contains non-persistent sample event + statistics data so the new service UI can be reviewed without a configured database.
-- Mobile correction: the home-page nearest-event title is clamped more aggressively so “ВЕРНИТЕ ЛАМПОВОСТЬ” stays inside the viewport.
+- Mobile correction: the home-page nearest-event title is clamped more aggressively so “ВЕРНИТЕ ЛАМПОВОСТЬ” stays inside the viewport. 
+
+Deployment refresh
