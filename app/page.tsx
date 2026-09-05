@@ -3,6 +3,7 @@ import Link from "next/link";
 import FavoriteButton from "@/components/FavoriteButton";
 import SiteHeader from "@/components/SiteHeader";
 import VoiceReview from "@/components/VoiceReview";
+import type { CSSProperties } from "react";
 import { getAllEventsServer, getUpcomingEventServer } from "@/lib/server/events";
 import { galleryPhotos } from "@/lib/photos";
 
@@ -11,12 +12,15 @@ export default async function Home() {
   const events = await getAllEventsServer();
   const upcoming = await getUpcomingEventServer();
   const heroEvent = upcoming ?? events[0];
+  const heroBackground = heroEvent?.posterImage ?? heroEvent?.heroImage ?? "/events/vernite-lampovost-poster.jpg";
+  const homeTheme = heroEvent?.ticketTheme ?? { primary: "#0B0B0C", secondary: "#6B1F2B", accent: "#C21F39" };
+  const homeHeroStyle = { "--home-hero-primary": homeTheme.primary, "--home-hero-secondary": homeTheme.secondary, "--home-hero-accent": homeTheme.accent } as CSSProperties;
   const archive = events.filter((event) => event.status === "published" && event.salesState === "closed").slice(0, 2);
 
   return (
     <main>
       <SiteHeader overlay />
-      <section className="hero"><Image src={heroEvent.heroImage} alt="AGAYO" fill priority sizes="100vw" className="hero-image" /><div className="hero-shade" /><div className="hero-content"><div className="eyebrow">AGAYO · ЙОШКАР-ОЛА</div><h1>Создавай<br />воспоминания,<br />а не провалы<br />в памяти</h1><div className="hero-bottom"><p>Мероприятия для тех, кто хочет прожить молодость так, чтобы её захотелось вспомнить.</p><Link className="circle-link" href="/events" aria-label="К мероприятиям">↓</Link></div></div></section>
+      <section className="hero hero-nearest-event" style={homeHeroStyle}><Image src={heroBackground} alt={heroEvent ? `Афиша ${heroEvent.title}` : "AGAYO"} fill priority sizes="100vw" className="hero-image" /><div className="hero-shade" /><div className="hero-content"><div className="eyebrow">AGAYO · ЙОШКАР-ОЛА</div><h1>Создавай<br />воспоминания,<br />а не провалы<br />в памяти</h1><div className="hero-bottom"><p>Мероприятия для тех, кто хочет прожить молодость так, чтобы её захотелось вспомнить.</p><Link className="circle-link" href="/events" aria-label="К мероприятиям">↓</Link></div></div></section>
 
       <section className="intro section-pad"><div className="section-label">01 / СВОИ</div><div className="intro-grid"><h2>МЫ — СВОИ</h2><div className="intro-copy"><p>Мы создаём вечеринки, концерты и клабшоу, на которых весело без алкоголя.</p><p>Обычные подростки, которые хотят делать события, выглядящие не как «обычно».</p><div className="tag-row"><span>14+</span><span>18:00—21:00</span><span>Alcohol Free</span></div></div></div></section>
 

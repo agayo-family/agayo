@@ -28,13 +28,14 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const isNight = event.slug === "agayo-night";
   const theme = event.ticketTheme ?? { primary: "#111111", secondary: "#4b0f19", accent: "#c21f39" };
   const eventStyle = { "--event-primary": theme.primary, "--event-secondary": theme.secondary, "--event-accent": theme.accent } as CSSProperties;
+  const eventHeroImage = event.posterImage ?? event.heroImage;
 
   return (
     <main className={`event-page-v2 ${event.ticketTheme ? "event-page-themed" : ""}`} style={eventStyle}>
       <div className="event-header-shell"><SiteHeader /></div>
       {adminPreview ? <div className="event-admin-preview-banner">ПРЕДПРОСМОТР · ЭТА СТРАНИЦА ЕЩЁ НЕ ОПУБЛИКОВАНА ДЛЯ ГОСТЕЙ</div> : null}
       <section className="event-v2-hero">
-        <Image src={event.heroImage} alt={event.title} fill priority sizes="100vw" className="event-v2-hero-image" />
+        <Image src={eventHeroImage} alt={`Афиша ${event.title}`} fill priority sizes="100vw" className="event-v2-hero-image" />
         <div className="event-v2-hero-overlay" />
         <div className="event-v2-hero-content">
           <div className="event-v2-kicker">{event.dateLabel} · {event.city.toUpperCase()} · {event.ageLabel}</div>
