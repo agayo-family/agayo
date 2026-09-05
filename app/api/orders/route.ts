@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { getEventServer } from "@/lib/server/events";
+import { getEventCatalogBadge } from "@/lib/events";
 import { normalizeEmail, normalizePhone, publicId } from "@/lib/server/security";
 import { createPayment } from "@/lib/server/yookassa";
+import { DEFAULT_EVENT_RULES, LEGAL_VERSION } from "@/lib/legal";
 
 export async function POST(request: Request) {
   let createdOrderId: string | null = null;
@@ -14,10 +16,17 @@ export async function POST(request: Request) {
     const email = normalizeEmail(body.email ?? "");
     const phone = normalizePhone(body.phone ?? "");
     const ownerName = String(body.name ?? "").trim().slice(0, 120);
-    if (!event || event.status !== "published" || event.salesState !== "open" || !category || category.soldOut) return NextResponse.json({ error: "Билет недоступен" }, { status: 400 });
+    const acceptedDocuments = body.acceptedDocuments === true;
+    const acceptedPrivacy = body.acceptedPrivacy === true;
+    if (!event || event.status !== "published" || getEventCatalogBadge(event) !== "tickets" || !category || category.soldOut) return NextResponse.json({ error: "Билет недоступен" }, { status: 400 });
     if (!email.includes("@") || ownerName.length < 2) return NextResponse.json({ error: "Проверь имя и email" }, { status: 400 });
+    if (!acceptedDocuments) return NextResponse.json({ error: "Прими Пользовательское соглашение, Публичную оферту и Правила мероприятия" }, { status: 400 });
+    if (!acceptedPrivacy) return NextResponse.json({ error: "Нужно отдельно подтвердить согласие на обработку персональных данных" }, { status: 400 });
 
     const sql = db();
+    const requestIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || null;
+    const requestUserAgent = request.headers.get("user-agent")?.slice(0, 500) || null;
+    const eventRulesSnapshot = (event.eventRules || "").trim() || DEFAULT_EVENT_RULES;
     const subtotal = category.price * quantity;
     let discount = 0; let promoCode: string | null = null;
     const requestedPromo = String(body.promo ?? "").trim().toUpperCase();
@@ -53,7 +62,17 @@ export async function POST(request: Request) {
       else await tx`UPDATE users SET display_name=COALESCE(display_name,${ownerName}), phone=COALESCE(phone,${phone || null}), updated_at=now() WHERE id=${users[0].id}`;
       const user = users[0];
       const orderPublicId = publicId("AGY");
-      const orders = await tx`INSERT INTO orders(public_id,user_id,event_slug,email,phone,owner_name,subtotal,discount,total,promo_code) VALUES(${orderPublicId},${user.id},${event.slug},${email},${phone || null},${ownerName},${subtotal},${discount},${total},${promoCode}) RETURNING *`;
+      const orders = await tx`
+        INSERT INTO orders(
+          public_id,user_id,event_slug,email,phone,owner_name,subtotal,discount,total,promo_code,
+          legal_accepted_at,privacy_accepted_at,legal_version,event_rules_snapshot,legal_acceptance_ip,legal_acceptance_user_agent
+        )
+        VALUES(
+          ${orderPublicId},${user.id},${event.slug},${email},${phone || null},${ownerName},${subtotal},${discount},${total},${promoCode},
+          now(),now(),${LEGAL_VERSION},${eventRulesSnapshot},${requestIp},${requestUserAgent}
+        )
+        RETURNING *
+      `;
       createdOrderId = String(orders[0].id);
       await tx`INSERT INTO order_items(order_id,ticket_category_id,ticket_category_name,unit_price,quantity) VALUES(${orders[0].id},${category.id},${category.name},${category.price},${quantity})`;
       if (dbCategory?.inventory != null) await tx`INSERT INTO ticket_inventory_reservations(order_id,event_slug,category_id,quantity) VALUES(${orders[0].id},${event.slug},${category.id},${quantity})`;

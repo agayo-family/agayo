@@ -1,5 +1,6 @@
 import { db } from "./db";
-import { AgayoEvent, events as staticEvents } from "../events";
+import { AgayoEvent, events as staticEvents, isEventOnOrAfterToday } from "../events";
+import { DEFAULT_EVENT_RULES } from "../legal";
 
 function fmtDate(value: Date) {
   return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Moscow" }).format(value);
@@ -34,6 +35,7 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
     },
     description: String(row.description || ""),
     secondaryDescription: String(row.secondary_description || ""),
+    eventRules: String(row.event_rules || DEFAULT_EVENT_RULES),
     tickets: tickets
       .filter((ticket) => String(ticket.event_id) === String(row.id))
       .map((ticket) => {
@@ -219,6 +221,6 @@ export async function getEventServer(slug: string) {
 
 export async function getUpcomingEventServer() {
   return (await getAllEventsServer())
-    .filter((event) => event.status === "published" && event.salesState === "open")
+    .filter((event) => event.status === "published" && isEventOnOrAfterToday(event))
     .sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt))[0];
 }

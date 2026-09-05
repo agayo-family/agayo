@@ -69,7 +69,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           theme_primary=${cleanHex(body.themePrimary, String(current.theme_primary || "#220708"))},
           theme_secondary=${cleanHex(body.themeSecondary, String(current.theme_secondary || "#751013"))},
           theme_accent=${cleanHex(body.themeAccent, String(current.theme_accent || "#e12622"))},
-          description=${String(body.description || "")}, secondary_description=${String(body.secondaryDescription || "")}, updated_at=now()
+          description=${String(body.description || "")}, secondary_description=${String(body.secondaryDescription || "")}, event_rules=${String(body.eventRules || "")}, updated_at=now()
         WHERE id=${id}
       `;
 

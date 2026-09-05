@@ -54,7 +54,7 @@ export default function AuthExperience({ nextPath = "/profile" }: { nextPath?: s
         </>
       )}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
-      {method === "phone" ? <small>Вход по телефону уже предусмотрен архитектурой, но для отправки SMS нужно подключить SMS-провайдера.</small> : null}
+      {method === "phone" ? <small>Код придёт по SMS. Если SMS-провайдер ещё не подключён в Vercel, сайт сообщит об этом до создания кода.</small> : null}
       <div className="auth-rule">НЕТ АККАУНТА? ОН СОЗДАСТСЯ АВТОМАТИЧЕСКИ ПОСЛЕ ПЕРВОЙ ПОКУПКИ ИЛИ ВХОДА.</div>
     </div>
   );

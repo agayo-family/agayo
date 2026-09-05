@@ -41,9 +41,47 @@ export type AgayoEvent = {
   };
   description: string;
   secondaryDescription: string;
+  eventRules?: string;
   tickets: TicketCategory[];
   program: Array<[string, string]>;
 };
+
+
+export type EventCatalogBadge = "tickets" | "soon" | "archive";
+
+function dateKeyInMoscow(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.valueOf())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/**
+ * Catalog badge is driven by the event calendar date first.
+ * A future/today event can never become archive merely because sales are closed.
+ */
+export function getEventCatalogBadge(
+  event: Pick<AgayoEvent, "startsAt" | "salesState">,
+  now: Date = new Date(),
+): EventCatalogBadge {
+  const eventDate = dateKeyInMoscow(event.startsAt);
+  const today = dateKeyInMoscow(now);
+
+  if (eventDate && today && eventDate < today) return "archive";
+  return event.salesState === "open" ? "tickets" : "soon";
+}
+
+export function isEventOnOrAfterToday(event: Pick<AgayoEvent, "startsAt">, now: Date = new Date()) {
+  const eventDate = dateKeyInMoscow(event.startsAt);
+  const today = dateKeyInMoscow(now);
+  return Boolean(eventDate && today && eventDate >= today);
+}
 
 export const events: AgayoEvent[] = [
   {

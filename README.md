@@ -1,71 +1,70 @@
-# AGAYO
+# AGAYO — ticket platform
 
-Frontend prototype of the AGAYO event and ticket platform.
+Current release candidate: **final legal checkout / event rules / dynamic events**
 
-## Run locally
-```bash
-npm install
-npm run dev
+## First deployment checklist
+
+1. Apply PostgreSQL migrations in order:
+   - `db/001_init.sql`
+   - `db/002_admin_access.sql`
+   - `db/003_events.sql`
+   - `db/004_admin_operations.sql`
+   - `db/005_event_inventory.sql`
+   - `db/006_legal_checkout.sql`
+2. Configure Vercel Environment Variables using `.env.example`.
+3. Deploy.
+4. Log in with the email from `AGAYO_OWNER_EMAIL`.
+5. Open `/admin`.
+6. Keep `PAYMENTS_ENABLED=0` until YooKassa and legal/infrastructure checks are complete.
+
+## Required integrations
+
+- PostgreSQL / Neon: `DATABASE_URL`
+- Passwordless sessions: `AUTH_SECRET`
+- Resend: `EMAIL_PROVIDER_API_KEY`, `EMAIL_FROM`
+- SMS.RU: `SMS_RU_API_ID` (optional until phone login is enabled)
+- Vercel Blob: `BLOB_READ_WRITE_TOKEN`
+- YooKassa: `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`
+- Public address: `NEXT_PUBLIC_SITE_URL`
+- Owner: `AGAYO_OWNER_EMAIL`
+
+## Payments
+
+Real payment creation is blocked unless:
+
+```env
+PAYMENTS_ENABLED=1
 ```
 
-## Current state
-The public UI and event-domain foundation are present. Real payments, authentication, database-backed tickets, admin tools and scanner backend are intentionally not faked on the client; their implementation plan is in `docs/ARCHITECTURE.md`.
+`YOOKASSA_VAT_CODE` is intentionally blank in the example. Set it only after confirming the fiscal receipt settings for the actual YooKassa merchant account.
 
-## Profile / AGAYO ID v2
-- Full visual Profile / AGAYO ID page added.
-- Upcoming tickets, attended-event memories, loyalty, favorites, ticket history and account settings sections are represented.
-- Favorites preview uses the existing localStorage favorites system.
-- Mobile fixes included: home hero words no longer split inside words; Events archive label no longer overflows on mobile.
-- Real email auth, ticket data, QR, loyalty calculations and notifications remain backend work by design.
+## Legal checkout
 
-## Backend stage
-This build contains the first real server foundation: PostgreSQL schema, passwordless email login, HttpOnly sessions, server-validated orders, YooKassa redirect/webhook verification, ticket issuance, real QR generation and email delivery. See `docs/BACKEND-SETUP.md` before enabling production payments.
+Checkout requires:
+1. acceptance of the User Agreement + Public Offer + event-specific Rules;
+2. a separate personal-data consent.
 
-## Current service-access stage
-The `/admin` shell is now server-gated by AGAYO ID. Granular role permissions and per-event scope are stored in PostgreSQL using `db/002_admin_access.sql`. See `docs/ADMIN-ACCESS.md`.
+The order stores acceptance time, legal document version, an exact event-rules snapshot, IP and user-agent.
 
-## Admin operations v3 (working tree)
-- Dashboard metrics now read real PostgreSQL orders/tickets/users and upcoming published event data.
-- Promo codes have protected create/list/enable-disable APIs with permission + event-scope checks and audit logging.
-- Ticket search uses real ticket/user data; buyer directory reads user/ticket history.
-- `/admin/scanner` is a protected mobile-first scanner screen. Scan redemption is atomic and records the controller in `tickets.used_by`.
-- `db/004_admin_operations.sql` is required for this stage.
-- Mobile fixes include safer nearest-event typography and a rebuilt promo submit area.
+Legal pages:
+- `/legal`
+- `/legal/offer`
+- `/legal/user-agreement`
+- `/legal/privacy`
+- `/events/[slug]/rules`
 
-## Event operations v4
-- Existing PostgreSQL events can now be opened and edited from the service area.
-- Event workspace controls publication state, sales state, date/time, venue/address, descriptions and poster replacement.
-- Ticket categories are dynamic: add/remove (when unused), edit name/price/note/inventory, and show sold/remaining counts.
-- Hot Tickets are database-driven: when enabled, the public scarcity badge appears only for a real remaining inventory of 1–4 and therefore does not reset on refresh.
-- Event statistics now show revenue, paid/pending/failed orders, issued/used tickets, category sell-through and promo usage (financial values remain permission-gated).
-- Checkout respects sold-out categories; inventory-limited DB events create atomic inventory reservations before redirecting to YooKassa.
-- `db/005_event_inventory.sql` is required for inventory reservations.
-- `/admin-preview` contains non-persistent sample event + statistics data so the new service UI can be reviewed without a configured database.
-- Mobile correction: the home-page nearest-event title is clamped more aggressively so “ВЕРНИТЕ ЛАМПОВОСТЬ” stays inside the viewport.
+Event rules are edited per event in `/admin` using the **Правила мероприятия** button.
 
-## Preview testing hotfix
-- /admin-preview event editor now persists test changes in browser localStorage.
-- Event program editing is supported and real /admin saves program items to PostgreSQL.
-- Ticket category name inputs keep focus while typing.
-- Poster replacement works locally in preview; real admin still uses Vercel Blob.
-- Preview dashboard seeds the upcoming event as VERNITE LAMPOVOST.
-- Checkout event title wraps safely on mobile.
+## Build
 
-## Real admin stabilization (v5)
+```bash
+npm install
+npm run typecheck
+npm run build
+```
 
-- `/admin` seeds the built-in AGAYO events into PostgreSQL on first access without overwriting later owner edits.
-- Event/category/program/status changes are persisted through PostgreSQL.
-- Ticket category display names no longer mutate category identity while typing, preventing focus loss.
-- Poster upload is optional for saving: if Vercel Blob is not connected, all non-poster event changes still save.
-- Poster upload accepts `BLOB_READ_WRITE_TOKEN`, `agayo_BLOB_READ_WRITE_TOKEN`, or another connected variable ending in `_BLOB_READ_WRITE_TOKEN`.
-- Connect Vercel Blob to persist newly uploaded posters in production.
+Production deployment on Vercel also runs a Next.js build.
 
-## Dynamic event pages + poster auto-palette (v6)
+## Important legal/infrastructure note
 
-- Newly created PostgreSQL events are loaded directly by the public event routes instead of falling back to the static catalogue when UUID array typing differs in Neon/Postgres.
-- Dynamic event slugs are explicitly allowed on `/events/[slug]`.
-- Draft/cancelled events can be previewed from `/admin` through `?preview=admin`; the preview remains protected by the authenticated admin permissions and is not public.
-- Publicly published events keep their normal clean URL.
-- Selecting a poster in the event editor automatically extracts dominant colours in the browser and derives a dark primary, secondary, and accent palette suitable for readable event pages.
-- The generated palette is shown as swatches in the admin editor and is persisted with the event; there is no manual colour-picker step.
-- Replacing the poster automatically recalculates the event palette.
+The included legal texts are a production-oriented draft, not a substitute for a lawyer checking the actual event format, refund policy, merchant/fiscal settings and personal-data infrastructure. In particular, Russian personal-data localization and cross-border-transfer requirements must be checked against the actual hosting/database/email/SMS architecture before public launch.

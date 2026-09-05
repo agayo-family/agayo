@@ -13,10 +13,11 @@ export async function POST(request: Request) {
     const rows = await sql`SELECT id, code_hash, attempts FROM login_codes WHERE channel=${method} AND destination=${destination} AND consumed_at IS NULL AND expires_at>now() ORDER BY created_at DESC LIMIT 1`;
     const row = rows[0];
     if (!row || row.attempts >= 5 || row.code_hash !== hash(code)) {
-      if (row) await sql`UPDATE login_codes SET attempts=attempts+1 WHERE id=${row.id}`;
+      if (row) await sql`UPDATE login_codes SET attempts=attempts+1 WHERE id=${row.id} AND consumed_at IS NULL`;
       return NextResponse.json({ error: "Неверный или истёкший код" }, { status: 401 });
     }
-    await sql`UPDATE login_codes SET consumed_at=now() WHERE id=${row.id}`;
+    const consumed = await sql`UPDATE login_codes SET consumed_at=now() WHERE id=${row.id} AND consumed_at IS NULL RETURNING id`;
+    if (!consumed[0]) return NextResponse.json({ error: "Код уже использован. Запроси новый." }, { status: 401 });
 
     let users = method === "email" ? await sql`SELECT * FROM users WHERE email=${destination} LIMIT 1` : await sql`SELECT * FROM users WHERE phone=${destination} LIMIT 1`;
     if (!users[0]) users = method === "email" ? await sql`INSERT INTO users(email) VALUES(${destination}) RETURNING *` : await sql`INSERT INTO users(phone) VALUES(${destination}) RETURNING *`;

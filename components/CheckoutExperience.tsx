@@ -16,6 +16,8 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [promo, setPromo] = useState("");
+  const [acceptedDocuments, setAcceptedDocuments] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,7 +30,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
     "--event-accent": theme.accent,
   } as CSSProperties;
 
-  const canContinue = useMemo(() => email.includes("@") && name.trim().length > 1 && !!category, [email, name, category]);
+  const canContinue = useMemo(() => email.includes("@") && name.trim().length > 1 && !!category && acceptedDocuments && acceptedPrivacy, [email, name, category, acceptedDocuments, acceptedPrivacy]);
 
   async function startPayment() {
     if (!category || !canContinue) return;
@@ -37,7 +39,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventSlug: event.slug, categoryId: category.id, quantity, email, name, phone, promo }),
+        body: JSON.stringify({ eventSlug: event.slug, categoryId: category.id, quantity, email, name, phone, promo, acceptedDocuments, acceptedPrivacy }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось создать заказ");
@@ -49,7 +51,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
   return (
     <div className="checkout-experience" style={style}>
       <div className="checkout-progress" aria-label="Этапы покупки">
-        <span className="is-active">01 БИЛЕТ</span><span>02 ДАННЫЕ</span><span>03 ОПЛАТА</span><span>04 ГОТОВО</span>
+        <span className="is-active">01 БИЛЕТ</span><span>02 ДАННЫЕ</span><span>03 УСЛОВИЯ</span><span>04 ОПЛАТА</span>
       </div>
 
       <div className="checkout-layout">
@@ -84,8 +86,21 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
             <div className="checkout-delivery-channels"><span className="is-on">EMAIL · ВКЛЮЧЕНО</span><span>TELEGRAM · ПОСЛЕ ПРИВЯЗКИ</span></div>
           </section>
 
+          <section className="checkout-panel checkout-legal-panel">
+            <div className="checkout-panel-head"><span>03</span><h2>УСЛОВИЯ</h2></div>
+            <p className="checkout-note">Перед оплатой нужно принять документы, которые относятся именно к этой покупке.</p>
+            <label className="checkout-consent">
+              <input type="checkbox" checked={acceptedDocuments} onChange={(e) => setAcceptedDocuments(e.target.checked)} />
+              <span>Я принимаю <Link href="/legal/user-agreement" target="_blank">Пользовательское соглашение</Link>, <Link href="/legal/offer" target="_blank">Публичную оферту</Link> и <Link href={`/events/${encodeURIComponent(event.slug)}/rules`} target="_blank">Правила мероприятия</Link>.</span>
+            </label>
+            <label className="checkout-consent">
+              <input type="checkbox" checked={acceptedPrivacy} onChange={(e) => setAcceptedPrivacy(e.target.checked)} />
+              <span>Я отдельно даю согласие на обработку персональных данных для оформления заказа, выпуска и доставки билета в соответствии с <Link href="/legal/privacy" target="_blank">Политикой обработки персональных данных</Link>.</span>
+            </label>
+          </section>
+
           <section className="checkout-panel checkout-payment-panel">
-            <div className="checkout-panel-head"><span>03</span><h2>ОПЛАТА</h2></div>
+            <div className="checkout-panel-head"><span>04</span><h2>ОПЛАТА</h2></div>
             <p className="checkout-note">Заказ создаётся на сервере и отправляется в ЮKassa. Билет выпускается только после подтверждённой оплаты и автоматически приходит на указанную почту.</p>
             <button className="checkout-pay-button" type="button" onClick={startPayment} disabled={!canContinue || busy}>{busy ? "СОЗДАЁМ ЗАКАЗ…" : `ПЕРЕЙТИ К ОПЛАТЕ · ${formatPrice(total)}`}</button>
             {error ? <p className="checkout-error" role="alert">{error}</p> : null}
