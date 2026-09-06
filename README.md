@@ -70,4 +70,4 @@ Production deployment on Vercel also runs a Next.js build.
 The included legal texts are a production-oriented draft, not a substitute for a lawyer checking the actual event format, refund policy, merchant/fiscal settings and personal-data infrastructure. In particular, Russian personal-data localization and cross-border-transfer requirements must be checked against the actual hosting/database/email/SMS architecture before public launch.
 
 
-Это круто
+Это круто или нет
