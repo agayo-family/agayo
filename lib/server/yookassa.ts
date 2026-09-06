@@ -7,8 +7,11 @@ export async function createPayment(input: { amount: number; orderPublicId: stri
   if (!shopId || !secret) throw new Error("YooKassa is not configured");
   const auth = Buffer.from(`${shopId}:${secret}`).toString("base64");
   const vatCode = Number(process.env.YOOKASSA_VAT_CODE);
-  const receipt = Number.isInteger(vatCode) && vatCode >= 1 && vatCode <= 6
-    ? { customer: { email: input.customerEmail }, items: [{ description: input.description.slice(0, 128), quantity: "1.00", amount: { value: input.amount.toFixed(2), currency: "RUB" }, vat_code: vatCode }] }
+  const paymentMode = String(process.env.YOOKASSA_PAYMENT_MODE || "").trim();
+  const paymentSubject = String(process.env.YOOKASSA_PAYMENT_SUBJECT || "").trim();
+  const receiptReady = Number.isInteger(vatCode) && vatCode >= 1 && vatCode <= 12 && Boolean(paymentMode) && Boolean(paymentSubject);
+  const receipt = receiptReady
+    ? { customer: { email: input.customerEmail }, items: [{ description: input.description.slice(0, 128), quantity: "1.00", amount: { value: input.amount.toFixed(2), currency: "RUB" }, vat_code: vatCode, payment_mode: paymentMode, payment_subject: paymentSubject }], internet: true }
     : undefined;
   const response = await fetch("https://api.yookassa.ru/v3/payments", {
     method: "POST",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import type { AgayoEvent } from "@/lib/events";
 import { formatPrice } from "@/lib/events";
@@ -16,13 +16,18 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [promo, setPromo] = useState("");
+  const [promoResult, setPromoResult] = useState<{code:string;discount:number;total:number;discountType:string;discountValue:number}|null>(null);
+  const [promoBusy,setPromoBusy]=useState(false);
+  const [promoMessage,setPromoMessage]=useState("");
   const [acceptedDocuments, setAcceptedDocuments] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const category = event.tickets.find((item) => item.id === categoryId && !item.soldOut) ?? firstAvailable;
-  const total = (category?.price ?? 0) * quantity;
+  const subtotal = (category?.price ?? 0) * quantity;
+  const discount = promoResult?.discount ?? 0;
+  const total = Math.max(0, subtotal - discount);
   const theme = event.ticketTheme ?? { primary: "#111111", secondary: "#4b0f19", accent: "#c21f39" };
   const style = {
     "--event-primary": theme.primary,
@@ -30,7 +35,28 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
     "--event-accent": theme.accent,
   } as CSSProperties;
 
-  const canContinue = useMemo(() => email.includes("@") && name.trim().length > 1 && !!category && acceptedDocuments && acceptedPrivacy, [email, name, category, acceptedDocuments, acceptedPrivacy]);
+  const promoReady = !promo.trim() || promoResult?.code === promo.trim().toUpperCase();
+  const canContinue = useMemo(() => email.includes("@") && name.trim().length > 1 && !!category && acceptedDocuments && acceptedPrivacy && promoReady, [email, name, category, acceptedDocuments, acceptedPrivacy, promoReady]);
+
+  async function applyPromo(code = promo) {
+    const normalized=code.trim().toUpperCase();
+    if(!normalized){setPromoResult(null);setPromoMessage("");return;}
+    if(!category){return;}
+    setPromoBusy(true);setPromoMessage("");
+    try{
+      const response=await fetch("/api/promos/validate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventSlug:event.slug,categoryId:category.id,quantity,promo:normalized})});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||"Промокод не действует");
+      setPromo(normalized);setPromoResult({code:data.code,discount:Number(data.discount)||0,total:Number(data.total)||0,discountType:data.discountType,discountValue:Number(data.discountValue)||0});
+      setPromoMessage(`Промокод ${data.code} применён`);
+    }catch(e){setPromoResult(null);setPromoMessage(e instanceof Error?e.message:"Промокод не действует");}finally{setPromoBusy(false);}
+  }
+
+  useEffect(()=>{
+    if(promoResult?.code) void applyPromo(promoResult.code);
+    // Пересчитываем скидку, если после применения изменились категория или количество.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[categoryId,quantity]);
 
   async function startPayment() {
     if (!category || !canContinue) return;
@@ -39,7 +65,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventSlug: event.slug, categoryId: category.id, quantity, email, name, phone, promo, acceptedDocuments, acceptedPrivacy }),
+        body: JSON.stringify({ eventSlug: event.slug, categoryId: category.id, quantity, email, name, phone, promo: promoResult?.code || "", acceptedDocuments, acceptedPrivacy }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось создать заказ");
@@ -71,7 +97,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
                 </button>
               ))}
             </div>
-            <div className="checkout-quantity"><span>КОЛИЧЕСТВО</span><div><button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button><strong>{quantity}</strong><button type="button" onClick={() => setQuantity(Math.min(6, quantity + 1))}>+</button></div></div>
+            <div className="checkout-quantity"><span>КОЛИЧЕСТВО</span><div><button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button><strong>{quantity}</strong><button type="button" onClick={() => setQuantity(Math.min(6, category?.remaining ?? 6, quantity + 1))}>+</button></div></div>
           </section>
 
           <section className="checkout-panel">
@@ -81,7 +107,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
               <label><span>EMAIL *</span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" autoComplete="email" /></label>
               <label><span>ИМЯ ВЛАДЕЛЬЦА *</span><input value={name} onChange={(e) => setName(e.target.value)} type="text" placeholder="Как к тебе обращаться" autoComplete="name" /></label>
               <label><span>ТЕЛЕФОН</span><input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" placeholder="+7 999 000-00-00" autoComplete="tel" /></label>
-              <label><span>ПРОМОКОД</span><input value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase())} type="text" placeholder="AGAYO" /></label>
+              <label className="checkout-promo-field"><span>ПРОМОКОД</span><div className="checkout-promo-input"><input value={promo} onChange={(e) => {setPromo(e.target.value.toUpperCase());setPromoResult(null);setPromoMessage("");}} type="text" placeholder="AGAYO" /><button type="button" disabled={promoBusy || !promo.trim()} onClick={() => void applyPromo()}>{promoBusy ? "…" : "ПРИМЕНИТЬ"}</button></div>{promoMessage ? <small className={promoResult ? "is-success" : "is-error"}>{promoMessage}</small> : null}</label>
             </div>
             <div className="checkout-delivery-channels"><span className="is-on">EMAIL · ВКЛЮЧЕНО</span><span>TELEGRAM · ПОСЛЕ ПРИВЯЗКИ</span></div>
           </section>
@@ -114,8 +140,8 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
           <h1>{event.title}</h1>
           <p>{event.dateLabel} · {event.timeLabel}<br />{event.city} · {event.ageLabel}</p>
           <div className="checkout-summary-lines">
-            <div><span>{category?.name ?? "БИЛЕТ"} × {quantity}</span><strong>{formatPrice(total)}</strong></div>
-            <div><span>СКИДКА</span><strong>—</strong></div>
+            <div><span>{category?.name ?? "БИЛЕТ"} × {quantity}</span><strong>{formatPrice(subtotal)}</strong></div>
+            <div><span>СКИДКА{promoResult ? ` · ${promoResult.code}` : ""}</span><strong>{discount > 0 ? `−${formatPrice(discount)}` : "—"}</strong></div>
             <div className="checkout-summary-total"><span>ИТОГО</span><strong>{formatPrice(total)}</strong></div>
           </div>
           <p className="checkout-account-hint">После покупки профиль создаётся автоматически по email. Войти в него можно будет без пароля — по одноразовому коду.</p>

@@ -3,6 +3,7 @@ export type GalleryPhoto = {
   eventSlug: string;
   eventTitle: string;
   src: string;
+  caption?: string;
 };
 
 export const galleryPhotos: GalleryPhoto[] = [

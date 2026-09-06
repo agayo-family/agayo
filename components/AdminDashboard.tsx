@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import TeamAccessPanel from './TeamAccessPanel';
 import AdminEventsManager, { type StoredEvent } from './AdminEventsManager';
+import AdminMediaManager from './AdminMediaManager';
 import { AdminPermission, AdminRole, ROLE_LABELS } from '@/lib/admin-permissions';
 
 type Tab = 'overview' | 'events' | 'tickets' | 'buyers' | 'promo' | 'media' | 'team' | 'settings';
@@ -303,7 +304,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
         )}
 
         {tab === 'media' && (
-          <section className="admin-content"><div className="admin-split"><article className="admin-feature-card"><span>ГАЛЕРЕЯ</span><h2>ФОТО</h2><p>Загрузка фотографий по событиям, сортировка, удаление и выбор кадров для главной.</p><button className="admin-secondary" type="button">Добавить фотографии</button></article><article className="admin-feature-card"><span>ОТЗЫВЫ</span><h2>VOICE / TEXT</h2><p>Текстовые и голосовые отзывы добавляет только команда AGAYO.</p><button className="admin-secondary" type="button">Добавить отзыв</button></article></div></section>
+          <section className="admin-content"><AdminMediaManager events={storedEvents} access={access} previewMode={previewMode} /></section>
         )}
 
         {tab === 'team' && can('manage_team') && (

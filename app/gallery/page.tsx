@@ -1,8 +1,13 @@
 import Link from "next/link";
 import GalleryExperience from "@/components/GalleryExperience";
 import SiteHeader from "@/components/SiteHeader";
+import { getPublishedEventsServer } from "@/lib/server/events";
+import { getPublicPhotosServer } from "@/lib/server/media";
 
-export default function GalleryPage() {
+export const dynamic = "force-dynamic";
+export default async function GalleryPage() {
+  const [events, photos] = await Promise.all([getPublishedEventsServer(), getPublicPhotosServer()]);
+  const publishedEvents = events.map((event) => ({ slug:event.slug,title:event.title,dateLabel:event.dateLabel,startsAt:event.startsAt,city:event.city }));
   return (
     <main className="inner-page gallery-page-v2">
       <SiteHeader />
@@ -16,7 +21,7 @@ export default function GalleryPage() {
           </div>
         </section>
 
-        <GalleryExperience />
+        <GalleryExperience photos={photos} publishedEvents={publishedEvents} />
 
         <section className="gallery-memory-cta">
           <div className="section-label">ТВОЙ АРХИВ</div>

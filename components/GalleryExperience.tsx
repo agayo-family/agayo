@@ -4,18 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { TouchEvent, useEffect, useMemo, useRef, useState } from "react";
 import FavoriteButton from "@/components/FavoriteButton";
-import { events } from "@/lib/events";
-import { galleryPhotos, GalleryPhoto } from "@/lib/photos";
+import { GalleryPhoto } from "@/lib/photos";
 
 type SortMode = "newest" | "oldest";
-
-const publishedEvents = events.filter((event) => event.status === "published");
+type GalleryEvent = { slug:string; title:string; dateLabel:string; startsAt:string; city:string };
 
 function searchableDate(value: string) {
   return value.replace(/[.\-/]/g, " ");
 }
 
-export default function GalleryExperience() {
+export default function GalleryExperience({ photos, publishedEvents }: { photos: GalleryPhoto[]; publishedEvents: GalleryEvent[] }) {
   const [query, setQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
@@ -24,13 +22,13 @@ export default function GalleryExperience() {
 
   const eventBySlug = useMemo(
     () => new Map(publishedEvents.map((event) => [event.slug, event])),
-    []
+    [publishedEvents]
   );
 
   const filteredPhotos = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ru-RU");
 
-    return [...galleryPhotos]
+    return [...photos]
       .filter((photo) => {
         const event = eventBySlug.get(photo.eventSlug);
         if (!event) return false;
@@ -53,7 +51,7 @@ export default function GalleryExperience() {
         const bDate = Date.parse(eventBySlug.get(b.eventSlug)?.startsAt ?? "");
         return sortMode === "newest" ? bDate - aDate : aDate - bDate;
       });
-  }, [eventBySlug, eventFilter, query, sortMode]);
+  }, [eventBySlug, eventFilter, query, sortMode, photos]);
 
   const activeIndex = activePhotoId
     ? filteredPhotos.findIndex((photo) => photo.id === activePhotoId)

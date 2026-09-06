@@ -5,6 +5,7 @@ import { getEventCatalogBadge } from "@/lib/events";
 import { normalizeEmail, normalizePhone, publicId } from "@/lib/server/security";
 import { createPayment } from "@/lib/server/yookassa";
 import { DEFAULT_EVENT_RULES, LEGAL_VERSION } from "@/lib/legal";
+import { calculatePromo } from "@/lib/server/promos";
 
 export async function POST(request: Request) {
   let createdOrderId: string | null = null;
@@ -31,11 +32,9 @@ export async function POST(request: Request) {
     let discount = 0; let promoCode: string | null = null;
     const requestedPromo = String(body.promo ?? "").trim().toUpperCase();
     if (requestedPromo) {
-      const promos = await sql`SELECT * FROM promo_codes WHERE upper(code)=${requestedPromo} AND is_active=true AND (event_slug IS NULL OR event_slug=${event.slug}) AND (starts_at IS NULL OR starts_at<=now()) AND (expires_at IS NULL OR expires_at>now()) AND (usage_limit IS NULL OR used_count<usage_limit) LIMIT 1`;
-      const promo = promos[0];
-      if (!promo) return NextResponse.json({ error: "Промокод не найден или больше не действует" }, { status: 400 });
-      discount = promo.discount_type === "percent" ? Math.floor(subtotal * Math.min(Number(promo.discount_value), 100) / 100) : Math.min(Number(promo.discount_value), subtotal);
-      promoCode = promo.code;
+      const calculation = await calculatePromo(requestedPromo,event.slug,subtotal);
+      if (!calculation) return NextResponse.json({ error: "Промокод не найден или больше не действует" }, { status: 400 });
+      discount = calculation.discount; promoCode = calculation.code;
     }
     const total = Math.max(0, subtotal - discount);
 

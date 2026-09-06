@@ -1,6 +1,6 @@
 # AGAYO — ticket platform
 
-Current release candidate: **final legal checkout / event rules / dynamic events**
+Current release candidate: **v11 / editable media / live promos / dynamic event visuals**
 
 ## First deployment checklist
 
@@ -11,6 +11,7 @@ Current release candidate: **final legal checkout / event rules / dynamic events
    - `db/004_admin_operations.sql`
    - `db/005_event_inventory.sql`
    - `db/006_legal_checkout.sql`
+   - `db/007_media.sql`
 2. Configure Vercel Environment Variables using `.env.example`.
 3. Deploy.
 4. Log in with the email from `AGAYO_OWNER_EMAIL`.
@@ -36,7 +37,7 @@ Real payment creation is blocked unless:
 PAYMENTS_ENABLED=1
 ```
 
-`YOOKASSA_VAT_CODE` is intentionally blank in the example. Set it only after confirming the fiscal receipt settings for the actual YooKassa merchant account.
+`YOOKASSA_VAT_CODE`, `YOOKASSA_PAYMENT_MODE` and `YOOKASSA_PAYMENT_SUBJECT` are intentionally blank. Fill them only after confirming the fiscal receipt settings for the actual merchant account. In 2026 YooKassa supports VAT codes 1–12.
 
 ## Legal checkout
 
@@ -68,6 +69,3 @@ Production deployment on Vercel also runs a Next.js build.
 ## Important legal/infrastructure note
 
 The included legal texts are a production-oriented draft, not a substitute for a lawyer checking the actual event format, refund policy, merchant/fiscal settings and personal-data infrastructure. In particular, Russian personal-data localization and cross-border-transfer requirements must be checked against the actual hosting/database/email/SMS architecture before public launch.
-
-
-Это круто или нет

@@ -5,12 +5,11 @@ import SiteHeader from "@/components/SiteHeader";
 import VoiceReview from "@/components/VoiceReview";
 import type { CSSProperties } from "react";
 import { getAllEventsServer, getUpcomingEventServer } from "@/lib/server/events";
-import { galleryPhotos } from "@/lib/photos";
+import { getFeaturedReviewServer, getPublicPhotosServer } from "@/lib/server/media";
 
 export const dynamic = "force-dynamic";
 export default async function Home() {
-  const events = await getAllEventsServer();
-  const upcoming = await getUpcomingEventServer();
+  const [events, upcoming, mediaPhotos, featuredReview] = await Promise.all([getAllEventsServer(), getUpcomingEventServer(), getPublicPhotosServer(), getFeaturedReviewServer()]);
   const heroEvent = upcoming ?? events[0];
   const heroBackground = heroEvent?.posterImage ?? heroEvent?.heroImage ?? "/events/vernite-lampovost-poster.jpg";
   const homeTheme = heroEvent?.ticketTheme ?? { primary: "#0B0B0C", secondary: "#6B1F2B", accent: "#C21F39" };
@@ -30,9 +29,9 @@ export default async function Home() {
 
       <section className="statement section-pad"><div className="statement-mark">AGAYO</div><h2>ОДНАЖДЫ ТЫ БУДЕШЬ ВСПОМИНАТЬ ЭТО ВРЕМЯ</h2><p>Мы хотим, чтобы тебе было что вспомнить.</p></section>
 
-      <section className="archive section-pad"><div className="section-label">04 / ТЕ САМЫЕ ВЕЧЕРА</div><div className="archive-grid">{archive.map((event, index) => { const photo = galleryPhotos.find((item) => item.eventSlug === event.slug); return <article className={index === 0 ? "archive-card archive-card-large" : "archive-card"} key={event.slug}><div className="archive-image-wrap"><Link href={`/events/${event.slug}`} className="card-image-link" aria-label={`Открыть ${event.title}`}><Image src={event.heroImage} alt={event.title} fill sizes="(max-width: 900px) 100vw, 50vw" className="archive-image" /></Link>{photo && <FavoriteButton photoId={photo.id} />}</div><Link href={`/events/${event.slug}`} className="archive-meta"><span>{event.dateLabel}</span><strong>{event.title}</strong><span>{event.ageLabel} · {event.timeLabel}</span></Link></article>; })}</div><Link className="text-link" href="/gallery">Смотреть все фотографии <span>↗</span></Link></section>
+      <section className="archive section-pad"><div className="section-label">04 / ТЕ САМЫЕ ВЕЧЕРА</div><div className="archive-grid">{archive.map((event, index) => { const photo = mediaPhotos.find((item) => item.eventSlug === event.slug); return <article className={index === 0 ? "archive-card archive-card-large" : "archive-card"} key={event.slug}><div className="archive-image-wrap"><Link href={`/events/${event.slug}`} className="card-image-link" aria-label={`Открыть ${event.title}`}><Image src={photo?.src ?? event.heroImage} alt={event.title} fill sizes="(max-width: 900px) 100vw, 50vw" className="archive-image" /></Link>{photo && <FavoriteButton photoId={photo.id} />}</div><Link href={`/events/${event.slug}`} className="archive-meta"><span>{event.dateLabel}</span><strong>{event.title}</strong><span>{event.ageLabel} · {event.timeLabel}</span></Link></article>; })}</div><Link className="text-link" href="/gallery">Смотреть все фотографии <span>↗</span></Link></section>
 
-      <section className="voices section-pad"><div className="section-label">05 / ГОЛОСА</div><VoiceReview text="Я вообще не хотела идти. Хорошо, что друзья заставили." author="Алина, 16" /></section>
+      <section className="voices section-pad"><div className="section-label">05 / ГОЛОСА</div>{featuredReview ? <VoiceReview audioSrc={featuredReview.audioUrl} text={featuredReview.text} author={featuredReview.author} /> : <VoiceReview text="Мы ещё собираем голоса этого вечера." author="AGAYO" />}</section>
       <section className="final-cta section-pad"><div className="section-label">06 / ДО ВСТРЕЧИ</div><h2>МОЛОДОСТЬ НЕ ПОВТОРИТСЯ</h2><p>Следующее событие появится в разделе мероприятий.</p><Link className="button-link button-link-accent" href="/events">Посмотреть мероприятия <span>↗</span></Link></section>
       <footer className="footer"><div><div className="footer-brand">AGAYO<span className="brand-dot">.</span></div><p>Проживи так, чтобы вспомнить.</p><p>ИП Ергин Сергей Валентинович · ИНН 121524098311</p></div><div className="footer-links"><Link href="/events">Мероприятия</Link><Link href="/gallery">Галерея</Link><Link href="/profile">Профиль</Link><Link href="/legal">Правовая информация</Link></div><div className="footer-bottom"><span>Telegram · VK</span><span>© AGAYO 2023</span></div></footer>
     </main>
