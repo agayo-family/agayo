@@ -1,38 +1,38 @@
-# AGAYO v13 — production launch
+# AGAYO v13 — запуск в продакшн
 
-This is the final operational checklist before opening public ticket sales.
+Это финальный операционный чек-лист перед открытием публичных продаж билетов.
 
-## 1. Deploy v13 with payments OFF
+## 1. Развернуть v13 с отключёнными платежами
 
-Upload the full v13 project to GitHub and deploy it on Vercel with:
+Загрузи полный проект v13 в GitHub и разверни его на Vercel со следующими значениями:
 
 ```env
 PAYMENTS_ENABLED=0
 FISCALIZATION_CONFIRMED=0
 ```
 
-Do not accept real orders yet.
+Пока не принимай реальные заказы.
 
-## 2. Apply the database migration
+## 2. Применить миграцию базы данных
 
-The current v12 database already has migrations 001–007. Run:
+В текущей базе v12 уже должны быть применены миграции 001–007. Выполни:
 
 ```text
 db/008_production_launch.sql
 ```
 
-This adds:
+Эта миграция добавляет:
 
-- pending promo usage reservations;
-- refund fields on orders;
-- loyalty level names/thresholds;
-- production indexes.
+- резервирование использования промокодов для ожидающих оплаты заказов;
+- поля возвратов в заказах;
+- названия и пороги уровней лояльности;
+- production-индексы базы данных.
 
-After deployment, `/admin` → `Настройки` must show PostgreSQL/schema as ready.
+После развертывания в `/admin` → `Настройки` PostgreSQL/схема базы должны отображаться как готовые.
 
-## 3. Vercel environment variables
+## 3. Переменные окружения Vercel
 
-Set production values in Vercel, never in GitHub:
+Укажи реальные production-значения в Vercel. Никогда не добавляй их в GitHub:
 
 ```env
 DATABASE_URL=
@@ -55,131 +55,137 @@ YOOKASSA_VAT_CODE=
 YOOKASSA_PAYMENT_MODE=
 YOOKASSA_PAYMENT_SUBJECT=
 
-# optional
+# необязательно
 SMS_RU_API_ID=
 SMS_RU_FROM=
 SMS_RU_TEST=0
 ```
 
-`AUTH_SECRET` should be a high-entropy secret of at least 32 characters. Changing it later does not expose existing session tokens, but it is best to set the final value before launch.
+`AUTH_SECRET` должен быть случайным секретным значением высокой сложности длиной не менее 32 символов. Лучше сразу установить финальное значение до запуска проекта.
 
 ## 4. Resend
 
-1. Verify the production sending domain in Resend.
-2. Set `EMAIL_PROVIDER_API_KEY`.
-3. Set `EMAIL_FROM` to an address on the verified domain.
-4. Request an AGAYO ID login code from the production site.
-5. Confirm delivery to a normal mailbox, not only your own address.
+1. Подтверди production-домен для отправки писем в Resend.
+2. Укажи `EMAIL_PROVIDER_API_KEY`.
+3. Укажи в `EMAIL_FROM` адрес на подтверждённом домене.
+4. Запроси код входа в AGAYO ID с production-сайта.
+5. Убедись, что письмо приходит на обычный сторонний почтовый ящик, а не только на твою собственную почту.
 
-Do not open sales if ticket emails cannot be delivered reliably. A paid ticket still exists in AGAYO ID if mail delivery temporarily fails, but email is part of the production purchase flow.
+Не открывай продажи, если письма с билетами отправляются ненадёжно. Даже если отправка письма временно не сработает, оплаченный билет останется в AGAYO ID, но email является частью нормального сценария покупки.
 
 ## 5. Vercel Blob
 
-With `BLOB_READ_WRITE_TOKEN` configured, test from protected `/admin`:
+После настройки `BLOB_READ_WRITE_TOKEN` проверь из защищённой админки `/admin`:
 
-- upload a poster;
-- make it the event poster/hero image;
-- upload a gallery photo;
-- edit/delete a test media item;
-- upload an audio review if you use voice reviews.
+- загрузку афиши;
+- установку её как афиши/фонового изображения мероприятия;
+- загрузку фотографии в галерею;
+- редактирование и удаление тестового медиафайла;
+- загрузку аудиоотзыва, если используются голосовые отзывы.
 
-The homepage must keep the fixed AGAYO interface colors. Only the image behind “Создавай воспоминания, а не провалы в памяти” follows the nearest event.
+Главная страница всегда должна сохранять фирменные цвета интерфейса AGAYO. От ближайшего мероприятия берётся только изображение заднего фона блока «Создавай воспоминания, а не провалы в памяти».
 
 ## 6. YooKassa
 
-Set the production/test-shop credentials for the environment you are testing:
+Укажи данные магазина YooKassa для той среды, которую сейчас проверяешь — тестовой или production:
 
 ```env
 YOOKASSA_SHOP_ID=...
 YOOKASSA_SECRET_KEY=...
 ```
 
-Create this webhook in the YooKassa merchant integration settings:
+В настройках интеграции YooKassa создай webhook:
 
 ```text
 https://YOUR-DOMAIN/api/payments/yookassa/webhook
 ```
 
-Enable notifications:
+Включи уведомления:
 
-- `payment.succeeded`
-- `payment.canceled`
-- `refund.succeeded`
+- `payment.succeeded` — платёж успешно завершён;
+- `payment.canceled` — платёж отменён;
+- `refund.succeeded` — возврат успешно выполнен.
 
-Keep `PAYMENTS_ENABLED=0` until steps 7–9 are completed.
+Оставляй `PAYMENTS_ENABLED=0`, пока не будут завершены пункты 7–9.
 
-## 7. Fiscalization / online cash register
+## 7. Фискализация / онлайн-касса
 
-This is an explicit launch gate because the correct values depend on the actual YooKassa/cash-register configuration.
+Это обязательный этап перед запуском, потому что правильные параметры зависят от реальной схемы YooKassa и подключённой онлайн-кассы.
 
-Decide and verify which scheme the merchant account uses.
+Сначала нужно определить и подтвердить, какая схема фискализации используется у твоего магазина.
 
-If the AGAYO payment request must include receipt items, set:
+Если AGAYO должен передавать данные чека непосредственно при создании платежа YooKassa, установи:
 
 ```env
 YOOKASSA_RECEIPT_REQUIRED=1
-YOOKASSA_VAT_CODE=<real value>
-YOOKASSA_PAYMENT_MODE=<real value>
-YOOKASSA_PAYMENT_SUBJECT=<real value>
+YOOKASSA_VAT_CODE=<реальное значение>
+YOOKASSA_PAYMENT_MODE=<реальное значение>
+YOOKASSA_PAYMENT_SUBJECT=<реальное значение>
 ```
 
-If fiscalization is handled by another confirmed scheme and AGAYO must not attach these receipt fields, keep `YOOKASSA_RECEIPT_REQUIRED=0`.
+Если чеки формируются другой уже подтверждённой системой и AGAYO не должен прикладывать эти поля к платежу, оставь:
 
-Only after the real scheme has been confirmed set:
+```env
+YOOKASSA_RECEIPT_REQUIRED=0
+```
+
+Только после того как реальная схема фискализации проверена и подтверждена, установи:
 
 ```env
 FISCALIZATION_CONFIRMED=1
 ```
 
-For refunds: v13 listens for `refund.succeeded`. A full refund made through YooKassa invalidates the AGAYO tickets. The refund receipt/fiscal process must match the fiscalization scheme you confirmed.
+Для возвратов v13 обрабатывает событие `refund.succeeded`. Полный возврат, выполненный через YooKassa, делает соответствующие билеты AGAYO недействительными. Формирование чека возврата должно соответствовать выбранной и подтверждённой схеме фискализации.
 
-## 8. QR entrance scanner
+## 8. QR-сканер на входе
 
-Open `/admin/scanner` on the phone that will be used at the entrance.
+Открой `/admin/scanner` на телефоне, который будет использоваться контролёром на входе.
 
-Test over HTTPS:
+Проверяй сайт обязательно через HTTPS:
 
-1. allow camera access;
-2. scan a valid AGAYO QR;
-3. verify `ПРОХОД РАЗРЕШЁН`;
-4. scan the same QR again;
-5. verify `УЖЕ ИСПОЛЬЗОВАН` and the first-use time;
-6. test a refunded/cancelled ticket — it must not pass;
-7. test manual token/link entry.
+1. разреши доступ к камере;
+2. отсканируй действительный QR-код AGAYO;
+3. убедись, что появляется `ПРОХОД РАЗРЕШЁН`;
+4. отсканируй этот же QR ещё раз;
+5. убедись, что появляется `УЖЕ ИСПОЛЬЗОВАН` и время первого прохода;
+6. проверь билет после возврата или отмены — он не должен пропускаться;
+7. проверь ручной ввод токена или ссылки на билет.
 
-The scanner no longer depends on `BarcodeDetector`; it uses ZXing over the camera stream.
+Сканер больше не зависит от `BarcodeDetector`; для распознавания QR используется ZXing поверх видеопотока камеры.
 
-## 9. Complete test order
+## 9. Полный тестовый заказ
 
-Before public launch, create a small real/test event and run the exact customer journey:
+Перед открытием публичных продаж создай небольшое тестовое мероприятие и полностью пройди путь обычного покупателя:
 
-1. event is published and sales are open;
-2. poster is visible on event page;
-3. ticket inventory is correct;
-4. promo changes the displayed price and server total equally;
-5. legal checkboxes are mandatory;
-6. payment opens YooKassa;
-7. success page changes from pending to paid;
-8. ticket email arrives;
-9. ticket appears in AGAYO ID;
-10. ticket page opens from the email/AGAYO ID;
-11. scanner accepts it once;
-12. loyalty visit count/level updates after entry.
+1. мероприятие опубликовано, продажи открыты;
+2. афиша отображается на странице мероприятия;
+3. количество доступных билетов считается корректно;
+4. промокод одинаково изменяет отображаемую цену и итоговую сумму на сервере;
+5. обязательные юридические согласия нельзя пропустить;
+6. кнопка оплаты открывает YooKassa;
+7. после оплаты страница результата меняет статус с ожидания на успешную оплату;
+8. письмо с билетом приходит на почту;
+9. билет появляется в AGAYO ID;
+10. страница билета открывается из письма и из AGAYO ID;
+11. QR-сканер принимает билет только один раз;
+12. после прохода обновляется количество посещений и уровень лояльности пользователя.
 
-Also test a canceled payment and a full refund in YooKassa. Canceled payment inventory must return to sale; refunded ticket must become invalid.
+Отдельно проверь отменённый платёж и полный возврат через YooKassa. После отменённого платежа зарезервированные билеты должны снова вернуться в продажу. После полного возврата билет должен стать недействительным.
 
-## 10. Open sales
+## 10. Открытие продаж
 
-Only when `/admin` → `Настройки` has no required red items and the complete order test passes, set:
+Только когда в `/admin` → `Настройки` нет обязательных красных пунктов, а полный тестовый заказ прошёл успешно, установи:
 
 ```env
 PAYMENTS_ENABLED=1
 ```
 
-Redeploy/restart the production deployment if required by the environment-variable change.
+После изменения переменных окружения при необходимости выполни новый deployment/redeploy в Vercel.
 
-At that point AGAYO is open for real ticket sales.
+После этого AGAYO можно открывать для реальных продаж билетов.
 
 ## SMS.RU
 
-SMS is optional for the first production launch. If `SMS_RU_API_ID` is absent, the public login screen automatically offers email login only. Add SMS later without changing the purchase/payment system.
+SMS не является обязательным условием первого production-запуска. Если `SMS_RU_API_ID` не задан, публичная страница входа автоматически предложит только вход через email.
+
+SMS можно подключить позже, не меняя систему покупки билетов и платежей.

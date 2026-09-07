@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const term = `%${q}%`;
     const rows = q.length >= 2
       ? await sql`
-          SELECT u.id,u.agayo_id,u.display_name,u.email,u.phone,u.loyalty_level,u.created_at,
+          SELECT u.id,u.agayo_id,u.display_name,u.email,u.phone,u.loyalty_level,u.loyalty_override_level,u.loyalty_override_note,u.loyalty_override_at,u.created_at,
                  COUNT(t.id)::int AS tickets,
                  COUNT(t.id) FILTER (WHERE t.status='used')::int AS visits
           FROM users u LEFT JOIN tickets t ON t.user_id=u.id
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
           GROUP BY u.id ORDER BY u.created_at DESC LIMIT 50
         `
       : await sql`
-          SELECT u.id,u.agayo_id,u.display_name,u.email,u.phone,u.loyalty_level,u.created_at,
+          SELECT u.id,u.agayo_id,u.display_name,u.email,u.phone,u.loyalty_level,u.loyalty_override_level,u.loyalty_override_note,u.loyalty_override_at,u.created_at,
                  COUNT(t.id)::int AS tickets,
                  COUNT(t.id) FILTER (WHERE t.status='used')::int AS visits
           FROM users u LEFT JOIN tickets t ON t.user_id=u.id

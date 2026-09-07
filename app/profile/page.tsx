@@ -34,6 +34,7 @@ export default async function ProfilePage() {
   const currentLevelKey = String(user?.loyalty_level || "NEW");
   const currentLevel = loyaltyLevels.find((level) => level.levelKey === currentLevelKey) ?? loyaltyLevels[0];
   const currentLevelIndex = Math.max(0,loyaltyLevels.findIndex((level) => level.levelKey === currentLevelKey));
+  const manualLevel = Boolean(user?.loyalty_override_level);
 
   return (
     <main className="inner-page profile-page-v2">
@@ -87,8 +88,8 @@ export default async function ProfilePage() {
             ))}
           </div>
           <div className="loyalty-copy-grid">
-            <p>Уровень растёт вместе с реальными посещениями. Названия и пороги уровней управляются владельцем через админку.</p>
-            <div className="loyalty-perks"><span>ТЕКУЩИЙ ПРОГРЕСС</span><p>{usedTickets.length} посещений · следующий уровень рассчитывается после прохода по билету</p></div>
+            <p>{currentLevel?.conditionsText || 'Условия уровня определяет команда AGAYO.'}</p>
+            <div className="loyalty-perks"><span>{manualLevel ? 'ОСОБЫЙ СТАТУС' : currentLevel?.autoByVisits ? 'ТЕКУЩИЙ ПРОГРЕСС' : 'УСЛОВИЯ УРОВНЯ'}</span><p>{manualLevel ? `Этот уровень назначен командой AGAYO независимо от количества посещений · посещений: ${usedTickets.length}` : currentLevel?.autoByVisits ? `${usedTickets.length} посещений · автоматический уровень обновляется после прохода по билету` : 'Этот уровень выдаётся по условиям, которые определяет команда AGAYO.'}</p></div>
           </div>
         </section>
 

@@ -27,10 +27,12 @@ export async function getSystemStatus(): Promise<SystemStatus> {
           1 AS ok,
           to_regclass('public.promo_code_reservations') IS NOT NULL AS promo_reservations,
           to_regclass('public.loyalty_levels') IS NOT NULL AS loyalty_levels,
-          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='refunded_amount') AS refund_columns
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='refunded_amount') AS refund_columns,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='loyalty_levels' AND column_name='conditions_text') AS flexible_loyalty,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='loyalty_override_level') AS loyalty_override
       `;
       databaseReachable = Number(rows[0]?.ok) === 1;
-      databaseSchemaReady = Boolean(rows[0]?.promo_reservations && rows[0]?.loyalty_levels && rows[0]?.refund_columns);
+      databaseSchemaReady = Boolean(rows[0]?.promo_reservations && rows[0]?.loyalty_levels && rows[0]?.refund_columns && rows[0]?.flexible_loyalty && rows[0]?.loyalty_override);
     } catch { databaseReachable = false; databaseSchemaReady = false; }
   }
 

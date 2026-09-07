@@ -51,8 +51,8 @@ type DashboardData = {
 
 type PromoView = { id:string; code:string; event_slug:string|null; discount_type:'fixed'|'percent'; discount_value:number; usage_limit:number|null; used_count:number; expires_at:string|null; is_active:boolean };
 type TicketSearchView = { id:string; public_id:string; event_slug:string; owner_name:string; category_name:string; status:string; used_at:string|null; email:string|null; phone:string|null; agayo_id:string|null };
-type BuyerView = { id:string; agayo_id:string|null; display_name:string|null; email:string|null; phone:string|null; loyalty_level:string; tickets:number; visits:number };
-type LoyaltyLevelView = { levelKey:string; displayName:string; visitsRequired:number; sortOrder:number };
+type BuyerView = { id:string; agayo_id:string|null; display_name:string|null; email:string|null; phone:string|null; loyalty_level:string; loyalty_override_level:string|null; loyalty_override_note:string|null; loyalty_override_at:string|null; tickets:number; visits:number };
+type LoyaltyLevelView = { levelKey:string; displayName:string; visitsRequired:number; autoByVisits:boolean; conditionsText:string; sortOrder:number };
 type SystemStatusView = {
   database:{configured:boolean;reachable:boolean;schemaReady:boolean}; auth:{configured:boolean}; email:{configured:boolean}; blob:{configured:boolean};
   yookassa:{configured:boolean;paymentsEnabled:boolean}; fiscal:{required:boolean;configured:boolean;confirmed:boolean;ready:boolean}; sms:{configured:boolean};
@@ -63,11 +63,45 @@ function SystemRow({name,note,ok,warn=false,optional=false}:{name:string;note:st
   return <article><div><b>{name}</b><p>{note}</p></div><span>{ok ? 'ГОТОВО' : optional ? 'ОПЦИОНАЛЬНО' : warn ? 'ПРОВЕРИТЬ' : 'НЕ ГОТОВО'}</span></article>;
 }
 
-function LoyaltyLevelEditor({level,onSave}:{level:LoyaltyLevelView;onSave:(level:LoyaltyLevelView,displayName:string,visitsRequired:number)=>Promise<void>}) {
+function LoyaltyLevelEditor({level,onSave}:{level:LoyaltyLevelView;onSave:(level:LoyaltyLevelView,displayName:string,visitsRequired:number,autoByVisits:boolean,conditionsText:string)=>Promise<void>}) {
   const [name,setName]=useState(level.displayName);
   const [visits,setVisits]=useState(level.visitsRequired);
-  useEffect(()=>{setName(level.displayName);setVisits(level.visitsRequired);},[level.displayName,level.visitsRequired]);
-  return <article><div><b>{level.levelKey}</b><p>Название: <input value={name} onChange={(event)=>setName(event.target.value)} /> · посещений: <input type="number" min="0" value={visits} onChange={(event)=>setVisits(Math.max(0,Number(event.target.value)||0))} /></p></div><button className="admin-secondary" type="button" onClick={()=>void onSave(level,name,visits)}>Сохранить</button></article>;
+  const [auto,setAuto]=useState(level.autoByVisits);
+  const [conditions,setConditions]=useState(level.conditionsText);
+  useEffect(()=>{setName(level.displayName);setVisits(level.visitsRequired);setAuto(level.autoByVisits);setConditions(level.conditionsText);},[level.displayName,level.visitsRequired,level.autoByVisits,level.conditionsText]);
+  return <article className="admin-loyalty-level-card"><div><b>{level.levelKey}</b><div className="admin-loyalty-level-fields"><label><span>Название</span><input value={name} onChange={(event)=>setName(event.target.value)} /></label><label><span>Режим</span><select value={auto ? 'auto' : 'manual'} onChange={(event)=>setAuto(event.target.value==='auto')}><option value="auto">Автоматически по посещениям</option><option value="manual">Только вручную</option></select></label>{auto ? <label><span>Посещений для автоперехода</span><input type="number" min="0" value={visits} onChange={(event)=>setVisits(Math.max(0,Number(event.target.value)||0))} /></label> : null}<label className="admin-loyalty-condition"><span>Условия уровня</span><textarea value={conditions} onChange={(event)=>setConditions(event.target.value)} placeholder="Например: амбассадор AGAYO, особый гость, по решению команды…" /></label></div></div><button className="admin-secondary" type="button" onClick={()=>void onSave(level,name,visits,auto,conditions)}>Сохранить</button></article>;
+}
+
+function BuyerLoyaltyEditor({buyer,levels,onChanged}:{buyer:BuyerView;levels:LoyaltyLevelView[];onChanged:(patch:Partial<BuyerView>)=>void}) {
+  const [levelKey,setLevelKey]=useState(buyer.loyalty_override_level || buyer.loyalty_level);
+  const [note,setNote]=useState(buyer.loyalty_override_note || '');
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState('');
+  useEffect(()=>{setLevelKey(buyer.loyalty_override_level || buyer.loyalty_level);setNote(buyer.loyalty_override_note || '');},[buyer.loyalty_level,buyer.loyalty_override_level,buyer.loyalty_override_note]);
+
+  async function saveManual() {
+    setSaving(true); setMessage('');
+    try {
+      const response=await fetch('/api/admin/loyalty/user',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:buyer.id,levelKey,note})});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||'Не удалось назначить уровень');
+      onChanged({loyalty_level:data.loyaltyLevel,loyalty_override_level:data.overrideLevel,loyalty_override_note:data.overrideNote});
+      setMessage('Назначено вручную');
+    } catch(cause) { setMessage(cause instanceof Error ? cause.message : 'Ошибка'); } finally { setSaving(false); }
+  }
+
+  async function resetAuto() {
+    setSaving(true); setMessage('');
+    try {
+      const response=await fetch('/api/admin/loyalty/user',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:buyer.id,reset:true})});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||'Не удалось вернуть автоматику');
+      onChanged({loyalty_level:data.loyaltyLevel,loyalty_override_level:null,loyalty_override_note:null});
+      setNote(''); setLevelKey(data.loyaltyLevel); setMessage('Автоматика восстановлена');
+    } catch(cause) { setMessage(cause instanceof Error ? cause.message : 'Ошибка'); } finally { setSaving(false); }
+  }
+
+  return <details className="admin-loyalty-inline"><summary>{buyer.loyalty_override_level ? 'РУЧНОЙ · ИЗМЕНИТЬ' : 'НАСТРОИТЬ УРОВЕНЬ'}</summary><div><label><span>Уровень</span><select value={levelKey} onChange={(event)=>setLevelKey(event.target.value)}>{levels.map((level)=><option key={level.levelKey} value={level.levelKey}>{level.displayName}</option>)}</select></label><label><span>Внутренний комментарий</span><textarea value={note} onChange={(event)=>setNote(event.target.value)} placeholder="Почему назначен этот уровень. Пользователь этого не увидит." /></label><div className="admin-loyalty-actions"><button className="admin-secondary" disabled={saving} type="button" onClick={()=>void saveManual()}>Назначить вручную</button>{buyer.loyalty_override_level ? <button className="admin-secondary" disabled={saving} type="button" onClick={()=>void resetAuto()}>Вернуть автоматику</button> : null}</div>{message ? <small>{message}</small> : null}</div></details>;
 }
 
 export default function AdminDashboard({ access, previewMode = false }: { access: AdminAccessView; previewMode?: boolean }) {
@@ -207,12 +241,12 @@ export default function AdminDashboard({ access, previewMode = false }: { access
   }
 
 
-  async function saveLoyaltyLevel(level:LoyaltyLevelView, displayName:string, visitsRequired:number) {
+  async function saveLoyaltyLevel(level:LoyaltyLevelView, displayName:string, visitsRequired:number, autoByVisits:boolean, conditionsText:string) {
     if (previewMode) return;
     setLoyaltyMessage('');
-    const response=await fetch('/api/admin/loyalty',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({levelKey:level.levelKey,displayName,visitsRequired})});
+    const response=await fetch('/api/admin/loyalty',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({levelKey:level.levelKey,displayName,visitsRequired,autoByVisits,conditionsText})});
     const data=await response.json();
-    if(response.ok){ setLoyaltyLevels((current)=>current.map((item)=>item.levelKey===level.levelKey?data.level:item)); setLoyaltyMessage('Уровень сохранён'); }
+    if(response.ok){ setLoyaltyLevels((current)=>current.map((item)=>item.levelKey===level.levelKey?data.level:item)); setLoyaltyMessage('Уровень сохранён'); void searchBuyers(buyerQuery); }
     else setLoyaltyMessage(data.error||'Не удалось сохранить уровень');
   }
 
@@ -334,10 +368,10 @@ export default function AdminDashboard({ access, previewMode = false }: { access
                 <div><small>ПОЛЬЗОВАТЕЛЬ</small><b>{buyer.display_name || 'Без имени'}</b><span>{buyer.agayo_id || '—'}</span></div>
                 <div><small>КОНТАКТ</small><b>{buyer.email || buyer.phone || '—'}</b></div>
                 <div><small>ПОСЕЩЕНИЯ</small><b>{buyer.visits}</b><span>{buyer.tickets} билетов всего</span></div>
-                <div><small>УРОВЕНЬ</small><b>{loyaltyLevels.find((level)=>level.levelKey===buyer.loyalty_level)?.displayName || buyer.loyalty_level}</b></div>
+                <div><small>УРОВЕНЬ</small><b>{loyaltyLevels.find((level)=>level.levelKey===buyer.loyalty_level)?.displayName || buyer.loyalty_level}</b><span>{buyer.loyalty_override_level ? 'Назначен вручную' : 'Автоматический'}</span>{buyer.loyalty_override_note ? <span>{buyer.loyalty_override_note}</span> : null}{can('manage_loyalty') ? <BuyerLoyaltyEditor buyer={buyer} levels={loyaltyLevels} onChanged={(patch)=>setBuyers((current)=>current.map((item)=>item.id===buyer.id?{...item,...patch}:item))} /> : null}</div>
               </article>)}</div> : <div className="admin-table-empty"><strong>ПОКУПАТЕЛЕЙ ПОКА НЕТ</strong><p>После регистрации или первой покупки профиль появится здесь автоматически.</p></div>}
             </div>
-            {can('manage_loyalty') ? <div className="admin-editor compact"><span className="admin-kicker">ЛОЯЛЬНОСТЬ</span><h2>УРОВНИ</h2><p className="admin-settings-note">Название GOLD и любого другого уровня можно менять вручную. Порог — количество реально использованных билетов.</p><div className="admin-settings-list">{loyaltyLevels.map((level)=><LoyaltyLevelEditor key={level.levelKey} level={level} onSave={saveLoyaltyLevel}/>)}</div>{loyaltyMessage?<p>{loyaltyMessage}</p>:null}</div> : null}
+            {can('manage_loyalty') ? <div className="admin-editor compact"><span className="admin-kicker">ЛОЯЛЬНОСТЬ</span><h2>УРОВНИ</h2><p className="admin-settings-note">Уровень может выдаваться автоматически по посещениям или только вручную. Условия — свободный текст, который задаёт команда AGAYO. В карточке покупателя можно вручную назначить любой уровень и оставить внутренний комментарий; такое назначение имеет приоритет над автоматикой.</p><div className="admin-settings-list">{loyaltyLevels.map((level)=><LoyaltyLevelEditor key={level.levelKey} level={level} onSave={saveLoyaltyLevel}/>)}</div>{loyaltyMessage?<p>{loyaltyMessage}</p>:null}</div> : null}
           </section>
         )}
 
