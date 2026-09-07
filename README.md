@@ -140,3 +140,5 @@ Vercel performs the production Next.js build after deployment.
 
 ## v13.1 — flexible loyalty
 После `db/008_production_launch.sql` примените `db/009_flexible_loyalty.sql`. Она добавляет произвольные условия уровней и ручное назначение уровня пользователю с внутренним комментарием.
+
+Я крутой
