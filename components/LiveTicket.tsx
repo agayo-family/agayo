@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { getEvent } from "@/lib/events";
+import type { AgayoEvent } from "@/lib/events";
 
 export type LiveTicketData = {
   publicId: string;
@@ -15,9 +15,7 @@ export type LiveTicketData = {
 
 const labels = { valid: "ДЕЙСТВИТЕЛЕН", used: "ИСПОЛЬЗОВАН", refunded: "ВОЗВРАЩЁН", cancelled: "ОТМЕНЁН" } as const;
 
-export default function LiveTicket({ ticket }: { ticket: LiveTicketData }) {
-  const event = getEvent(ticket.eventSlug);
-  if (!event) return null;
+export default function LiveTicket({ ticket, event }: { ticket: LiveTicketData; event: AgayoEvent }) {
   const theme = event.ticketTheme ?? { primary: "#111111", secondary: "#4b0f19", accent: "#c21f39" };
   const style = { "--ticket-primary": theme.primary, "--ticket-secondary": theme.secondary, "--ticket-accent": theme.accent } as CSSProperties;
   const isUsed = ticket.status === "used";

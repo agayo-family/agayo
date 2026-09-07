@@ -12,14 +12,23 @@ export class YooKassaApiError extends Error {
   }
 }
 
-type YooKassaPayment = {
+export type YooKassaPayment = {
   id: string;
   status: string;
   paid: boolean;
   amount: { value: string; currency: string };
+  refunded_amount?: { value: string; currency: string };
   confirmation?: { type?: string; confirmation_url?: string };
   metadata?: { orderPublicId?: string };
   cancellation_details?: { party?: string; reason?: string };
+};
+
+export type YooKassaRefund = {
+  id: string;
+  payment_id: string;
+  status: string;
+  amount: { value: string; currency: string };
+  created_at?: string;
 };
 
 function authHeader() {
@@ -34,16 +43,11 @@ function wait(ms: number) {
 }
 
 async function readJson(response: Response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
+  try { return await response.json(); } catch { return null; }
 }
 
 async function requestYooKassa(url: string, init: RequestInit, attempts = 1) {
   let lastError: unknown;
-
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const response = await fetch(url, init);
@@ -54,7 +58,6 @@ async function requestYooKassa(url: string, init: RequestInit, attempts = 1) {
       const message = data?.description || data?.code || `YooKassa error ${response.status}`;
       const error = new YooKassaApiError(message, response.status, retryable);
       lastError = error;
-
       if (!retryable || attempt === attempts - 1) throw error;
     } catch (error) {
       if (error instanceof YooKassaApiError && !error.retryable) throw error;
@@ -64,11 +67,20 @@ async function requestYooKassa(url: string, init: RequestInit, attempts = 1) {
         throw new YooKassaApiError(error instanceof Error ? error.message : "YooKassa network error", null, true);
       }
     }
-
     await wait([250, 700, 1500, 2500][attempt] ?? 2500);
   }
-
   throw lastError instanceof Error ? lastError : new Error("YooKassa request failed");
+}
+
+export function isYooKassaConfigured() {
+  return Boolean(process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY);
+}
+
+export function isReceiptConfigurationReady() {
+  const vatCode = Number(process.env.YOOKASSA_VAT_CODE);
+  const paymentMode = String(process.env.YOOKASSA_PAYMENT_MODE || "").trim();
+  const paymentSubject = String(process.env.YOOKASSA_PAYMENT_SUBJECT || "").trim();
+  return Number.isInteger(vatCode) && vatCode >= 1 && vatCode <= 12 && Boolean(paymentMode) && Boolean(paymentSubject);
 }
 
 export async function createPayment(input: {
@@ -84,7 +96,7 @@ export async function createPayment(input: {
   const vatCode = Number(process.env.YOOKASSA_VAT_CODE);
   const paymentMode = String(process.env.YOOKASSA_PAYMENT_MODE || "").trim();
   const paymentSubject = String(process.env.YOOKASSA_PAYMENT_SUBJECT || "").trim();
-  const receiptReady = Number.isInteger(vatCode) && vatCode >= 1 && vatCode <= 12 && Boolean(paymentMode) && Boolean(paymentSubject);
+  const receiptReady = isReceiptConfigurationReady();
   const receiptRequired = process.env.YOOKASSA_RECEIPT_REQUIRED === "1";
 
   if (receiptRequired && !receiptReady) {
@@ -94,23 +106,18 @@ export async function createPayment(input: {
   const receipt = receiptReady
     ? {
         customer: { email: input.customerEmail },
-        items: [
-          {
-            description: input.description.slice(0, 128),
-            quantity: "1.00",
-            amount: { value: input.amount.toFixed(2), currency: "RUB" },
-            vat_code: vatCode,
-            payment_mode: paymentMode,
-            payment_subject: paymentSubject,
-          },
-        ],
+        items: [{
+          description: input.description.slice(0, 128),
+          quantity: "1.00",
+          amount: { value: input.amount.toFixed(2), currency: "RUB" },
+          vat_code: vatCode,
+          payment_mode: paymentMode,
+          payment_subject: paymentSubject,
+        }],
         internet: true,
       }
     : undefined;
 
-  // One AGAYO order = one stable idempotence key. YooKassa keeps POST
-  // idempotence for 24 hours, so retries of this exact request cannot create
-  // a second payment for the same order.
   const data = await requestYooKassa(
     `${YOOKASSA_API}/payments`,
     {
@@ -131,19 +138,23 @@ export async function createPayment(input: {
     },
     4,
   );
-
   return data as YooKassaPayment;
 }
 
 export async function getPayment(paymentId: string) {
   const data = await requestYooKassa(
     `${YOOKASSA_API}/payments/${encodeURIComponent(paymentId)}`,
-    {
-      headers: { Authorization: authHeader() },
-      cache: "no-store",
-    },
+    { headers: { Authorization: authHeader() }, cache: "no-store" },
     2,
   );
-
   return data as YooKassaPayment;
+}
+
+export async function getRefund(refundId: string) {
+  const data = await requestYooKassa(
+    `${YOOKASSA_API}/refunds/${encodeURIComponent(refundId)}`,
+    { headers: { Authorization: authHeader() }, cache: "no-store" },
+    2,
+  );
+  return data as YooKassaRefund;
 }

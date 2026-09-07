@@ -35,7 +35,7 @@ export type AdminAccessView = {
 const tabPermissions: Record<Tab, AdminPermission[]> = {
   overview: ['view_dashboard'],
   events: ['manage_events', 'publish_events', 'manage_ticket_inventory'],
-  tickets: ['scan_tickets', 'manual_ticket_search', 'cancel_tickets', 'refund_tickets', 'issue_comp_tickets'],
+  tickets: ['scan_tickets', 'manual_ticket_search'],
   buyers: ['view_buyers', 'manage_loyalty'],
   promo: ['manage_promos'],
   media: ['manage_media'],
@@ -52,6 +52,23 @@ type DashboardData = {
 type PromoView = { id:string; code:string; event_slug:string|null; discount_type:'fixed'|'percent'; discount_value:number; usage_limit:number|null; used_count:number; expires_at:string|null; is_active:boolean };
 type TicketSearchView = { id:string; public_id:string; event_slug:string; owner_name:string; category_name:string; status:string; used_at:string|null; email:string|null; phone:string|null; agayo_id:string|null };
 type BuyerView = { id:string; agayo_id:string|null; display_name:string|null; email:string|null; phone:string|null; loyalty_level:string; tickets:number; visits:number };
+type LoyaltyLevelView = { levelKey:string; displayName:string; visitsRequired:number; sortOrder:number };
+type SystemStatusView = {
+  database:{configured:boolean;reachable:boolean;schemaReady:boolean}; auth:{configured:boolean}; email:{configured:boolean}; blob:{configured:boolean};
+  yookassa:{configured:boolean;paymentsEnabled:boolean}; fiscal:{required:boolean;configured:boolean;confirmed:boolean;ready:boolean}; sms:{configured:boolean};
+  siteUrl:{configured:boolean;https:boolean}; owner:{configured:boolean}; readyForSales:boolean;
+};
+
+function SystemRow({name,note,ok,warn=false,optional=false}:{name:string;note:string;ok:boolean;warn?:boolean;optional?:boolean}) {
+  return <article><div><b>{name}</b><p>{note}</p></div><span>{ok ? 'ГОТОВО' : optional ? 'ОПЦИОНАЛЬНО' : warn ? 'ПРОВЕРИТЬ' : 'НЕ ГОТОВО'}</span></article>;
+}
+
+function LoyaltyLevelEditor({level,onSave}:{level:LoyaltyLevelView;onSave:(level:LoyaltyLevelView,displayName:string,visitsRequired:number)=>Promise<void>}) {
+  const [name,setName]=useState(level.displayName);
+  const [visits,setVisits]=useState(level.visitsRequired);
+  useEffect(()=>{setName(level.displayName);setVisits(level.visitsRequired);},[level.displayName,level.visitsRequired]);
+  return <article><div><b>{level.levelKey}</b><p>Название: <input value={name} onChange={(event)=>setName(event.target.value)} /> · посещений: <input type="number" min="0" value={visits} onChange={(event)=>setVisits(Math.max(0,Number(event.target.value)||0))} /></p></div><button className="admin-secondary" type="button" onClick={()=>void onSave(level,name,visits)}>Сохранить</button></article>;
+}
 
 export default function AdminDashboard({ access, previewMode = false }: { access: AdminAccessView; previewMode?: boolean }) {
   const initialTab = tabs.find(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission)))?.[0] ?? 'overview';
@@ -89,6 +106,9 @@ export default function AdminDashboard({ access, previewMode = false }: { access
   const [buyerQuery, setBuyerQuery] = useState('');
   const [buyers, setBuyers] = useState<BuyerView[]>([]);
   const [buyerSearching, setBuyerSearching] = useState(false);
+  const [loyaltyLevels, setLoyaltyLevels] = useState<LoyaltyLevelView[]>([]);
+  const [loyaltyMessage, setLoyaltyMessage] = useState('');
+  const [systemStatus, setSystemStatus] = useState<SystemStatusView | null>(previewMode ? {database:{configured:true,reachable:true,schemaReady:true},auth:{configured:true},email:{configured:true},blob:{configured:true},yookassa:{configured:true,paymentsEnabled:false},fiscal:{required:false,configured:true,confirmed:false,ready:false},sms:{configured:false},siteUrl:{configured:true,https:true},owner:{configured:true},readyForSales:false} : null);
 
   useEffect(() => {
     if (previewMode || !can("manage_events")) return;
@@ -120,6 +140,22 @@ export default function AdminDashboard({ access, previewMode = false }: { access
   useEffect(() => {
     if (previewMode || !can('view_buyers')) return;
     void searchBuyers('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode || !can('manage_loyalty')) return;
+    fetch('/api/admin/loyalty', { cache:'no-store' }).then(async (response) => {
+      const data=await response.json(); if(response.ok) setLoyaltyLevels(data.levels||[]);
+    }).catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode || !can('manage_system')) return;
+    fetch('/api/admin/system/status', { cache:'no-store' }).then(async (response) => {
+      const data=await response.json(); if(response.ok) setSystemStatus(data);
+    }).catch(() => undefined);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewMode]);
 
@@ -168,6 +204,16 @@ export default function AdminDashboard({ access, previewMode = false }: { access
       const data = await response.json();
       if (response.ok) setBuyers(data.buyers || []);
     } finally { setBuyerSearching(false); }
+  }
+
+
+  async function saveLoyaltyLevel(level:LoyaltyLevelView, displayName:string, visitsRequired:number) {
+    if (previewMode) return;
+    setLoyaltyMessage('');
+    const response=await fetch('/api/admin/loyalty',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({levelKey:level.levelKey,displayName,visitsRequired})});
+    const data=await response.json();
+    if(response.ok){ setLoyaltyLevels((current)=>current.map((item)=>item.levelKey===level.levelKey?data.level:item)); setLoyaltyMessage('Уровень сохранён'); }
+    else setLoyaltyMessage(data.error||'Не удалось сохранить уровень');
   }
 
   const can = (permission: AdminPermission) => access.role === 'owner' || access.permissions.includes(permission);
@@ -288,9 +334,10 @@ export default function AdminDashboard({ access, previewMode = false }: { access
                 <div><small>ПОЛЬЗОВАТЕЛЬ</small><b>{buyer.display_name || 'Без имени'}</b><span>{buyer.agayo_id || '—'}</span></div>
                 <div><small>КОНТАКТ</small><b>{buyer.email || buyer.phone || '—'}</b></div>
                 <div><small>ПОСЕЩЕНИЯ</small><b>{buyer.visits}</b><span>{buyer.tickets} билетов всего</span></div>
-                <div><small>УРОВЕНЬ</small><b>{buyer.loyalty_level}</b></div>
+                <div><small>УРОВЕНЬ</small><b>{loyaltyLevels.find((level)=>level.levelKey===buyer.loyalty_level)?.displayName || buyer.loyalty_level}</b></div>
               </article>)}</div> : <div className="admin-table-empty"><strong>ПОКУПАТЕЛЕЙ ПОКА НЕТ</strong><p>После регистрации или первой покупки профиль появится здесь автоматически.</p></div>}
             </div>
+            {can('manage_loyalty') ? <div className="admin-editor compact"><span className="admin-kicker">ЛОЯЛЬНОСТЬ</span><h2>УРОВНИ</h2><p className="admin-settings-note">Название GOLD и любого другого уровня можно менять вручную. Порог — количество реально использованных билетов.</p><div className="admin-settings-list">{loyaltyLevels.map((level)=><LoyaltyLevelEditor key={level.levelKey} level={level} onSave={saveLoyaltyLevel}/>)}</div>{loyaltyMessage?<p>{loyaltyMessage}</p>:null}</div> : null}
           </section>
         )}
 
@@ -308,11 +355,11 @@ export default function AdminDashboard({ access, previewMode = false }: { access
         )}
 
         {tab === 'team' && can('manage_team') && (
-          <section className="admin-content"><TeamAccessPanel currentAccess={access} previewMode={previewMode} /></section>
+          <section className="admin-content"><TeamAccessPanel currentAccess={access} events={storedEvents} previewMode={previewMode} /></section>
         )}
 
         {tab === 'settings' && (
-          <section className="admin-content"><div className="admin-editor compact"><span className="admin-kicker">СИСТЕМА</span><h2>НАСТРОЙКИ</h2><div className="admin-settings-list"><article><div><b>ЮKassa</b><p>Платежи и возвраты</p></div><span>НЕ НАСТРОЕНО</span></article><article><div><b>Email</b><p>Коды входа и доставка билетов</p></div><span>НЕ НАСТРОЕНО</span></article><article><div><b>Telegram</b><p>Дополнительная доставка билетов</p></div><span>ПОЗЖЕ</span></article><article><div><b>PostgreSQL</b><p>Пользователи, заказы, билеты, события</p></div><span>СХЕМА ГОТОВА</span></article></div></div></section>
+          <section className="admin-content"><div className="admin-editor compact"><span className="admin-kicker">СИСТЕМА</span><h2>PRODUCTION</h2><div className={`admin-production-readiness ${systemStatus?.readyForSales ? 'is-ready' : ''}`}><b>{systemStatus?.readyForSales ? 'ГОТОВО К ПРОДАЖАМ' : 'ЕЩЁ НЕ ГОТОВО К ПРОДАЖАМ'}</b><p>Статусы ниже показывают наличие production-настроек, но не раскрывают секретные ключи.</p></div><div className="admin-settings-list"><SystemRow name="PostgreSQL" note={systemStatus?.database.reachable && !systemStatus?.database.schemaReady ? 'Соединение есть, но нужно применить db/008_production_launch.sql' : 'Пользователи, заказы, билеты и события'} ok={Boolean(systemStatus?.database.reachable && systemStatus?.database.schemaReady)} warn={Boolean(systemStatus?.database.reachable && !systemStatus?.database.schemaReady)} /><SystemRow name="AUTH_SECRET" note="Подпись защищённых сессий AGAYO ID" ok={Boolean(systemStatus?.auth.configured)} /><SystemRow name="Email / Resend" note="Коды входа и доставка билетов" ok={Boolean(systemStatus?.email.configured)} /><SystemRow name="Vercel Blob" note="Афиши, фото и аудиоотзывы" ok={Boolean(systemStatus?.blob.configured)} /><SystemRow name="ЮKassa" note={systemStatus?.yookassa.paymentsEnabled ? 'Ключи заданы, платежи включены' : 'До финального теста PAYMENTS_ENABLED должен быть 0'} ok={Boolean(systemStatus?.yookassa.configured && systemStatus?.yookassa.paymentsEnabled)} warn={Boolean(systemStatus?.yookassa.configured && !systemStatus?.yookassa.paymentsEnabled)} /><SystemRow name="Фискализация" note={!systemStatus?.fiscal.confirmed ? 'Нужно подтвердить рабочую схему чеков перед стартом продаж' : systemStatus?.fiscal.required ? 'Передача данных чека через ЮKassa подтверждена' : 'Внешняя/кабинетная схема фискализации подтверждена'} ok={Boolean(systemStatus?.fiscal.ready)} warn={Boolean(systemStatus?.fiscal.configured && !systemStatus?.fiscal.confirmed)} /><SystemRow name="Production URL" note="HTTPS-адрес возврата и webhook" ok={Boolean(systemStatus?.siteUrl.configured && systemStatus?.siteUrl.https)} /><SystemRow name="Владелец AGAYO" note="Bootstrap-доступ к админке" ok={Boolean(systemStatus?.owner.configured)} /><SystemRow name="SMS.RU" note="Не обязателен для продаж: email-вход работает отдельно" ok={Boolean(systemStatus?.sms.configured)} optional /></div></div></section>
         )}
       </main>
     </div>

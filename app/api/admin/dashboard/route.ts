@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
-import { AdminAccessError, canAccessEvent, requireAdminPermission } from "@/lib/server/admin";
+import { AdminAccessError, canAccessEvent, hasPermission, requireAdminPermission } from "@/lib/server/admin";
 import { ensureSeedEvents } from "@/lib/server/seed-events";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,7 @@ export async function GET() {
     await ensureSeedEvents();
     const sql = db();
     const eventFilter = access.role === "owner" || access.allEvents ? null : access.eventSlugs;
+    const canSeeRevenue = hasPermission(access,"view_revenue");
 
     const [orderRows, ticketRows, userRows, paymentErrorRows] = await Promise.all([
       eventFilter === null
@@ -42,7 +43,7 @@ export async function GET() {
 
     return NextResponse.json({
       metrics: {
-        revenue: Number(orderRows[0]?.revenue ?? 0),
+        revenue: canSeeRevenue ? Number(orderRows[0]?.revenue ?? 0) : 0,
         sold: Number(ticketRows[0]?.valid ?? 0) + Number(ticketRows[0]?.used ?? 0),
         used: Number(ticketRows[0]?.used ?? 0),
         refunds: Number(ticketRows[0]?.invalid ?? 0),

@@ -29,8 +29,8 @@ export async function POST(request: Request) {
     if (code.length < 3) return NextResponse.json({ error: "Промокод должен содержать минимум 3 символа" }, { status: 400 });
     const discountType = body.discountType === "fixed" ? "fixed" : "percent";
     const discountValue = Math.floor(Number(body.discountValue));
-    if (!Number.isFinite(discountValue) || discountValue <= 0 || (discountType === "percent" && discountValue > 100)) {
-      return NextResponse.json({ error: discountType === "percent" ? "Скидка должна быть от 1 до 100%" : "Укажи сумму скидки" }, { status: 400 });
+    if (!Number.isFinite(discountValue) || discountValue <= 0 || (discountType === "percent" && discountValue > 99)) {
+      return NextResponse.json({ error: discountType === "percent" ? "Скидка должна быть от 1 до 99%" : "Укажи сумму скидки" }, { status: 400 });
     }
     const usageLimit = body.usageLimit ? Math.max(1, Math.floor(Number(body.usageLimit))) : null;
     const expiresAt = body.expiresAt ? new Date(String(body.expiresAt)) : null;

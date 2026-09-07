@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ADMIN_PERMISSIONS, AdminPermission, AdminRole, ROLE_DEFAULTS, ROLE_LABELS } from "@/lib/admin-permissions";
-import { events } from "@/lib/events";
 
 type CurrentAccess = {
   userId: string;
@@ -31,7 +30,9 @@ type Member = {
 
 const GROUPS = [...new Set(ADMIN_PERMISSIONS.map((permission) => permission.group))];
 
-export default function TeamAccessPanel({ currentAccess, previewMode = false }: { currentAccess: CurrentAccess; previewMode?: boolean }) {
+type EventOption = { slug:string; title:string; starts_at:string; status:string };
+
+export default function TeamAccessPanel({ currentAccess, events, previewMode = false }: { currentAccess: CurrentAccess; events: EventOption[]; previewMode?: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,7 +45,7 @@ export default function TeamAccessPanel({ currentAccess, previewMode = false }: 
   const [allEvents, setAllEvents] = useState(true);
   const [eventSlugs, setEventSlugs] = useState<string[]>([]);
 
-  const publicEvents = useMemo(() => events.filter((event) => event.status === "published"), []);
+  const publicEvents = useMemo(() => [...events].sort((a,b)=>new Date(b.starts_at).getTime()-new Date(a.starts_at).getTime()), [events]);
 
   async function load() {
     setLoading(true); setError("");
@@ -187,7 +188,7 @@ export default function TeamAccessPanel({ currentAccess, previewMode = false }: 
           <div className="admin-access-label"><span>03</span><div><b>МЕРОПРИЯТИЯ</b><small>Можно открыть всю админку только в рамках выбранных событий.</small></div></div>
           <label className="admin-all-events"><input type="checkbox" checked={allEvents} onChange={(event) => setAllEvents(event.target.checked)} /><i>✓</i><div><b>ВСЕ МЕРОПРИЯТИЯ</b><small>Включая новые события, которые появятся позже.</small></div></label>
           {!allEvents ? <div className="admin-event-permissions">
-            {publicEvents.map((event) => <label key={event.slug} className={eventSlugs.includes(event.slug) ? "is-checked" : ""}><input type="checkbox" checked={eventSlugs.includes(event.slug)} onChange={() => toggleEvent(event.slug)} /><i>✓</i><div><b>{event.title}</b><small>{event.dateLabel} · {event.timeLabel}</small></div></label>)}
+            {publicEvents.map((event) => <label key={event.slug} className={eventSlugs.includes(event.slug) ? "is-checked" : ""}><input type="checkbox" checked={eventSlugs.includes(event.slug)} onChange={() => toggleEvent(event.slug)} /><i>✓</i><div><b>{event.title}</b><small>{new Intl.DateTimeFormat("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(event.starts_at))} · {event.status === "published" ? "опубликовано" : event.status === "draft" ? "черновик" : event.status}</small></div></label>)}
           </div> : null}
         </div>
 

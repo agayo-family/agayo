@@ -1,33 +1,52 @@
-# AGAYO backend — setup
+# AGAYO v13 — backend setup
 
-This stage adds the real server contract. It does not include production secrets.
+The backend is implemented. This file describes how to activate the production integrations; it is no longer a future architecture plan.
 
-1. Create a PostgreSQL database and run `db/001_init.sql` once.
-2. Add `DATABASE_URL` and a long random `AUTH_SECRET` in Vercel Environment Variables.
-3. Connect an email provider and fill `EMAIL_PROVIDER_API_KEY` + `EMAIL_FROM`.
-4. Add YooKassa Shop ID and Secret Key.
-5. In YooKassa create a webhook pointing to `/api/payments/yookassa/webhook` for successful payments.
-6. Set `NEXT_PUBLIC_SITE_URL` to the production domain.
+## Database
 
-Flow:
-checkout → server validates event price → user/profile upsert by email → pending order → YooKassa redirect → YooKassa webhook → server verifies payment directly with YooKassa → order paid → separate ticket + secure QR token for each quantity → ticket stored in profile data → ticket email sent.
+Fresh install: apply `db/001_init.sql` through `db/008_production_launch.sql` in order.
 
-Authentication:
-email → one-time 6-digit code (10 minutes, rate-limited) → auto-create user if absent → 30-day HttpOnly session cookie. No passwords are stored.
+Upgrade from v12: apply only `db/008_production_launch.sql`.
 
-Phone login is represented in the API/UI but intentionally returns "provider not connected" until an SMS service is selected. Telegram ticket delivery remains a later adapter.
+## Environment
 
-## Служебная зона и AGAYO ID
+Use `.env.example` as the canonical list and set the real values only in Vercel.
 
-1. После `db/001_init.sql` применить `db/002_admin_access.sql`.
-2. В Vercel добавить `AGAYO_OWNER_EMAIL` — email основного владельца AGAYO. Этот аккаунт получает bootstrap-роль OWNER после обычного входа по одноразовому коду.
-3. `/admin` защищён сервером: без сессии пользователь перенаправляется на `/auth`, а авторизованный пользователь без служебной роли получает 404.
-4. В разделе «Команда» OWNER может найти/создать профиль по email или телефону, либо найти существующий профиль по AGAYO ID, выбрать роль, отметить конкретные функции галочками и ограничить доступ мероприятиями.
-5. Права хранятся в PostgreSQL и должны проверяться каждым служебным API через `requireAdminPermission(...)`. Ограничение конкретным событием проверяется тем же helper через `eventSlug`.
-6. `admin_audit_log` фиксирует выдачу, изменение и отзыв служебного доступа.
+Required for the first public launch:
 
-Роль — это только удобный пресет галочек. Реальное разрешение на действие определяется сохранённым набором permissions. OWNER не может быть снят с собственного bootstrap-доступа через интерфейс.
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AGAYO_OWNER_EMAIL`
+- `NEXT_PUBLIC_SITE_URL`
+- `EMAIL_PROVIDER_API_KEY`
+- `EMAIL_FROM`
+- `BLOB_READ_WRITE_TOKEN`
+- `YOOKASSA_SHOP_ID`
+- `YOOKASSA_SECRET_KEY`
+- explicit fiscalization decision
 
-## Operational admin stage
-After `db/003_events.sql`, apply `db/004_admin_operations.sql`.
-It adds scanner controller attribution and indexes used by the live admin dashboard, ticket search and promo operations.
+SMS.RU is optional.
+
+## YooKassa
+
+The webhook endpoint is `/api/payments/yookassa/webhook` and must receive:
+
+- `payment.succeeded`
+- `payment.canceled`
+- `refund.succeeded`
+
+AGAYO verifies payment/refund state by reading the object directly from YooKassa before mutating the database.
+
+Keep `PAYMENTS_ENABLED=0` until the final end-to-end test and fiscal check are complete.
+
+## Authentication
+
+Email/SMS OTP → one-time code → server consumption → 30-day HttpOnly session. Email login is always available when Resend is configured. Phone login is hidden automatically when SMS.RU is not configured.
+
+## Media
+
+Admin poster/gallery/audio uploads use Vercel Blob and remain server-authorized.
+
+## Detailed launch sequence
+
+See `docs/PRODUCTION-LAUNCH.md`.

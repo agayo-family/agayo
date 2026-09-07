@@ -1,56 +1,35 @@
-# AGAYO release candidate QA
+# AGAYO v13 FINAL — QA checkpoint
 
-Date: 2026-09-05
+Date: 2026-09-07
 
-## Automated checks completed
+## Static checks completed for the v13 package
 
-- Parsed every TypeScript / TSX source file with the TypeScript parser: **73 files, 0 parse errors**.
-- Ran a dependency-independent TypeScript semantic pass with temporary ambient stubs: **0 application-level type errors**.
-- Checked all internal `@/…` imports: **0 missing local modules**.
-- Checked external imports against `package.json`: **0 undeclared packages**.
-- Checked CSS brace balance: **0 imbalance**.
-- Tested calendar badge logic in Moscow timezone:
-  - future + open => tickets
-  - future + closed => soon
-  - today + coming-soon => soon
-  - past + open => archive
-- Checked legal checkout path at code level:
-  - client blocks payment until both required consents are checked;
-  - server independently rejects missing document acceptance;
-  - server independently rejects missing personal-data consent;
-  - order stores legal version, acceptance timestamps, exact event-rules snapshot, IP and user-agent.
-- Checked event rules path at code level:
-  - per-event field stored in PostgreSQL;
-  - admin editor can edit/reset rules;
-  - published rules have a public route;
-  - draft rules require admin preview access;
-  - checkout links to the exact event rules.
-- Checked OTP / SMS code path at code level:
-  - SMS.RU adapter validates Russian phone format;
-  - destination rate limit exists;
-  - IP rate limit exists after migration 006;
-  - failed delivery removes the unused login code;
-  - successful code consumption is guarded against a second concurrent use.
-- Checked payment safety at code level:
-  - payment creation is disabled unless `PAYMENTS_ENABLED=1`;
-  - YooKassa credentials remain server-only;
-  - fiscal VAT code is no longer guessed automatically.
+- all internal `@/…` imports resolve to project files;
+- no real `.env`, private key or PEM file is included in the package;
+- migrations 001–008 are present;
+- homepage no longer consumes the event palette;
+- scanner no longer depends on browser `BarcodeDetector`;
+- live ticket/profile/team event lists use database-backed event data;
+- order creation locks inventory and reserves limited promo usage;
+- public promo checkout rejects a 0 ₽ payment;
+- payment processing handles succeeded/canceled and full refund synchronization idempotently;
+- loyalty labels/thresholds are database-backed and existing users are recalculated after an edit;
+- production readiness checks migration 008, AUTH_SECRET and fiscal confirmation in addition to integration variables;
+- unsupported admin permissions were removed rather than shown as fake controls.
 
-## Checks that still require the real deployment
+## Checks that require the real deployment
 
-These cannot be truthfully certified without the external services and the final Vercel build:
+These must be completed after the user uploads v13 because they depend on external accounts/secrets:
 
-- `npm install` + real `next build` (package download timed out in the working environment).
-- Vercel production build.
-- Neon migration 006 against the actual database.
-- Resend delivery to a real mailbox.
-- SMS.RU delivery to a real phone.
-- Vercel Blob poster upload.
-- YooKassa test/real payment, webhook and refund.
-- Real iPhone / Android camera QR scan.
-- Cross-device concurrency test for the last ticket.
-- Russian personal-data localization / cross-border infrastructure compliance.
+- Vercel `npm install` / `next build`;
+- migration 008 against the real Neon database;
+- Resend domain and real mailbox delivery;
+- Vercel Blob upload/delete in production;
+- YooKassa payment/cancel/refund notifications;
+- actual fiscal/online-cash-register configuration;
+- real iPhone/Android camera permission and QR scan;
+- last-ticket concurrency under production infrastructure.
 
 ## Release rule
 
-Keep `PAYMENTS_ENABLED=0` until the external integration checklist is completed.
+Do not set `PAYMENTS_ENABLED=1` until `docs/PRODUCTION-LAUNCH.md` is completed and `/admin` → `Настройки` shows the required production items ready.

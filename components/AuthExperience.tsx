@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AuthExperience({ nextPath = "/profile" }: { nextPath?: string }) {
+export default function AuthExperience({ nextPath = "/profile", smsEnabled = false }: { nextPath?: string; smsEnabled?: boolean }) {
   const router = useRouter();
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [value, setValue] = useState("");
@@ -39,7 +39,7 @@ export default function AuthExperience({ nextPath = "/profile" }: { nextPath?: s
     <div className="auth-card">
       <div className="auth-tabs">
         <button type="button" className={method === "email" ? "is-active" : ""} onClick={() => { setMethod("email"); setCodeSent(false); setCode(""); setError(""); }}>EMAIL</button>
-        <button type="button" className={method === "phone" ? "is-active" : ""} onClick={() => { setMethod("phone"); setCodeSent(false); setCode(""); setError(""); }}>ТЕЛЕФОН</button>
+        {smsEnabled ? <button type="button" className={method === "phone" ? "is-active" : ""} onClick={() => { setMethod("phone"); setCodeSent(false); setCode(""); setError(""); }}>ТЕЛЕФОН</button> : null}
       </div>
       <h1>ВХОД<br />БЕЗ ПАРОЛЯ</h1>
       <p>Укажи {method === "email" ? "почту" : "номер телефона"}. Мы отправим одноразовый код и откроем твой AGAYO ID.</p>
@@ -54,7 +54,7 @@ export default function AuthExperience({ nextPath = "/profile" }: { nextPath?: s
         </>
       )}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
-      {method === "phone" ? <small>Код придёт по SMS. Если SMS-провайдер ещё не подключён в Vercel, сайт сообщит об этом до создания кода.</small> : null}
+      {method === "phone" ? <small>Код придёт по SMS.</small> : !smsEnabled ? <small>Вход по email активен. SMS можно включить позже без изменения клиентского аккаунта.</small> : null}
       <div className="auth-rule">НЕТ АККАУНТА? ОН СОЗДАСТСЯ АВТОМАТИЧЕСКИ ПОСЛЕ ПЕРВОЙ ПОКУПКИ ИЛИ ВХОДА.</div>
     </div>
   );

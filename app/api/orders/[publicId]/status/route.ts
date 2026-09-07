@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
-import { syncYooKassaPayment } from "@/lib/server/payment-processing";
+import { retryOrderTicketDelivery, syncYooKassaPayment } from "@/lib/server/payment-processing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET(
 
     const sql = db();
     let rows = await sql`
-      SELECT id,public_id,status,event_slug,yookassa_payment_id,paid_at
+      SELECT id,public_id,status,event_slug,yookassa_payment_id,paid_at,refunded_at,refunded_amount
       FROM orders
       WHERE public_id=${normalized}
       LIMIT 1
@@ -24,24 +24,27 @@ export async function GET(
     let order = rows[0];
     if (!order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
 
-    // The return page is a second safety net if a webhook is delayed or missed.
-    // For a pending order, ask YooKassa for the authoritative state and run the
-    // same idempotent processor used by the webhook.
+    const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
     if (order.status === "pending" && order.yookassa_payment_id) {
       try {
-        const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
         await syncYooKassaPayment(String(order.yookassa_payment_id), base);
       } catch (error) {
         console.warn("Order status reconciliation:", error instanceof Error ? error.message : error);
       }
-
       rows = await sql`
-        SELECT id,public_id,status,event_slug,yookassa_payment_id,paid_at
+        SELECT id,public_id,status,event_slug,yookassa_payment_id,paid_at,refunded_at,refunded_amount
         FROM orders
         WHERE id=${order.id}
         LIMIT 1
       `;
       order = rows[0];
+    }
+
+    // A paid ticket must not depend on one successful email attempt. Reloading
+    // the success page safely retries only deliveries not already marked sent.
+    if (order.status === "paid") {
+      try { await retryOrderTicketDelivery(String(order.public_id),base); }
+      catch (error) { console.warn("Ticket delivery retry:", error instanceof Error ? error.message : error); }
     }
 
     const [ticketCount] = await sql`
@@ -64,6 +67,8 @@ export async function GET(
       status: String(order.status),
       eventSlug: String(order.event_slug),
       paidAt: order.paid_at || null,
+      refundedAt: order.refunded_at || null,
+      refundedAmount: Number(order.refunded_amount || 0),
       ticketCount: Number(ticketCount?.count || 0),
       delivery: {
         total: Number(delivery?.total || 0),
