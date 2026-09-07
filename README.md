@@ -1,6 +1,6 @@
 # AGAYO — ticket platform
 
-Current release candidate: **v11 / editable media / live promos / dynamic event visuals**
+Current release candidate: **v12 / payment reliability / YooKassa reconciliation**
 
 ## First deployment checklist
 
@@ -37,7 +37,45 @@ Real payment creation is blocked unless:
 PAYMENTS_ENABLED=1
 ```
 
-`YOOKASSA_VAT_CODE`, `YOOKASSA_PAYMENT_MODE` and `YOOKASSA_PAYMENT_SUBJECT` are intentionally blank. Fill them only after confirming the fiscal receipt settings for the actual merchant account. In 2026 YooKassa supports VAT codes 1–12.
+Each AGAYO order is used as a stable YooKassa `Idempotence-Key`. Retryable YooKassa errors are retried with the same key, so one order cannot accidentally create several payments during a retry window.
+
+Configure the YooKassa webhook URL as:
+
+```text
+https://YOUR-DOMAIN/api/payments/yookassa/webhook
+```
+
+Subscribe to both events:
+
+- `payment.succeeded`
+- `payment.canceled`
+
+The webhook does not trust the notification body as the source of truth. Before changing an AGAYO order, the server reads the payment directly from YooKassa. Successful payments issue tickets idempotently; canceled payments release inventory reservations.
+
+The return page `/checkout/success?order=...` also reconciles a pending order with YooKassa. This provides a second path to finish an order if a webhook is delayed.
+
+### Fiscal receipt gate
+
+If AGAYO must send receipt data through YooKassa, set:
+
+```env
+YOOKASSA_RECEIPT_REQUIRED=1
+YOOKASSA_VAT_CODE=...
+YOOKASSA_PAYMENT_MODE=...
+YOOKASSA_PAYMENT_SUBJECT=...
+```
+
+When `YOOKASSA_RECEIPT_REQUIRED=1`, payment creation is blocked if any required receipt setting is missing. Do not guess these values: confirm them against the actual merchant/fiscalization configuration before enabling production payments.
+
+## Ticket delivery reliability
+
+Paid tickets are created before email delivery. Email delivery state is stored in `ticket_deliveries`:
+
+- `pending`
+- `sent`
+- `failed`
+
+Webhook retries do not create duplicate tickets and do not resend an email already marked `sent`. A temporary email-provider failure can therefore be retried safely without rolling the paid order back.
 
 ## Legal checkout
 
