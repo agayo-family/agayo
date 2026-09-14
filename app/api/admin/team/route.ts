@@ -12,15 +12,14 @@ function cleanRole(value: unknown): AdminRole {
 }
 
 function cleanPermissions(value: unknown, role: AdminRole) {
-  if (!Array.isArray(value)) return ROLE_DEFAULTS[role];
-  return value.map(String).filter(isAdminPermission);
+  if (!Array.isArray(value)) return [...ROLE_DEFAULTS[role]];
+  return [...new Set(value.map(String).filter(isAdminPermission))];
 }
 
 function cleanEvents(value: unknown) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => String(item).trim()).filter(Boolean))].slice(0, 100);
 }
-
 
 function assertCanGrant(actor: Awaited<ReturnType<typeof requireAdminPermission>>, permissions: ReturnType<typeof cleanPermissions>, allEvents: boolean, eventSlugs: string[]) {
   if (actor.role === "owner") return;
@@ -56,7 +55,7 @@ async function listTeam() {
     phone: row.phone ? String(row.phone) : null,
     displayName: row.display_name ? String(row.display_name) : null,
     role: String(row.role),
-    permissions: Array.isArray(row.permissions) ? row.permissions.map(String) : [],
+    permissions: Array.isArray(row.permissions) ? row.permissions.map(String).filter(isAdminPermission) : [],
     allEvents: Boolean(row.all_events),
     eventSlugs: scopes.filter((scope) => String(scope.membership_id) === String(row.id)).map((scope) => String(scope.event_slug)),
     createdAt: row.created_at,
@@ -82,7 +81,8 @@ export async function POST(request: Request) {
     const rawIdentifier = String(body.identifier ?? "").trim();
     const role = cleanRole(body.role);
     if (role === "owner" && actor.role !== "owner") throw new AdminAccessError("Только OWNER может назначить OWNER", 403);
-    const permissions = role === "owner" ? ROLE_DEFAULTS.owner : cleanPermissions(body.permissions, role);
+    const permissions = role === "owner" ? [...ROLE_DEFAULTS.owner] : cleanPermissions(body.permissions, role);
+    const permissionCsv = permissions.join(",");
     const allEvents = body.allEvents !== false;
     const eventSlugs = allEvents ? [] : cleanEvents(body.eventSlugs);
     assertCanGrant(actor, permissions, allEvents, eventSlugs);
@@ -110,14 +110,20 @@ export async function POST(request: Request) {
       membershipId = String(existing[0].id);
       await sql`
         UPDATE admin_memberships
-        SET role=${role}, permissions=${JSON.stringify(permissions)}::jsonb, all_events=${allEvents}, active=true, updated_at=now()
+        SET role=${role},
+            permissions=CASE WHEN ${permissionCsv}='' THEN '[]'::jsonb ELSE to_jsonb(string_to_array(${permissionCsv}, ',')) END,
+            all_events=${allEvents}, active=true, updated_at=now()
         WHERE id=${membershipId}
       `;
       await sql`DELETE FROM admin_event_access WHERE membership_id=${membershipId}`;
     } else {
       const inserted = await sql`
         INSERT INTO admin_memberships(user_id,role,permissions,all_events,created_by)
-        VALUES(${user.id},${role},${JSON.stringify(permissions)}::jsonb,${allEvents},${actor.userId})
+        VALUES(
+          ${user.id},${role},
+          CASE WHEN ${permissionCsv}='' THEN '[]'::jsonb ELSE to_jsonb(string_to_array(${permissionCsv}, ',')) END,
+          ${allEvents},${actor.userId}
+        )
         RETURNING id
       `;
       membershipId = String(inserted[0].id);
@@ -140,7 +146,8 @@ export async function PATCH(request: Request) {
     const role = cleanRole(body.role);
     if (!membershipId) return NextResponse.json({ error: "Не указан участник" }, { status: 400 });
     if (role === "owner" && actor.role !== "owner") throw new AdminAccessError("Только OWNER может назначить OWNER", 403);
-    const permissions = role === "owner" ? ROLE_DEFAULTS.owner : cleanPermissions(body.permissions, role);
+    const permissions = role === "owner" ? [...ROLE_DEFAULTS.owner] : cleanPermissions(body.permissions, role);
+    const permissionCsv = permissions.join(",");
     const allEvents = body.allEvents !== false;
     const eventSlugs = allEvents ? [] : cleanEvents(body.eventSlugs);
     assertCanGrant(actor, permissions, allEvents, eventSlugs);
@@ -150,7 +157,13 @@ export async function PATCH(request: Request) {
     if (target[0].role === "owner" && actor.role !== "owner") throw new AdminAccessError("Нельзя изменить OWNER", 403);
     if (String(target[0].user_id) === actor.userId && actor.role === "owner" && role !== "owner") throw new AdminAccessError("OWNER не может снять собственный доступ", 400);
 
-    await sql`UPDATE admin_memberships SET role=${role},permissions=${JSON.stringify(permissions)}::jsonb,all_events=${allEvents},updated_at=now() WHERE id=${membershipId}`;
+    await sql`
+      UPDATE admin_memberships
+      SET role=${role},
+          permissions=CASE WHEN ${permissionCsv}='' THEN '[]'::jsonb ELSE to_jsonb(string_to_array(${permissionCsv}, ',')) END,
+          all_events=${allEvents}, updated_at=now()
+      WHERE id=${membershipId}
+    `;
     await sql`DELETE FROM admin_event_access WHERE membership_id=${membershipId}`;
     for (const slug of eventSlugs) await sql`INSERT INTO admin_event_access(membership_id,event_slug) VALUES(${membershipId},${slug}) ON CONFLICT DO NOTHING`;
     await writeAdminAudit(actor.userId, "team.member.update", "admin_membership", membershipId, { role, permissions, allEvents, eventSlugs });

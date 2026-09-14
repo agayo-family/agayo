@@ -1,39 +1,30 @@
 "use client";
 
-import { MouseEvent, useEffect, useState } from "react";
-
-const STORAGE_KEY = "agayo:favorites";
-
-function readFavorites(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
+import { MouseEvent, useState } from "react";
+import { useFavorites } from "@/lib/client/favorites";
 
 export default function FavoriteButton({ photoId }: { photoId: string }) {
-  const [active, setActive] = useState(false);
+  const { ids, toggle } = useFavorites();
+  const [pending, setPending] = useState(false);
+  const active = ids.has(photoId);
 
-  useEffect(() => {
-    setActive(readFavorites().includes(photoId));
-  }, [photoId]);
-
-  function toggle(event: MouseEvent<HTMLButtonElement>) {
+  async function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    const favorites = new Set(readFavorites());
-    if (favorites.has(photoId)) favorites.delete(photoId);
-    else favorites.add(photoId);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...favorites]));
-    setActive(favorites.has(photoId));
-    window.dispatchEvent(new Event("agayo:favorites-change"));
+    if (pending) return;
+    setPending(true);
+    try { await toggle(photoId); } finally { setPending(false); }
   }
 
   return (
-    <button className={`favorite-button ${active ? "is-active" : ""}`} type="button" onClick={toggle} aria-pressed={active} aria-label={active ? "Убрать из избранного" : "Добавить в избранное"}>
+    <button
+      className={`favorite-button ${active ? "is-active" : ""}`}
+      type="button"
+      onClick={handleClick}
+      disabled={pending}
+      aria-pressed={active}
+      aria-label={active ? "Убрать из избранного" : "Добавить в избранное"}
+    >
       {active ? "♥" : "♡"}
     </button>
   );

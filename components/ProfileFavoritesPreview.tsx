@@ -2,51 +2,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { galleryPhotos } from "@/lib/photos";
-
-const STORAGE_KEY = "agayo:favorites";
+import { useFavorites } from "@/lib/client/favorites";
 
 export default function ProfileFavoritesPreview() {
-  const [ids, setIds] = useState<string[]>([]);
+  const { loaded, authenticated, photos } = useFavorites();
+  const preview = photos.slice(0, 4);
 
-  useEffect(() => {
-    const sync = () => {
-      try {
-        const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
-        setIds(Array.isArray(value) ? value : []);
-      } catch {
-        setIds([]);
-      }
-    };
-
-    sync();
-    window.addEventListener("storage", sync);
-    window.addEventListener("agayo:favorites-change", sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener("agayo:favorites-change", sync);
-    };
-  }, []);
-
-  const photos = useMemo(
-    () => galleryPhotos.filter((photo) => ids.includes(photo.id)).slice(0, 4),
-    [ids]
-  );
-
-  if (!photos.length) {
+  if (!loaded) return <div className="profile-memory-empty"><p>Загружаем избранное…</p></div>;
+  if (!authenticated || !preview.length) {
     return (
       <div className="profile-empty profile-favorites-empty">
         <span>ПОКА ПУСТО</span>
-        <p>Отмечай кадры сердцем в Галерее — они появятся здесь.</p>
-        <Link href="/gallery" className="button-link">Открыть галерею <b>↗</b></Link>
+        <p>{authenticated ? "Отмечай кадры сердцем в Галерее — они появятся здесь." : "Войди в AGAYO ID и отмечай кадры сердцем — они будут храниться в аккаунте."}</p>
+        <Link href={authenticated ? "/gallery" : "/auth?next=%2Fgallery"} className="button-link">{authenticated ? "Открыть галерею" : "Войти"} <b>↗</b></Link>
       </div>
     );
   }
 
   return (
     <div className="profile-favorites-preview">
-      {photos.map((photo) => (
+      {preview.map((photo) => (
         <Link href="/profile/favorites" className="profile-favorite-tile" key={photo.id}>
           <Image src={photo.src} alt={photo.eventTitle} fill sizes="(max-width: 700px) 50vw, 25vw" />
           <span>{photo.eventTitle}</span>

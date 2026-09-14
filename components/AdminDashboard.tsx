@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import TeamAccessPanel from './TeamAccessPanel';
 import AdminEventsManager, { type StoredEvent } from './AdminEventsManager';
 import AdminMediaManager from './AdminMediaManager';
+import AdminPeriodSummary from './AdminPeriodSummary';
 import { AdminPermission, AdminRole, ROLE_LABELS } from '@/lib/admin-permissions';
 
 type Tab = 'overview' | 'events' | 'tickets' | 'buyers' | 'promo' | 'media' | 'team' | 'settings';
@@ -18,7 +19,6 @@ const tabs: Array<[Tab, string]> = [
   ['team', 'Команда'],
   ['settings', 'Настройки'],
 ];
-
 
 export type AdminAccessView = {
   userId: string;
@@ -240,7 +240,6 @@ export default function AdminDashboard({ access, previewMode = false }: { access
     } finally { setBuyerSearching(false); }
   }
 
-
   async function saveLoyaltyLevel(level:LoyaltyLevelView, displayName:string, visitsRequired:number, autoByVisits:boolean, conditionsText:string) {
     if (previewMode) return;
     setLoyaltyMessage('');
@@ -300,7 +299,6 @@ export default function AdminDashboard({ access, previewMode = false }: { access
             <span>AGAYO / УПРАВЛЕНИЕ</span>
             <h1>{title}</h1>
           </div>
-
         </header>
 
         {tab === 'overview' && (
@@ -318,13 +316,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
                 <h2>{dashboard?.upcoming?.title ?? 'СОБЫТИЙ\nПОКА НЕТ'}</h2>
                 <div className="admin-event-status">{dashboard?.upcoming ? <><span>ОПУБЛИКОВАНО</span><span>{dashboard.upcoming.sales_state === 'open' ? 'ПРОДАЖИ ОТКРЫТЫ' : 'ПРОДАЖИ НЕ ОТКРЫТЫ'}</span><span>{dashboard.upcoming.age_label}</span></> : <span>СОЗДАЙ НОВОЕ СОБЫТИЕ</span>}</div>
               </article>
-              <article className="admin-panel admin-operations">
-                <div className="admin-panel-head"><span>СЕГОДНЯ</span><b>LIVE</b></div>
-                <div className="admin-operation-row"><span>Оплаченные заказы</span><strong>{String(dashboard?.today.newOrders ?? 0).padStart(2,'0')}</strong></div>
-                <div className="admin-operation-row"><span>Новые пользователи</span><strong>{String(dashboard?.today.newUsers ?? 0).padStart(2,'0')}</strong></div>
-                <div className="admin-operation-row"><span>Прошли по билетам</span><strong>{String(dashboard?.metrics.used ?? 0).padStart(2,'0')}</strong></div>
-                <div className="admin-operation-row"><span>Ошибки / отмены оплат</span><strong>{String(dashboard?.today.paymentErrors ?? 0).padStart(2,'0')}</strong></div>
-              </article>
+              <AdminPeriodSummary previewMode={previewMode} canSeeRevenue={can('view_revenue')} />
             </div>
 
             <div className="admin-quick-actions">

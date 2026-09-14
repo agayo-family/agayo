@@ -2,33 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { galleryPhotos } from "@/lib/photos";
 import FavoriteButton from "./FavoriteButton";
-
-const STORAGE_KEY = "agayo:favorites";
+import { useFavorites } from "@/lib/client/favorites";
 
 export default function FavoritesGrid() {
-  const [ids, setIds] = useState<string[]>([]);
-  useEffect(() => {
-    const sync = () => {
-      try {
-        const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
-        setIds(Array.isArray(value) ? value : []);
-      } catch {
-        setIds([]);
-      }
-    };
-    sync();
-    window.addEventListener("agayo:favorites-change", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("agayo:favorites-change", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-  const photos = useMemo(() => galleryPhotos.filter((photo) => ids.includes(photo.id)), [ids]);
+  const { loaded, authenticated, photos } = useFavorites();
 
+  if (!loaded) return <p className="inner-lead">Загружаем твои фотографии…</p>;
+  if (!authenticated) return <p className="inner-lead">Войди в AGAYO ID, чтобы избранное сохранялось в аккаунте на всех устройствах.</p>;
   if (!photos.length) return <p className="inner-lead">Здесь появятся фотографии, которые ты отметишь сердцем в галерее.</p>;
 
   return (
