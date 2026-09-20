@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
@@ -116,6 +117,10 @@ export async function POST(request: Request) {
       if (!token) return NextResponse.json({ error: "Vercel Blob не подключён" }, { status: 503 });
       const path = text(body.path, 2500);
       const requestedName = text(body.name, 300) || path.split("/").pop() || "photo.jpg";
+      const sourceKey = crypto.createHash("sha256").update(`yandex:${publicUrl}:${path || requestedName}`).digest("hex");
+      const sql = db();
+      const existing = await sql`SELECT id,event_slug,url,caption,sort_order,is_featured,is_published,created_at FROM media_photos WHERE source_key=${sourceKey} LIMIT 1`;
+      if (existing[0]) return NextResponse.json({ ok:true, skipped:true, photo:existing[0] });
       const href = await getDownloadHref(publicUrl, path || undefined);
       const source = await fetch(href, { cache: "no-store" });
       if (!source.ok) throw new Error(`Не удалось скачать файл с Яндекс Диска (${source.status})`);
@@ -135,12 +140,17 @@ export async function POST(request: Request) {
         token,
       });
 
-      const sql = db();
       const rows = await sql`
-        INSERT INTO media_photos(event_slug,url,caption,sort_order,is_featured,is_published,created_by)
-        VALUES(${eventSlug},${blob.url},'',0,false,true,${access.userId})
+        INSERT INTO media_photos(event_slug,url,caption,sort_order,is_featured,is_published,created_by,source_key)
+        VALUES(${eventSlug},${blob.url},'',0,false,true,${access.userId},${sourceKey})
+        ON CONFLICT (source_key) WHERE source_key IS NOT NULL DO NOTHING
         RETURNING id,event_slug,url,caption,sort_order,is_featured,is_published,created_at
       `;
+      if (!rows[0]) {
+        try { await (await import("@vercel/blob")).del(blob.url,{token}); } catch {}
+        const duplicate = await sql`SELECT id,event_slug,url,caption,sort_order,is_featured,is_published,created_at FROM media_photos WHERE source_key=${sourceKey} LIMIT 1`;
+        return NextResponse.json({ ok:true, skipped:true, photo:duplicate[0] || null });
+      }
       await writeAdminAudit(access.userId, "media.photo.yandex_import", "media_photo", String(rows[0].id), {
         eventSlug, sourceName: requestedName,
       });

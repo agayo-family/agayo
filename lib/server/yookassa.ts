@@ -147,13 +147,19 @@ export async function createRefund(input: {
   amount: number;
   idempotenceKey: string;
   description?: string;
+  partial?: boolean;
 }) {
   if (!input.paymentId.trim()) throw new Error("Не указан платёж YooKassa");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Сумма возврата должна быть больше 0 ₽");
 
-  // Для полного возврата ЮKassa не требует receipt: при схеме «Чеки от ЮKassa»
-  // данные чека возврата берутся из исходного платежа. Частичные возвраты здесь
-  // намеренно не создаются — админка AGAYO делает только полный возврат заказа.
+  // В режиме НПД AGAYO не передаёт receipt в YooKassa: налоговый чек формируется
+  // отдельно в «Мой налог»/через уполномоченного НПД-партнёра. Если когда-нибудь
+  // снова включится 54-ФЗ receipt mode, частичный возврат без состава чека нельзя
+  // отправлять молча — останавливаем его до отдельной реализации receipt.items.
+  if (input.partial && process.env.YOOKASSA_RECEIPT_REQUIRED === "1") {
+    throw new Error("Частичный возврат требует данных чека при включённой 54-ФЗ фискализации YooKassa");
+  }
+
   const data = await requestYooKassa(
     `${YOOKASSA_API}/refunds`,
     {

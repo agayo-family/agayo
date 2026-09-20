@@ -1,0 +1,110 @@
+/* AGAYO v13.4 — partial refunds, NPD workflow, resumable media, loyalty visuals and mobile/contrast hardening */
+
+/* Filled controls always have explicit readable foregrounds. */
+.admin-primary,.admin-primary:visited,.admin-refund-button-v133,.admin-refund-button-v133:visited,
+.button-link-accent,.button-link-accent:visited,.ticket-select,.ticket-select:visited,
+.scanner-camera-cover button,.scanner-manual button,.scanner-status-card-v133 button {
+  color:#F2F0EA !important;
+}
+.admin-primary *,.admin-refund-button-v133 *,.button-link-accent *,.ticket-select * { color:inherit !important; }
+
+/* Event pages: every block has a deliberate foreground/background relationship. */
+.event-page-themed .event-v2-hero-overlay {
+  background:
+    linear-gradient(90deg,rgba(7,7,8,.88) 0%,color-mix(in srgb,var(--event-primary) 70%,rgba(7,7,8,.78)) 42%,rgba(7,7,8,.36) 100%),
+    linear-gradient(0deg,rgba(7,7,8,.88) 0%,transparent 56%,rgba(7,7,8,.22) 100%) !important;
+}
+.event-page-themed .event-v2-hero-content,.event-page-themed .event-v2-hero-content h1,
+.event-page-themed .event-v2-hero-content h1 span,.event-page-themed .event-v2-kicker,.event-page-themed .event-v2-hero-bottom p { color:#F2F0EA !important; }
+.event-page-themed .event-v2-intro {
+  color:#111113 !important;
+  background:linear-gradient(135deg,#F2F0EA 0%,color-mix(in srgb,var(--event-accent) 8%,#F2F0EA 92%) 100%) !important;
+}
+.event-page-themed .event-v2-intro h2,.event-page-themed .event-v2-intro p,.event-page-themed .event-v2-intro .section-label { color:#111113 !important; }
+.event-page-themed .event-v2-intro .section-label { opacity:.65; }
+.event-page-themed .event-v2-intro .tag-row span { color:#111113 !important;border-color:rgba(17,17,19,.28) !important;background:rgba(255,255,255,.18); }
+.event-page-themed .event-v2-intro .event-rules-link { color:#111113 !important;border-color:rgba(17,17,19,.48) !important;font-weight:700; }
+.event-page-themed .event-v2-tickets,.event-page-themed .event-v2-program,.event-page-themed .event-v2-map,.event-page-themed .event-v2-final {
+  color:#F2F0EA !important;
+}
+.event-page-themed .event-v2-tickets { background:linear-gradient(145deg,color-mix(in srgb,var(--event-primary) 62%,#0B0B0C 38%),color-mix(in srgb,var(--event-secondary) 36%,#151517 64%)) !important; }
+.event-page-themed .event-v2-program { background:color-mix(in srgb,var(--event-secondary) 18%,#151517 82%) !important; }
+.event-page-themed .event-v2-map { background:color-mix(in srgb,var(--event-primary) 32%,#0B0B0C 68%) !important; }
+.event-page-themed .event-v2-final { background:linear-gradient(145deg,color-mix(in srgb,var(--event-primary) 58%,#0B0B0C 42%),color-mix(in srgb,var(--event-secondary) 42%,#151517 58%)) !important; }
+.event-page-themed .event-v2-tickets .section-label,.event-page-themed .event-v2-program .section-label,.event-page-themed .event-v2-final .section-label,
+.event-page-themed .event-v2-section-head p { color:#BEB7B0 !important; }
+
+/* Mobile typography: long event words stay whole and scale to the viewport. */
+@media(max-width:900px){
+  .event-v2-hero h1,.event-page-themed .event-v2-hero h1 {
+    font-size:clamp(38px,11.8vw,58px) !important;line-height:.84 !important;letter-spacing:-.052em !important;
+    overflow-wrap:normal !important;word-break:normal !important;hyphens:none !important;
+  }
+  .event-v2-hero h1 span { display:block;max-width:100%;overflow-wrap:normal !important;word-break:normal !important;hyphens:none !important; }
+  .event-v2-intro h2,.event-v2-section-head h2,.event-v2-final h2,.intro h2,.statement h2,.final-cta h2 {
+    font-size:clamp(34px,10.7vw,58px) !important;line-height:.9 !important;letter-spacing:-.045em !important;overflow-wrap:normal !important;word-break:normal !important;
+  }
+  .program-row strong { font-size:clamp(26px,8vw,42px) !important;line-height:.94 !important; }
+  .ticket-card h3 { font-size:clamp(34px,10vw,52px) !important;overflow-wrap:normal !important;word-break:normal !important; }
+  .event-v2-copy p,.event-v2-section-head p,.event-description { font-size:clamp(14px,4vw,17px) !important; }
+  .event-v2-kicker,.event-v2-hero-bottom p,.section-label,.eyebrow { font-size:clamp(9px,2.7vw,11px) !important; }
+}
+@media(max-width:420px){
+  .event-v2-hero h1,.event-page-themed .event-v2-hero h1 { font-size:clamp(34px,10.6vw,45px) !important;line-height:.86 !important; }
+  .event-v2-hero-content { padding-left:16px !important;padding-right:16px !important; }
+  .event-v2-intro h2,.event-v2-section-head h2,.event-v2-final h2,.intro h2,.statement h2,.final-cta h2 { font-size:clamp(31px,9.8vw,46px) !important; }
+}
+
+/* Ticket refunds + NPD controls. */
+.admin-refund-policy-v134 { margin-top:12px;padding:11px 12px;border:1px solid rgba(255,255,255,.08);background:#0D0D0F;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap; }
+.admin-refund-policy-v134>span { color:#817B75;font-size:7px;letter-spacing:.12em; }
+.admin-refund-policy-v134>b { color:#F2F0EA;font-size:10px; }
+.admin-refund-policy-v134>small { color:#9B948D;font-size:9px; }
+.admin-ticket-more-v134 { margin-left:auto;position:relative; }
+.admin-ticket-more-v134 summary { cursor:pointer;color:#908983;font-size:8px;letter-spacing:.08em;list-style:none;padding:9px 0; }
+.admin-ticket-more-v134 summary::-webkit-details-marker{display:none}.admin-ticket-more-v134 button{margin-top:5px;}
+.admin-npd-v134 { margin-top:10px;border:1px solid rgba(255,255,255,.09);background:#0F0F11; }
+.admin-npd-v134>summary { display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:11px 12px;cursor:pointer;list-style:none; }
+.admin-npd-v134>summary::-webkit-details-marker{display:none}.admin-npd-v134>summary span{font-size:7px;letter-spacing:.12em;color:#7F7973}.admin-npd-v134>summary b{font-size:9px;color:#F2F0EA}.admin-npd-v134>summary small{font-size:9px;color:#B6ADA5}.admin-npd-v134>div{padding:12px;border-top:1px solid rgba(255,255,255,.07);display:grid;gap:10px}.admin-npd-v134 p{margin:0;color:#A8A099;font-size:10px;line-height:1.5}.admin-npd-v134 input{width:100%;background:#151517;border:1px solid rgba(255,255,255,.12);color:#F2F0EA;padding:11px 12px;font:inherit;font-size:11px}.admin-npd-v134 a,.admin-npd-v134 code{color:#F2F0EA;font-size:10px;overflow-wrap:anywhere}.admin-npd-v134.status-reissue_required,.admin-npd-v134.status-cancel_required{border-color:rgba(194,31,57,.45)}
+.admin-npd-settings-v134 { margin-top:18px;padding:18px;border:1px solid rgba(255,255,255,.1);background:#101012; }
+.admin-npd-settings-v134 b{font-size:11px;letter-spacing:.11em}.admin-npd-settings-v134 p{color:#A49D96;font-size:11px;line-height:1.55}.admin-npd-settings-v134 code{display:inline-block;padding:8px 10px;background:#080809;color:#F2F0EA;font-size:10px}
+
+/* Scanner: category is intentionally impossible to miss. */
+.scanner-ticket-category-v134 { margin:16px 0;padding:14px 15px;border:1px solid rgba(255,255,255,.16);background:rgba(11,11,12,.42); }
+.scanner-ticket-category-v134 span { display:block !important;color:#A59D95 !important;font-size:8px !important;letter-spacing:.13em !important; }
+.scanner-ticket-category-v134 strong { display:block;margin-top:7px;color:#F2F0EA;font-size:clamp(22px,6vw,34px);line-height:1;letter-spacing:-.035em;overflow-wrap:anywhere; }
+
+/* Resumable media imports. */
+.admin-media-progress-v134 { grid-column:1/-1;color:#C9C1B8 !important;font-size:9px !important; }
+.admin-yandex-resume-v134 { display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:11px;border:1px solid rgba(255,255,255,.1);background:#111113; }
+.admin-yandex-resume-v134 span{margin-right:auto;color:#D6CEC6;font-size:9px}.admin-yandex-resume-v134 button{padding:9px 11px;font-size:8px}
+.admin-yandex-danger-v134 { display:flex;gap:14px;justify-content:space-between;align-items:center; }
+.admin-yandex-danger-v134 p{max-width:720px}.admin-yandex-danger-v134 .admin-danger{flex:0 0 auto}
+
+/* Loyalty-level visual editor. */
+.admin-loyalty-visuals-v134 { margin-top:28px;border:1px solid var(--line);padding:22px;background:#0E0E0F; }
+.admin-loyalty-visuals-v134 .admin-panel-head h2{margin:6px 0 0;font-size:clamp(28px,4vw,46px)}
+.admin-loyalty-visual-grid-v134 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px; }
+.admin-loyalty-visual-grid-v134>article { border:1px solid rgba(255,255,255,.1);padding:12px;background:#111113;display:grid;gap:10px;min-width:0; }
+.admin-loyalty-preview-v134 { position:relative;min-height:190px;padding:16px;overflow:hidden;background:radial-gradient(circle at 80% 22%,var(--lv-accent),transparent 38%),linear-gradient(145deg,var(--lv-primary),var(--lv-secondary));background-size:cover;background-position:center;color:#F2F0EA;display:grid;grid-template-rows:auto auto 1fr; }
+.admin-loyalty-preview-v134:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.48));pointer-events:none}.admin-loyalty-preview-v134>*{position:relative;z-index:1}.admin-loyalty-preview-v134 span{font-size:8px;letter-spacing:.12em}.admin-loyalty-preview-v134 b{font-size:10px;margin-top:6px}.admin-loyalty-preview-v134 strong{align-self:center;justify-self:center;font-size:88px;line-height:.8}
+.admin-loyalty-visual-grid-v134 label{display:grid;gap:6px}.admin-loyalty-visual-grid-v134 label>span{font-size:8px;letter-spacing:.1em;color:#8E8E91}.admin-loyalty-visual-grid-v134 select,.admin-loyalty-visual-grid-v134 input[type=text],.admin-loyalty-visual-grid-v134 input:not([type]){background:#151517;border:1px solid rgba(255,255,255,.12);color:#F2F0EA;padding:9px;font:inherit;font-size:10px}.admin-loyalty-colors-v134{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.admin-loyalty-colors-v134 label>div{display:grid;grid-template-columns:34px 1fr;gap:5px}.admin-loyalty-colors-v134 input[type=color]{width:34px;height:34px;border:0;padding:0;background:none}.admin-loyalty-colors-v134 input:not([type=color]){min-width:0;width:100%}.admin-loyalty-upload-v134 small{color:#77716B;font-size:8px}
+
+/* User account tickets inherit each event's palette. */
+.profile-event-ticket-v134 { position:relative;overflow:hidden;color:#F2F0EA !important;background:radial-gradient(circle at 82% 16%,color-mix(in srgb,var(--profile-ticket-accent) 48%,transparent),transparent 38%),linear-gradient(145deg,color-mix(in srgb,var(--profile-ticket-primary) 78%,#0B0B0C 22%),color-mix(in srgb,var(--profile-ticket-secondary) 68%,#151517 32%)) !important;border-color:color-mix(in srgb,var(--profile-ticket-accent) 55%,rgba(255,255,255,.1)) !important; }
+.profile-event-ticket-v134 span,.profile-event-ticket-v134 p { color:#D2CBC4 !important; }.profile-event-ticket-v134 strong,.profile-event-ticket-v134 b{color:#F2F0EA !important;position:relative;z-index:1}.profile-event-ticket-v134:after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,rgba(7,7,8,.12),rgba(7,7,8,.36));pointer-events:none}.profile-event-ticket-v134>*{position:relative;z-index:1}
+.profile-history-ticket-v134 { border-left:3px solid var(--profile-ticket-accent) !important;background:linear-gradient(90deg,color-mix(in srgb,var(--profile-ticket-primary) 56%,#111113 44%),#111113 52%) !important;color:#F2F0EA !important;padding-left:14px !important; }.profile-history-ticket-v134 span,.profile-history-ticket-v134 b{color:#F2F0EA !important;}
+
+/* AGAYO ID card visual depends on loyalty level. */
+.agayo-id-level-v134 { position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(circle at 82% 18%,color-mix(in srgb,var(--id-accent) 55%,transparent),transparent 34%),linear-gradient(145deg,var(--id-primary),var(--id-secondary)) !important;color:#F2F0EA !important;border-color:color-mix(in srgb,var(--id-accent) 58%,rgba(255,255,255,.22)) !important; }
+.agayo-id-level-v134:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(145deg,rgba(0,0,0,.02),rgba(0,0,0,.36));pointer-events:none}.agayo-id-level-v134>*:not(.agayo-id-level-image-v134){position:relative;z-index:2}.agayo-id-level-image-v134{position:absolute!important;z-index:0!important;inset:0;background-size:cover;background-position:center}.agayo-id-level-v134.has-level-image:after{z-index:1;background:linear-gradient(180deg,rgba(7,7,8,.18),rgba(7,7,8,.62))}.agayo-id-level-v134 .agayo-id-mark{color:#F2F0EA;text-shadow:0 10px 40px rgba(0,0,0,.28)}
+
+@media(max-width:760px){
+  .admin-loyalty-visual-grid-v134{grid-template-columns:1fr}.admin-loyalty-colors-v134{grid-template-columns:1fr}.admin-yandex-danger-v134{align-items:stretch;flex-direction:column}.admin-yandex-danger-v134 .admin-danger{width:100%}
+  .admin-ticket-more-v134{margin-left:0;width:100%}.admin-ticket-more-v134 button{width:100%}
+}
+@media(max-width:560px){
+  .admin-npd-v134>summary{grid-template-columns:1fr auto}.admin-npd-v134>summary small{grid-column:1/-1}.scanner-status-card-v133{padding:20px}.scanner-ticket-category-v134 strong{font-size:26px}.admin-loyalty-visuals-v134{padding:14px}
+  .profile-live-ticket{min-width:0}.profile-event-ticket-v134 strong{font-size:clamp(24px,8.4vw,38px)!important;overflow-wrap:normal!important;word-break:normal!important}.profile-history-ticket-v134{grid-template-columns:1fr!important;gap:7px!important}
+  .profile-page-v2 input,.profile-page-v2 select,.admin-app input,.admin-app select,.admin-app textarea,.checkout-page input,.auth-page input{font-size:16px!important}
+}

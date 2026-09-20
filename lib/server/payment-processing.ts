@@ -4,8 +4,9 @@ import { sendTicketEmail } from "@/lib/server/email";
 import { getPayment, getRefund } from "@/lib/server/yookassa";
 import { publicId, randomToken } from "@/lib/server/security";
 import { updateUserLoyaltyByVisits } from "@/lib/server/loyalty";
+import { markNpdAfterRefund, markNpdReceiptRequired } from "@/lib/server/npd";
 
-type SyncResult = {
+export type SyncResult = {
   state: "missing" | "pending" | "paid" | "canceled" | "refunded" | "partial_refund";
   orderPublicId?: string;
 };
@@ -14,15 +15,26 @@ function errorText(error: unknown) {
   return (error instanceof Error ? error.message : String(error)).slice(0, 1000);
 }
 
-async function deliverOrderTickets(order: any, eventTitle: string, baseUrl: string) {
+function exactMoney(value:unknown) {
+  const number=Number(value||0);
+  return Number.isFinite(number) ? Math.round(number*100)/100 : 0;
+}
+
+function absoluteUrl(baseUrl:string,value:string|undefined) {
+  if (!value) return undefined;
+  try { return new URL(value,baseUrl).toString(); } catch { return undefined; }
+}
+
+async function deliverOrderTickets(order: any, event: any, baseUrl: string) {
   const sql = db();
   const tickets = await sql`
-    SELECT id,public_id,qr_token
+    SELECT id,public_id,qr_token,owner_name,category_name,zone,seat
     FROM tickets
     WHERE order_id=${order.id} AND status IN ('valid','used')
     ORDER BY created_at,id
   `;
   const failed: string[] = [];
+  const poster=absoluteUrl(baseUrl,String(event.posterImage || event.heroImage || ""));
 
   for (const ticket of tickets) {
     let sendError: string | null = null;
@@ -42,12 +54,23 @@ async function deliverOrderTickets(order: any, eventTitle: string, baseUrl: stri
       if (!delivery || delivery.status === "sent") return;
 
       try {
-        await sendTicketEmail(
-          String(order.email),
-          eventTitle,
-          String(ticket.public_id),
-          `${baseUrl}/tickets/${encodeURIComponent(String(ticket.qr_token))}`,
-        );
+        await sendTicketEmail(String(order.email), {
+          eventTitle:String(event.title),
+          eventDate:String(event.dateLabel),
+          eventTime:String(event.timeLabel),
+          eventCity:String(event.city),
+          eventAge:String(event.ageLabel),
+          alcoholFree:Boolean(event.alcoholFree),
+          ticketId:String(ticket.public_id),
+          ticketUrl:`${baseUrl}/tickets/${encodeURIComponent(String(ticket.qr_token))}`,
+          qrToken:String(ticket.qr_token),
+          ownerName:String(ticket.owner_name || order.owner_name || "AGAYO"),
+          categoryName:String(ticket.category_name || "БИЛЕТ"),
+          zone:ticket.zone ? String(ticket.zone) : null,
+          seat:ticket.seat ? String(ticket.seat) : null,
+          posterUrl:poster,
+          theme:event.ticketTheme || undefined,
+        });
         await tx`
           UPDATE ticket_deliveries
           SET status='sent',attempts=attempts+1,last_error=NULL,sent_at=now()
@@ -74,8 +97,6 @@ async function resolveOrderForPayment(payment: Awaited<ReturnType<typeof getPaym
   let order = orders[0];
   const metadataOrder = String(payment.metadata?.orderPublicId || "").trim();
 
-  // A very fast webhook can arrive between createPayment() and saving the
-  // YooKassa id. Recover the order by our signed server-side metadata and link it.
   if (!order && metadataOrder) {
     orders = await sql`SELECT * FROM orders WHERE public_id=${metadataOrder} LIMIT 1`;
     order = orders[0];
@@ -131,7 +152,6 @@ async function consumePromoReservation(tx: any, order: any) {
     console.warn('Promo reservation consume:', error instanceof Error ? error.message : error);
   }
 
-  // Backward compatibility for v12 orders created before migration 008.
   if (order.promo_code) await tx`UPDATE promo_codes SET used_count=used_count+1 WHERE code=${order.promo_code}`;
 }
 
@@ -142,7 +162,7 @@ export async function retryOrderTicketDelivery(orderPublicId: string, baseUrl: s
   if (!order) return false;
   const event = await getEventServer(String(order.event_slug));
   if (!event) return false;
-  await deliverOrderTickets(order,event.title,baseUrl);
+  await deliverOrderTickets(order,event,baseUrl);
   return true;
 }
 
@@ -181,6 +201,7 @@ export async function syncYooKassaPayment(paymentId: string, baseUrl: string): P
 
     const items = await tx`SELECT * FROM order_items WHERE order_id=${order.id}`;
     await tx`UPDATE orders SET status='paid',paid_at=COALESCE(paid_at,now()) WHERE id=${order.id}`;
+    await markNpdReceiptRequired(String(order.id),Number(order.total || 0),tx);
     await tx`
       UPDATE ticket_inventory_reservations
       SET consumed_at=COALESCE(consumed_at,now())
@@ -200,7 +221,7 @@ export async function syncYooKassaPayment(paymentId: string, baseUrl: string): P
     await consumePromoReservation(tx,order);
   });
 
-  await deliverOrderTickets(order,event.title,baseUrl);
+  await deliverOrderTickets(order,event,baseUrl);
   return { state: "paid", orderPublicId: String(order.public_id) };
 }
 
@@ -215,26 +236,49 @@ export async function syncYooKassaRefund(refundId: string): Promise<SyncResult> 
   if (!order) return { state:'missing' };
   if (refund.amount.currency !== String(order.currency || 'RUB')) throw new Error(`YooKassa refund currency mismatch for ${order.public_id}`);
 
-  const refundedAmount = Number(payment.refunded_amount?.value || refund.amount.value || 0);
+  const refundedAmount = exactMoney(payment.refunded_amount?.value || refund.amount.value || 0);
   if (!Number.isFinite(refundedAmount)) throw new Error(`Invalid YooKassa refund amount for ${order.public_id}`);
+  const orderTotal=exactMoney(order.total);
+  const remaining=exactMoney(Math.max(0,orderTotal-refundedAmount));
+  const full=remaining < 0.005;
 
-  if (refundedAmount + 0.001 < Number(order.total)) {
-    await sql`UPDATE orders SET refunded_amount=${Math.round(refundedAmount)} WHERE id=${order.id}`;
-    return { state:'partial_refund',orderPublicId:String(order.public_id) };
-  }
+  const mappedRows = await sql`
+    SELECT id,ticket_id,status
+    FROM ticket_refunds
+    WHERE yookassa_refund_id=${refund.id}
+    LIMIT 1
+  `;
+  const mapped=mappedRows[0];
 
-  await sql.begin(async (tx: any) => {
-    const locked = await tx`SELECT status FROM orders WHERE id=${order.id} FOR UPDATE`;
-    if (locked[0]?.status === 'refunded') return;
-    if (locked[0]?.status !== 'paid') throw new Error(`Refund is linked to non-paid order ${order.public_id}`);
-    await tx`
-      UPDATE orders
-      SET status='refunded',refunded_at=now(),refunded_amount=${Math.round(refundedAmount)}
-      WHERE id=${order.id}
-    `;
-    await tx`UPDATE tickets SET status='refunded' WHERE order_id=${order.id} AND status IN ('valid','used')`;
+  await sql.begin(async (tx:any)=>{
+    const locked=await tx`SELECT status FROM orders WHERE id=${order.id} FOR UPDATE`;
+    if(mapped){
+      await tx`
+        UPDATE ticket_refunds
+        SET status='succeeded',succeeded_at=COALESCE(succeeded_at,now()),updated_at=now()
+        WHERE id=${mapped.id}
+      `;
+      await tx`
+        UPDATE tickets
+        SET status='refunded'
+        WHERE id=${mapped.ticket_id} AND status IN ('valid','used','cancelled')
+      `;
+    }
+
+    if(full){
+      await tx`
+        UPDATE orders
+        SET status='refunded',refunded_at=COALESCE(refunded_at,now()),refunded_amount=${refundedAmount}
+        WHERE id=${order.id}
+      `;
+      await tx`UPDATE tickets SET status='refunded' WHERE order_id=${order.id} AND status IN ('valid','used','cancelled')`;
+    } else {
+      if (String(locked[0]?.status) === 'refunded') throw new Error(`Partial refund is linked to already refunded order ${order.public_id}`);
+      await tx`UPDATE orders SET refunded_amount=${refundedAmount} WHERE id=${order.id}`;
+    }
+    await markNpdAfterRefund(String(order.id),remaining,tx);
   });
 
   await updateUserLoyaltyByVisits(String(order.user_id));
-  return { state:'refunded',orderPublicId:String(order.public_id) };
+  return { state:full?'refunded':'partial_refund',orderPublicId:String(order.public_id) };
 }

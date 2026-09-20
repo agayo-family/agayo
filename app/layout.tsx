@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./v13_3.css";
+import "./v13_4.css";
 
 export const metadata: Metadata = {
   title: "AGAYO — создавай воспоминания",

@@ -29,10 +29,14 @@ export async function getSystemStatus(): Promise<SystemStatus> {
           to_regclass('public.loyalty_levels') IS NOT NULL AS loyalty_levels,
           EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='refunded_amount') AS refund_columns,
           EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='loyalty_levels' AND column_name='conditions_text') AS flexible_loyalty,
-          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='loyalty_override_level') AS loyalty_override
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='loyalty_override_level') AS loyalty_override,
+          to_regclass('public.ticket_refunds') IS NOT NULL AS ticket_refunds,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='npd_receipt_status') AS npd_receipts,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='loyalty_levels' AND column_name='visual_mode') AS loyalty_visuals,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='media_photos' AND column_name='source_key') AS media_resume
       `;
       databaseReachable = Number(rows[0]?.ok) === 1;
-      databaseSchemaReady = Boolean(rows[0]?.promo_reservations && rows[0]?.loyalty_levels && rows[0]?.refund_columns && rows[0]?.flexible_loyalty && rows[0]?.loyalty_override);
+      databaseSchemaReady = Boolean(rows[0]?.promo_reservations && rows[0]?.loyalty_levels && rows[0]?.refund_columns && rows[0]?.flexible_loyalty && rows[0]?.loyalty_override && rows[0]?.ticket_refunds && rows[0]?.npd_receipts && rows[0]?.loyalty_visuals && rows[0]?.media_resume);
     } catch { databaseReachable = false; databaseSchemaReady = false; }
   }
 
