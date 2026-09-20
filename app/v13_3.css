@@ -1,0 +1,133 @@
+/* AGAYO v13.3 — admin ticket operations, scanner confirmation, media import, contrast and home hero */
+
+/* 1) Never let filled AGAYO controls lose readable text contrast. */
+.admin-primary,
+.admin-primary:visited,
+.button-link-accent,
+.button-link-accent:visited,
+.scanner-camera-cover button,
+.scanner-manual button,
+.scanner-status-card-v133 button,
+.admin-refund-button-v133 {
+  color:#F2F0EA !important;
+}
+.admin-primary *,
+.button-link-accent *,
+.scanner-status-card-v133 button * { color:inherit !important; }
+.event-page-themed .button-link-accent {
+  background:#6B1F2B !important;
+  border-color:#6B1F2B !important;
+  color:#F2F0EA !important;
+}
+.event-page-themed .button-link-accent:hover { background:#C21F39 !important; border-color:#C21F39 !important; }
+.ticket-card-bottom button:hover { color:#F2F0EA !important; }
+.checkout-refresh-v133 { font:inherit; cursor:pointer; }
+
+/* 2) Home hero: poster lives on the right and dissolves toward the text/background. */
+.hero-nearest-event { background:#0B0B0C; }
+.hero-nearest-event .hero-image {
+  left:auto !important;
+  right:0 !important;
+  width:60% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:center center !important;
+  filter:saturate(.86) contrast(1.04) brightness(.92);
+}
+.hero-nearest-event .hero-shade {
+  z-index:1;
+  background:
+    linear-gradient(90deg,
+      #0B0B0C 0%,
+      #0B0B0C 25%,
+      rgba(11,11,12,.97) 34%,
+      rgba(11,11,12,.84) 43%,
+      rgba(11,11,12,.52) 56%,
+      rgba(11,11,12,.18) 73%,
+      rgba(11,11,12,.08) 100%),
+    linear-gradient(0deg,rgba(11,11,12,.82) 0%,transparent 38%);
+}
+.hero-nearest-event .hero-content { position:relative;z-index:2; }
+
+/* 3) The enhanced ticket manager replaces the old search-only table inside the existing Tickets tab. */
+.admin-ticket-section-enhanced-v133 > .admin-toolbar,
+.admin-ticket-section-enhanced-v133 > .admin-table-card { display:none !important; }
+.admin-tickets-v133 { display:grid;gap:14px;margin-bottom:14px; }
+.admin-ticket-toolbar-v133 { display:flex;gap:8px;align-items:stretch;flex-wrap:wrap; }
+.admin-ticket-toolbar-v133 form { display:flex;gap:8px;flex:1 1 560px;min-width:0; }
+.admin-ticket-toolbar-v133 input {
+  flex:1;min-width:0;border:1px solid var(--line);background:#101011;color:#F2F0EA;padding:14px 15px;font:inherit;font-size:12px;outline:none;
+}
+.admin-ticket-toolbar-v133 .admin-secondary { white-space:nowrap; }
+.admin-ticket-message-v133 { border:1px solid rgba(255,255,255,.12);background:#131315;color:#d8d1c9;padding:12px 14px;font-size:11px;line-height:1.45; }
+.admin-ticket-list-card-v133 { border:1px solid var(--line);background:#0e0e0f;min-width:0; }
+.admin-ticket-list-head-v133 { display:flex;justify-content:space-between;gap:20px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line); }
+.admin-ticket-list-head-v133>div { display:flex;gap:12px;align-items:baseline; }
+.admin-ticket-list-head-v133 span,.admin-ticket-list-head-v133 small { color:#817b75;font-size:8px;letter-spacing:.11em; }
+.admin-ticket-list-head-v133 b { font-size:19px; }
+.admin-ticket-scroll-v133 { max-height:min(66vh,760px);overflow:auto;overscroll-behavior:contain;scrollbar-color:#4B0F19 #111; }
+.admin-ticket-card-v133 { padding:16px;border-bottom:1px solid var(--line);background:#111113; }
+.admin-ticket-card-v133:last-child { border-bottom:0; }
+.admin-ticket-card-v133.status-refunded,.admin-ticket-card-v133.status-cancelled { opacity:.72; }
+.admin-ticket-main-v133 { display:grid;grid-template-columns:1.1fr 1fr 1.15fr .85fr 1.2fr 1.05fr;gap:14px;align-items:start; }
+.admin-ticket-main-v133>div { min-width:0;display:flex;flex-direction:column;gap:4px; }
+.admin-ticket-main-v133 small { color:#6f6963;font-size:7px;letter-spacing:.12em; }
+.admin-ticket-main-v133 b { color:#F2F0EA;font-size:10px;overflow-wrap:anywhere; }
+.admin-ticket-main-v133 span { color:#8E8E91;font-size:9px;overflow-wrap:anywhere; }
+.admin-ticket-actions-v133 { display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06); }
+.admin-ticket-actions-v133 button { padding:9px 11px;font-size:8px;letter-spacing:.08em;cursor:pointer; }
+.admin-refund-button-v133 { border:1px solid #7a2635;background:#6B1F2B;padding:9px 11px;font-size:8px;letter-spacing:.08em;cursor:pointer; }
+.admin-refund-button-v133:hover { background:#C21F39;border-color:#C21F39; }
+.admin-ticket-actions-v133 button:disabled { opacity:.45;cursor:not-allowed; }
+.admin-ticket-order-refunded-v133 { color:#c28b94;font-size:8px;letter-spacing:.1em; }
+
+/* 4) Yandex Disk importer is injected into the existing gallery upload block. */
+.admin-yandex-import-v133 { grid-column:1/-1;border-top:1px solid rgba(255,255,255,.1);margin-top:6px;padding-top:16px;display:grid;gap:10px; }
+.admin-yandex-import-title-v133 { display:flex;justify-content:space-between;gap:16px;align-items:end; }
+.admin-yandex-import-title-v133>div { display:grid;gap:5px; }
+.admin-yandex-import-title-v133 span { color:#8E8E91;font-size:8px;letter-spacing:.13em; }
+.admin-yandex-import-title-v133 b { font-size:12px; }
+.admin-yandex-import-title-v133 small { color:#8E8E91;font-size:8px; }
+.admin-yandex-import-form-v133 { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px; }
+.admin-yandex-import-form-v133 input { width:100%;min-width:0;border:1px solid var(--line)!important;background:#131315!important;color:#F2F0EA!important;padding:12px!important;font:inherit!important;font-size:11px!important; }
+.admin-yandex-import-v133 p { margin:0;color:#7f7973;font-size:9px;line-height:1.5; }
+.admin-yandex-import-v133>strong { color:#c9c1b8;font-size:9px;font-weight:500;line-height:1.45; }
+
+/* 5) Scanner pauses logically after each QR while camera stays open. */
+.scanner-status-modal-v133 { position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:rgba(5,5,6,.82);backdrop-filter:blur(10px); }
+.scanner-status-card-v133 { width:min(520px,100%);border:1px solid rgba(255,255,255,.16);background:#141415;padding:26px;box-shadow:0 28px 90px rgba(0,0,0,.55); }
+.scanner-status-card-v133.ok { border-color:#4b7b5d;background:#101a14; }
+.scanner-status-card-v133.bad { border-color:#7b3943;background:#1d1012; }
+.scanner-status-card-v133>span { display:block;font-size:10px;letter-spacing:.14em; }
+.scanner-status-card-v133 h2 { margin:14px 0 8px;font-size:clamp(34px,8vw,60px);line-height:.9;letter-spacing:-.05em; }
+.scanner-status-card-v133 p { margin:6px 0;color:#aaa29a;font-size:12px;line-height:1.45; }
+.scanner-status-card-v133 b { display:block;margin-top:9px;font-size:11px; }
+.scanner-status-card-v133 button { width:100%;margin-top:22px;border:1px solid rgba(255,255,255,.2);background:#6B1F2B;padding:15px 16px;font:inherit;font-size:10px;letter-spacing:.1em;cursor:pointer; }
+.scanner-status-card-v133 button:hover { background:#C21F39; }
+
+@media(max-width:1000px){
+  .admin-ticket-main-v133 { grid-template-columns:1fr 1fr 1fr; }
+}
+@media(max-width:900px){
+  .hero-nearest-event .hero-image { left:0 !important;right:0 !important;width:100% !important;object-position:68% center !important;opacity:.82; }
+  .hero-nearest-event .hero-shade {
+    background:
+      linear-gradient(90deg,rgba(11,11,12,.96) 0%,rgba(11,11,12,.79) 36%,rgba(11,11,12,.32) 70%,rgba(11,11,12,.12) 100%),
+      linear-gradient(0deg,rgba(11,11,12,.94) 0%,rgba(11,11,12,.34) 55%,rgba(11,11,12,.18) 100%);
+  }
+  .admin-ticket-main-v133 { grid-template-columns:1fr 1fr;gap:12px 16px; }
+  .admin-ticket-toolbar-v133 form { flex-basis:100%; }
+  .admin-yandex-import-title-v133 { align-items:flex-start;flex-direction:column; }
+}
+@media(max-width:560px){
+  .admin-ticket-toolbar-v133,.admin-ticket-toolbar-v133 form { display:grid;grid-template-columns:1fr; }
+  .admin-ticket-toolbar-v133 .admin-secondary { width:100%; }
+  .admin-ticket-list-head-v133 { align-items:flex-start;flex-direction:column;gap:6px; }
+  .admin-ticket-scroll-v133 { max-height:68vh; }
+  .admin-ticket-main-v133 { grid-template-columns:1fr; }
+  .admin-ticket-main-v133>div { padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.05); }
+  .admin-ticket-actions-v133 { display:grid;grid-template-columns:1fr; }
+  .admin-ticket-actions-v133 button { width:100%;min-height:42px; }
+  .admin-yandex-import-form-v133 { grid-template-columns:1fr; }
+  .admin-yandex-import-form-v133 button { width:100%; }
+}

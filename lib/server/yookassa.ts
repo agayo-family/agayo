@@ -29,6 +29,7 @@ export type YooKassaRefund = {
   status: string;
   amount: { value: string; currency: string };
   created_at?: string;
+  receipt_registration?: string;
 };
 
 function authHeader() {
@@ -139,6 +140,38 @@ export async function createPayment(input: {
     4,
   );
   return data as YooKassaPayment;
+}
+
+export async function createRefund(input: {
+  paymentId: string;
+  amount: number;
+  idempotenceKey: string;
+  description?: string;
+}) {
+  if (!input.paymentId.trim()) throw new Error("Не указан платёж YooKassa");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Сумма возврата должна быть больше 0 ₽");
+
+  // Для полного возврата ЮKassa не требует receipt: при схеме «Чеки от ЮKassa»
+  // данные чека возврата берутся из исходного платежа. Частичные возвраты здесь
+  // намеренно не создаются — админка AGAYO делает только полный возврат заказа.
+  const data = await requestYooKassa(
+    `${YOOKASSA_API}/refunds`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: authHeader(),
+        "Idempotence-Key": input.idempotenceKey.slice(0, 64),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        payment_id: input.paymentId,
+        amount: { value: input.amount.toFixed(2), currency: "RUB" },
+        ...(input.description ? { description: input.description.slice(0, 250) } : {}),
+      }),
+    },
+    4,
+  );
+  return data as YooKassaRefund;
 }
 
 export async function getPayment(paymentId: string) {

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import AdminDashboard from "@/components/AdminDashboard";
+import AdminDashboardEnhancements from "@/components/AdminDashboardEnhancements";
 import { getCurrentUser } from "@/lib/server/auth";
 import { getCurrentAdminAccess } from "@/lib/server/admin";
 
@@ -12,5 +13,5 @@ export default async function AdminPage() {
   const access = await getCurrentAdminAccess();
   if (!access) notFound();
 
-  return <AdminDashboard access={access} />;
+  return <><AdminDashboard access={access} /><AdminDashboardEnhancements /></>;
 }

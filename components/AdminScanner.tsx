@@ -34,6 +34,7 @@ export default function AdminScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const submittingRef = useRef(false);
+  const waitingForOkRef = useRef(false);
   const lastScanRef = useRef<{ value:string; at:number } | null>(null);
   const mountedRef = useRef(true);
   const [manual, setManual] = useState('');
@@ -44,7 +45,7 @@ export default function AdminScanner() {
 
   async function submit(raw: string) {
     const token = extractToken(raw);
-    if (token.length < 16 || submittingRef.current) return;
+    if (token.length < 16 || submittingRef.current || waitingForOkRef.current) return;
     submittingRef.current = true;
     setBusy(true);
     try {
@@ -55,14 +56,25 @@ export default function AdminScanner() {
       });
       const data = await response.json();
       if (!mountedRef.current) return;
+      waitingForOkRef.current = true;
       setResult(response.ok || data.result ? data : { result:'not_found', error:data.error || 'Не удалось проверить билет' });
       if (navigator.vibrate) navigator.vibrate(data.result === 'accepted' ? 100 : [100,70,100]);
     } catch {
-      if (mountedRef.current) setResult({ result:'not_found', error:'Нет соединения с сервером' });
+      if (mountedRef.current) {
+        waitingForOkRef.current = true;
+        setResult({ result:'not_found', error:'Нет соединения с сервером' });
+      }
     } finally {
       submittingRef.current = false;
       if (mountedRef.current) setBusy(false);
     }
+  }
+
+  function acknowledgeResult() {
+    waitingForOkRef.current = false;
+    lastScanRef.current = null;
+    setResult(null);
+    setManual('');
   }
 
   async function stopCamera() {
@@ -81,6 +93,7 @@ export default function AdminScanner() {
 
     setCameraState('starting');
     setCameraMessage('Запрашиваем доступ к камере…');
+    waitingForOkRef.current = false;
     setResult(null);
 
     try {
@@ -105,7 +118,7 @@ export default function AdminScanner() {
         },
         videoRef.current,
         (decoded) => {
-          if (!decoded || submittingRef.current) return;
+          if (!decoded || submittingRef.current || waitingForOkRef.current) return;
           const raw = decoded.getText().trim();
           if (!raw) return;
 
@@ -156,14 +169,21 @@ export default function AdminScanner() {
   return <main className="scanner-page">
     <header className="scanner-top"><a href="/admin">← Управление</a><span>AGAYO / КОНТРОЛЬ ВХОДА</span></header>
     <section className="scanner-shell">
-      <div className="scanner-title"><span>QR SCANNER</span><h1>ВХОД</h1><p>Наведи камеру на QR билета. Один QR можно успешно погасить только один раз.</p></div>
+      <div className="scanner-title"><span>QR SCANNER</span><h1>ВХОД</h1><p>Наведи камеру на QR билета. После каждого сканирования подтверди результат кнопкой ОК — только после этого сканер примет следующий QR.</p></div>
       <div className="scanner-camera">
         <video ref={videoRef} muted playsInline autoPlay />
         <div className="scanner-frame" aria-hidden="true"><i/><i/><i/><i/></div>
         {cameraState !== 'active' ? <div className="scanner-camera-cover"><b>{cameraTitle}</b><p>{cameraMessage}</p>{cameraState !== 'starting' ? <button type="button" onClick={() => void startCamera()}>Включить камеру</button> : null}</div> : <div className="scanner-camera-live"><span>LIVE</span><button type="button" onClick={() => void stopCamera()}>Выключить</button></div>}
       </div>
-      <form className="scanner-manual" onSubmit={(event) => { event.preventDefault(); void submit(manual); }}><label><span>РУЧНАЯ ПРОВЕРКА</span><input value={manual} onChange={(event) => setManual(event.target.value)} placeholder="AGAYO-TICKET:… или ссылка на билет" /></label><button disabled={busy} type="submit">{busy ? 'ПРОВЕРЯЕМ…' : 'ПРОВЕРИТЬ'}</button></form>
-      {result ? <div className={`scanner-result ${tone}`}><span>{result.result === 'accepted' ? 'ПРОХОД РАЗРЕШЁН' : result.result === 'already_used' ? 'УЖЕ ИСПОЛЬЗОВАН' : result.result === 'invalid' ? 'БИЛЕТ НЕДЕЙСТВИТЕЛЕН' : 'БИЛЕТ НЕ НАЙДЕН'}</span>{result.ticket ? <><h2>{result.ticket.owner_name}</h2><p>{result.ticket.category_name} · {result.ticket.public_id}</p><p>{result.ticket.event_slug}</p>{result.ticket.used_at && result.result === 'already_used' ? <b>Первый проход: {new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'medium'}).format(new Date(result.ticket.used_at))}</b> : null}</> : <p>{result.error || 'Проверь QR и попробуй ещё раз.'}</p>}</div> : null}
+      <form className="scanner-manual" onSubmit={(event) => { event.preventDefault(); void submit(manual); }}><label><span>РУЧНАЯ ПРОВЕРКА</span><input value={manual} disabled={Boolean(result)} onChange={(event) => setManual(event.target.value)} placeholder="AGAYO-TICKET:… или ссылка на билет" /></label><button disabled={busy || Boolean(result)} type="submit">{busy ? 'ПРОВЕРЯЕМ…' : 'ПРОВЕРИТЬ'}</button></form>
     </section>
+
+    {result ? <div className="scanner-status-modal-v133" role="dialog" aria-modal="true" aria-label="Статус билета">
+      <div className={`scanner-status-card-v133 ${tone}`}>
+        <span>{result.result === 'accepted' ? 'ПРОХОД РАЗРЕШЁН' : result.result === 'already_used' ? 'УЖЕ ИСПОЛЬЗОВАН' : result.result === 'invalid' ? 'БИЛЕТ НЕДЕЙСТВИТЕЛЕН' : 'БИЛЕТ НЕ НАЙДЕН'}</span>
+        {result.ticket ? <><h2>{result.ticket.owner_name}</h2><p>{result.ticket.category_name} · {result.ticket.public_id}</p><p>{result.ticket.event_slug}</p><b>Статус: {result.ticket.status === 'valid' ? 'действителен' : result.ticket.status === 'used' ? 'использован' : result.ticket.status}</b>{result.ticket.used_at && result.result === 'already_used' ? <b>Первый проход: {new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'medium'}).format(new Date(result.ticket.used_at))}</b> : null}</> : <p>{result.error || 'Проверь QR и попробуй ещё раз.'}</p>}
+        <button type="button" autoFocus onClick={acknowledgeResult}>ОК · СКАНИРОВАТЬ ДАЛЬШЕ</button>
+      </div>
+    </div> : null}
   </main>;
 }
