@@ -1,4 +1,5 @@
 'use client';
+import { uploadAdminFile } from "@/lib/client/upload";
 
 import { useMemo, useState } from 'react';
 import type { AdminPermission, AdminRole } from '@/lib/admin-permissions';
@@ -79,7 +80,7 @@ export default function AdminEventsManager({ access, previewMode, events, setEve
       if(file.size>2.5*1024*1024) throw new Error('Для тестового предпросмотра выбери афишу до 2,5 МБ. В реальном /admin лимит выше.');
       return await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('Не удалось прочитать афишу'));reader.readAsDataURL(file);});
     }
-    const fd=new FormData();fd.append('file',file);const r=await fetch('/api/admin/upload-poster',{method:'POST',body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||'Не удалось загрузить афишу');return d.url as string;
+    const blob=await uploadAdminFile(file,'poster',editor.slug);return blob.url;
   }
   async function save(targetStatus?:'draft'|'published'){
     if(!editor)return;

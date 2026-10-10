@@ -25,9 +25,12 @@ export type AgayoEvent = {
   title: string;
   dateLabel: string;
   startsAt: string;
+  endsAt?: string;
   timeLabel: string;
   ageLabel: string;
   city: string;
+  venue?: string;
+  address?: string;
   alcoholFree: boolean;
   status: "published" | "draft" | "cancelled";
   salesState: SalesState;
@@ -67,20 +70,33 @@ function dateKeyInMoscow(value: string | Date) {
  * A future/today event can never become archive merely because sales are closed.
  */
 export function getEventCatalogBadge(
-  event: Pick<AgayoEvent, "startsAt" | "salesState">,
+  event: Pick<AgayoEvent, "startsAt" | "endsAt" | "salesState">,
   now: Date = new Date(),
 ): EventCatalogBadge {
   const eventDate = dateKeyInMoscow(event.startsAt);
   const today = dateKeyInMoscow(now);
 
+  if (!eventDate || !today) return "soon";
+  if (event.endsAt && Date.parse(event.endsAt) <= now.valueOf()) return "archive";
+
   if (eventDate && today && eventDate < today) return "archive";
   return event.salesState === "open" ? "tickets" : "soon";
 }
 
-export function isEventOnOrAfterToday(event: Pick<AgayoEvent, "startsAt">, now: Date = new Date()) {
+export function isEventOnOrAfterToday(event: Pick<AgayoEvent, "startsAt" | "endsAt">, now: Date = new Date()) {
   const eventDate = dateKeyInMoscow(event.startsAt);
   const today = dateKeyInMoscow(now);
-  return Boolean(eventDate && today && eventDate >= today);
+  return Boolean(eventDate && today && eventDate >= today && (!event.endsAt || Date.parse(event.endsAt) > now.valueOf()));
+}
+
+export function partitionEvents(items: AgayoEvent[], now: Date = new Date()) {
+  const published = items.filter((event) => event.status === "published");
+  return {
+    upcoming: published.filter((event) => getEventCatalogBadge(event, now) !== "archive")
+      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)),
+    archive: published.filter((event) => getEventCatalogBadge(event, now) === "archive")
+      .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt)),
+  };
 }
 
 export const events: AgayoEvent[] = [

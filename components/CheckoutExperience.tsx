@@ -127,7 +127,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
 
           <section className="checkout-panel checkout-payment-panel">
             <div className="checkout-panel-head"><span>04</span><h2>ОПЛАТА</h2></div>
-            <p className="checkout-note">Заказ создаётся на сервере и отправляется в ЮKassa. Билет выпускается только после подтверждённой оплаты и автоматически приходит на указанную почту.</p>
+            <p className="checkout-note">Оплати заказ через ЮKassa. После подтверждения оплаты билет придёт на указанную почту и появится в твоём профиле.</p>
             <button className="checkout-pay-button" type="button" onClick={startPayment} disabled={!canContinue || busy}>{busy ? "СОЗДАЁМ ЗАКАЗ…" : `ПЕРЕЙТИ К ОПЛАТЕ · ${formatPrice(total)}`}</button>
             {error ? <p className="checkout-error" role="alert">{error}</p> : null}
             <small>Если профиль с этой почтой ещё не существует, он будет создан автоматически вместе с заказом.</small>

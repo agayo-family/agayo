@@ -2,11 +2,11 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import { LEGAL_VERSION, ORGANIZER } from "@/lib/legal";
 
-export const metadata = { title: "Правовая информация — AGAYO" };
+export const metadata = { title: "Правовая информация", alternates: { canonical: "/legal" } };
 
 export default function LegalPage() {
   return (
-    <main className="inner-page">
+    <main id="main-content" className="inner-page">
       <SiteHeader />
       <div className="inner-wrap legal-doc">
         <div className="section-label">ПРАВОВАЯ ИНФОРМАЦИЯ · РЕДАКЦИЯ {LEGAL_VERSION}</div>

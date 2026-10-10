@@ -1,15 +1,16 @@
 import Link from "next/link";
 import GalleryExperience from "@/components/GalleryExperience";
 import SiteHeader from "@/components/SiteHeader";
-import { getPublishedEventsServer } from "@/lib/server/events";
-import { getPublicPhotosServer } from "@/lib/server/media";
+import { getPublicCatalog, getPublicPhotos } from "@/lib/server/public-content";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
+export const metadata: Metadata = { title: "Галерея", alternates: { canonical: "/gallery" } };
 export default async function GalleryPage() {
-  const [events, photos] = await Promise.all([getPublishedEventsServer(), getPublicPhotosServer()]);
+  const [events, photos] = await Promise.all([getPublicCatalog(), getPublicPhotos()]);
   const publishedEvents = events.map((event) => ({ slug:event.slug,title:event.title,dateLabel:event.dateLabel,startsAt:event.startsAt,city:event.city }));
   return (
-    <main className="inner-page gallery-page-v2">
+    <main id="main-content" className="inner-page gallery-page-v2">
       <SiteHeader />
       <div className="inner-wrap gallery-wrap-v2">
         <section className="gallery-hero-v2">

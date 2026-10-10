@@ -1,11 +1,11 @@
 import SiteHeader from "@/components/SiteHeader";
 import { LEGAL_VERSION, ORGANIZER } from "@/lib/legal";
 
-export const metadata = { title: "Персональные данные — AGAYO" };
+export const metadata = { title: "Персональные данные", alternates: { canonical: "/legal/privacy" } };
 
 export default function PrivacyPage() {
   return (
-    <main className="inner-page">
+    <main id="main-content" className="inner-page">
       <SiteHeader />
       <article className="inner-wrap legal-doc">
         <div className="section-label">ПЕРСОНАЛЬНЫЕ ДАННЫЕ · РЕДАКЦИЯ {LEGAL_VERSION}</div>

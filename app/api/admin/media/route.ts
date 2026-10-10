@@ -1,3 +1,4 @@
+import { invalidatePublicContent } from "@/lib/server/public-content";
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { db } from "@/lib/server/db";
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       `;
       if (Boolean(body.isFeatured)) await sql`UPDATE media_photos SET is_featured=false,updated_at=now() WHERE event_slug=${eventSlug} AND id<>${rows[0].id}`;
       await writeAdminAudit(access.userId,"media.photo.create","media_photo",String(rows[0].id),{eventSlug});
+      invalidatePublicContent("media");
       return NextResponse.json({ ok:true, photo:rows[0] });
     }
 
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
       RETURNING id,event_slug,author,body,audio_url,sort_order,is_featured,is_published,created_at
     `;
     await writeAdminAudit(access.userId,"media.review.create","media_review",String(rows[0].id),{eventSlug,author});
+    invalidatePublicContent("media");
     return NextResponse.json({ ok:true, review:rows[0] });
   } catch (error) {
     const status = error instanceof AdminAccessError ? error.status : 500;
@@ -82,6 +85,7 @@ export async function PATCH(request: Request) {
       if (featured) await sql`UPDATE media_photos SET is_featured=false,updated_at=now() WHERE event_slug=${eventSlug} AND id<>${id}`;
       const rows = await sql`UPDATE media_photos SET event_slug=${eventSlug},caption=${text(body.caption ?? current[0].caption,500)},sort_order=${integer(body.sortOrder,current[0].sort_order)},is_featured=${featured},is_published=${body.isPublished == null ? Boolean(current[0].is_published) : Boolean(body.isPublished)},updated_at=now() WHERE id=${id} RETURNING id,event_slug,url,caption,sort_order,is_featured,is_published,created_at`;
       await writeAdminAudit(access.userId,"media.photo.update","media_photo",id,{eventSlug});
+      invalidatePublicContent("media");
       return NextResponse.json({ok:true,photo:rows[0]});
     }
     const current = await sql`SELECT * FROM media_reviews WHERE id=${id} LIMIT 1`; if (!current[0]) return NextResponse.json({error:"Отзыв не найден"},{status:404});
@@ -96,6 +100,7 @@ export async function PATCH(request: Request) {
     if (!author || (!reviewBody && !audioUrl)) return NextResponse.json({error:"Укажи автора и текст или аудио"},{status:400});
     const rows=await sql`UPDATE media_reviews SET event_slug=${eventSlug},author=${author},body=${reviewBody},audio_url=${audioUrl},sort_order=${integer(body.sortOrder,current[0].sort_order)},is_featured=${featured},is_published=${body.isPublished == null ? Boolean(current[0].is_published) : Boolean(body.isPublished)},updated_at=now() WHERE id=${id} RETURNING id,event_slug,author,body,audio_url,sort_order,is_featured,is_published,created_at`;
     await writeAdminAudit(access.userId,"media.review.update","media_review",id,{eventSlug,author});
+    invalidatePublicContent("media");
     return NextResponse.json({ok:true,review:rows[0]});
   } catch (error) {
     const status = error instanceof AdminAccessError ? error.status : 500;
@@ -112,6 +117,7 @@ export async function DELETE(request: Request) {
       await sql`DELETE FROM media_photos WHERE id=${id}`;
       const url=String(rows[0].url); const token=resolveBlobToken(); if(token && isManagedBlob(url)) { try { await del(url,{token}); } catch {} }
       await writeAdminAudit(access.userId,"media.photo.delete","media_photo",id,{eventSlug:String(rows[0].event_slug)});
+      invalidatePublicContent("media");
       return NextResponse.json({ok:true});
     }
     const rows=await sql`SELECT * FROM media_reviews WHERE id=${id} LIMIT 1`; if(!rows[0]) return NextResponse.json({error:"Отзыв не найден"},{status:404});
@@ -120,6 +126,7 @@ export async function DELETE(request: Request) {
     await sql`DELETE FROM media_reviews WHERE id=${id}`;
     const url=rows[0].audio_url ? String(rows[0].audio_url) : ""; const token=resolveBlobToken(); if(token && isManagedBlob(url)) { try { await del(url,{token}); } catch {} }
     await writeAdminAudit(access.userId,"media.review.delete","media_review",id,{eventSlug:rows[0].event_slug ? String(rows[0].event_slug) : null});
+    invalidatePublicContent("media");
     return NextResponse.json({ok:true});
   } catch (error) {
     const status = error instanceof AdminAccessError ? error.status : 500;

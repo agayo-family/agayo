@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { AgayoEvent, events as staticEvents, isEventOnOrAfterToday } from "../events";
 import { DEFAULT_EVENT_RULES } from "../legal";
+import { cache } from "react";
 
 function fmtDate(value: Date) {
   return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Moscow" }).format(value);
@@ -19,9 +20,12 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
     title: String(row.title),
     dateLabel: fmtDate(start),
     startsAt: start.toISOString(),
+    endsAt: end?.toISOString(),
     timeLabel: end ? `${fmtTime(start)}—${fmtTime(end)}` : fmtTime(start),
     ageLabel: String(row.age_label),
     city: String(row.city),
+    venue: row.venue ? String(row.venue) : undefined,
+    address: row.address ? String(row.address) : undefined,
     alcoholFree: Boolean(row.alcohol_free),
     status: String(row.status) as AgayoEvent["status"],
     salesState: String(row.sales_state) as AgayoEvent["salesState"],
@@ -196,17 +200,17 @@ async function loadDbEventBySlug(slug: string): Promise<AgayoEvent | null> {
 }
 
 export async function getAllEventsServer() {
-  const stored = await loadDbEvents();
-  if (!stored.length) return staticEvents;
-  const known = new Set(stored.map((event) => event.slug));
-  return [...stored, ...staticEvents.filter((event) => !known.has(event.slug))];
+  // Built-in examples are for an unconfigured local project only. Production
+  // must not resurrect a removed/draft event or invent inventory on a DB error.
+  if (!process.env.DATABASE_URL) return staticEvents;
+  return loadDbEvents();
 }
 
 export async function getPublishedEventsServer() {
   return (await getAllEventsServer()).filter((event) => event.status === "published");
 }
 
-export async function getEventServer(slug: string) {
+export const getEventServer = cache(async (slug: string) => {
   // Dynamic segments can arrive URL-encoded when a title produced a Cyrillic slug.
   // Normalize before the exact PostgreSQL lookup so /events/<new-slug> is reliable.
   let normalizedSlug = slug;
@@ -216,7 +220,35 @@ export async function getEventServer(slug: string) {
   // An unrelated child-table problem can no longer hide the parent event.
   const stored = await loadDbEventBySlug(normalizedSlug);
   if (stored) return stored;
-  return staticEvents.find((event) => event.slug === normalizedSlug);
+  return !process.env.DATABASE_URL ? staticEvents.find((event) => event.slug === normalizedSlug) : undefined;
+});
+
+/** Public cards need event content, not live reservations or sold-ticket counts. */
+export async function getPublicEventCatalogServer(): Promise<AgayoEvent[]> {
+  if (!process.env.DATABASE_URL) return staticEvents.filter((event) => event.status === "published");
+  const sql = db();
+  const rows = await sql`SELECT * FROM events WHERE status='published' ORDER BY starts_at DESC`;
+  const categories = await sql`
+    SELECT c.event_id,c.category_key,c.name,c.price,c.note,c.sort_order
+    FROM event_ticket_categories c JOIN events e ON e.id=c.event_id
+    WHERE e.status='published' ORDER BY c.event_id,c.sort_order
+  `;
+  return rows.map((row) => eventFromRow(row, categories as any[], [], new Map()));
+}
+
+/** The landing needs a published program, without querying live ticket stock. */
+export async function getPublicEventProgramServer(slug: string): Promise<AgayoEvent["program"]> {
+  if (!process.env.DATABASE_URL) {
+    return staticEvents.find((event) => event.slug === slug && event.status === "published")?.program ?? [];
+  }
+  const sql = db();
+  const rows = await sql`
+    SELECT p.time_label, p.title
+    FROM event_program_items p JOIN events e ON e.id=p.event_id
+    WHERE e.slug=${slug} AND e.status='published'
+    ORDER BY p.sort_order
+  `;
+  return rows.map((row) => [String(row.time_label), String(row.title)] as [string, string]);
 }
 
 export async function getUpcomingEventServer() {

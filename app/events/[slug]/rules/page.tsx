@@ -5,6 +5,7 @@ import { getEventServer } from "@/lib/server/events";
 import { canAccessEvent, getCurrentAdminAccess, hasPermission } from "@/lib/server/admin";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Правила мероприятия", robots: { index: false, follow: false } };
 
 export default async function EventRulesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ preview?: string }> }) {
   const { slug } = await params;
@@ -22,7 +23,7 @@ export default async function EventRulesPage({ params, searchParams }: { params:
   const rules = (event.eventRules || "").trim() || DEFAULT_EVENT_RULES;
 
   return (
-    <main className="inner-page">
+    <main id="main-content" className="inner-page">
       <SiteHeader />
       <article className="inner-wrap legal-doc event-rules-doc">
         <div className="section-label">ПРАВИЛА МЕРОПРИЯТИЯ · {event.dateLabel}</div>

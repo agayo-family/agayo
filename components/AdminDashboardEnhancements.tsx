@@ -30,12 +30,12 @@ export default function AdminDashboardEnhancements() {
       if(settings){
         const articles=[...settings.querySelectorAll<HTMLElement>(".admin-settings-list article")];
         const fiscal=articles.find(article=>article.querySelector("b")?.textContent?.trim()==="Фискализация");
-        if(fiscal){const name=fiscal.querySelector("b");const note=fiscal.querySelector("p");if(name)name.textContent="Чеки НПД / Мой налог";if(note)note.textContent="Операционный контроль чеков НПД. YOOKASSA_RECEIPT_REQUIRED остаётся 0; FISCALIZATION_CONFIRMED включается только после теста процесса.";}
+        if(fiscal){const name=fiscal.querySelector("b");const note=fiscal.querySelector("p");if(name && name.textContent!=="Чеки НПД / Мой налог")name.textContent="Чеки НПД / Мой налог";if(note && !note.textContent?.startsWith("Операционный контроль чеков НПД."))note.textContent="Операционный контроль чеков НПД. YOOKASSA_RECEIPT_REQUIRED остаётся 0; FISCALIZATION_CONFIRMED включается только после теста процесса.";}
       }
       setTargets(current=>current.tickets===tickets&&current.media===media&&current.loyalty===loyalty&&current.settings===settings?current:{tickets,media,loyalty,settings});
     };
-    sync(); const observer=new MutationObserver(sync); const root=document.querySelector(".admin-app"); if(root)observer.observe(root,{childList:true,subtree:true,characterData:true}); const timer=window.setInterval(sync,700);
-    return()=>{observer.disconnect();window.clearInterval(timer);previousTickets?.classList.remove("admin-ticket-section-enhanced-v133");};
+    sync(); const observer=new MutationObserver(sync); const root=document.querySelector(".admin-app"); if(root)observer.observe(root,{childList:true,subtree:true,characterData:true});
+    return()=>{observer.disconnect();previousTickets?.classList.remove("admin-ticket-section-enhanced-v133");};
   },[]);
 
   return <>

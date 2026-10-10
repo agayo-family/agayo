@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
-import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
+import { AdminAccessError, canAccessEvent, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
 import { updateUserLoyaltyByVisits } from "@/lib/server/loyalty";
 
 export async function POST(request: Request) {
   try {
+    const actor = await requireAdminPermission("scan_tickets");
     const body = await request.json();
     const token = String(body.token ?? "").trim();
     if (token.length < 16) return NextResponse.json({ error: "Некорректный QR" }, { status: 400 });
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
     const found = await sql`SELECT id,public_id,user_id,event_slug,owner_name,category_name,status,used_at FROM tickets WHERE qr_token=${token} LIMIT 1`;
     if (!found[0]) return NextResponse.json({ result: "not_found" }, { status: 404 });
     const ticket = found[0];
-    const actor = await requireAdminPermission("scan_tickets", String(ticket.event_slug));
+    if (!canAccessEvent(actor, String(ticket.event_slug))) throw new AdminAccessError("Нет доступа к этому мероприятию", 403);
 
     if (ticket.status === "used") {
       return NextResponse.json({ result: "already_used", ticket });

@@ -1,0 +1,209 @@
+{
+  "environment": "local production build, same machine HTTP client/server",
+  "databaseConfigured": false,
+  "browser": false,
+  "smoke": [
+    {
+      "path": "/",
+      "status": 200,
+      "cacheControl": "s-maxage=60, stale-while-revalidate=31535940",
+      "title": "AGAYO — создавай воспоминания",
+      "bytes": 34704
+    },
+    {
+      "path": "/events",
+      "status": 200,
+      "cacheControl": "s-maxage=60, stale-while-revalidate=31535940",
+      "title": "Мероприятия — AGAYO",
+      "bytes": 16188
+    },
+    {
+      "path": "/gallery",
+      "status": 200,
+      "cacheControl": "s-maxage=60, stale-while-revalidate=31535940",
+      "title": "Галерея — AGAYO",
+      "bytes": 52328
+    },
+    {
+      "path": "/about",
+      "status": 200,
+      "cacheControl": "s-maxage=31536000",
+      "title": "О нас — AGAYO",
+      "bytes": 13611
+    },
+    {
+      "path": "/legal",
+      "status": 200,
+      "cacheControl": "s-maxage=31536000",
+      "title": "Правовая информация — AGAYO",
+      "bytes": 14554
+    },
+    {
+      "path": "/legal/offer",
+      "status": 200,
+      "cacheControl": "s-maxage=31536000",
+      "title": "Публичная оферта — AGAYO",
+      "bytes": 32045
+    },
+    {
+      "path": "/legal/privacy",
+      "status": 200,
+      "cacheControl": "s-maxage=31536000",
+      "title": "Персональные данные — AGAYO",
+      "bytes": 24476
+    },
+    {
+      "path": "/legal/user-agreement",
+      "status": 200,
+      "cacheControl": "s-maxage=31536000",
+      "title": "Пользовательское соглашение — AGAYO",
+      "bytes": 24146
+    },
+    {
+      "path": "/events/agayo-night",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "AGAYO NIGHT — AGAYO",
+      "bytes": 28696
+    },
+    {
+      "path": "/events/clubshow",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "CLUBSHOW — AGAYO",
+      "bytes": 19646
+    },
+    {
+      "path": "/events/summer-01",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "SUMMER / 01 — AGAYO",
+      "bytes": 19922
+    },
+    {
+      "path": "/events/agayo-night/tickets",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "AGAYO NIGHT — AGAYO",
+      "bytes": 28696
+    },
+    {
+      "path": "/events/no-such-event",
+      "status": 404,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "AGAYO — создавай воспоминания",
+      "bytes": 10171
+    },
+    {
+      "path": "/events/agayo-night/checkout",
+      "status": 404,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "AGAYO — создавай воспоминания",
+      "bytes": 10669
+    },
+    {
+      "path": "/robots.txt",
+      "status": 200,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "bytes": 175
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "bytes": 1487
+    },
+    {
+      "path": "/api/admin/events",
+      "status": 403,
+      "cacheControl": "private, no-store",
+      "bytes": 62
+    },
+    {
+      "path": "/api/admin/me",
+      "status": 404,
+      "cacheControl": "private, no-store",
+      "bytes": 21
+    },
+    {
+      "path": "/api/admin/tickets/scan",
+      "method": "POST",
+      "status": 403
+    },
+    {
+      "path": "/api/orders",
+      "method": "POST",
+      "quantity": 1.5,
+      "status": 400
+    },
+    {
+      "path": "/api/orders",
+      "method": "POST",
+      "quantity": 7,
+      "status": 400
+    },
+    {
+      "path": "/api/orders",
+      "method": "POST",
+      "quantity": "2",
+      "status": 400
+    },
+    {
+      "path": "/api/promos/validate",
+      "method": "POST",
+      "quantity": 1.5,
+      "status": 400
+    },
+    {
+      "path": "/api/promos/validate",
+      "method": "POST",
+      "quantity": 7,
+      "status": 400
+    },
+    {
+      "path": "/api/promos/validate",
+      "method": "POST",
+      "quantity": "2",
+      "status": 400
+    }
+  ],
+  "stages": [
+    {
+      "durationTargetSeconds": 30,
+      "concurrency": 10,
+      "requests": 25894,
+      "errors": 0,
+      "elapsedSeconds": 30.03,
+      "requestsPerSecond": 862.3,
+      "p50Ms": 10.5,
+      "p95Ms": 19.6,
+      "totalBytes": 890605245
+    },
+    {
+      "durationTargetSeconds": 30,
+      "concurrency": 25,
+      "requests": 33394,
+      "errors": 0,
+      "elapsedSeconds": 30.017,
+      "requestsPerSecond": 1112.5,
+      "p50Ms": 22.2,
+      "p95Ms": 30.8,
+      "totalBytes": 1147414796
+    },
+    {
+      "durationTargetSeconds": 30,
+      "concurrency": 50,
+      "requests": 36232,
+      "errors": 0,
+      "elapsedSeconds": 30.034,
+      "requestsPerSecond": 1206.4,
+      "p50Ms": 41,
+      "p95Ms": 56,
+      "totalBytes": 1244811011
+    }
+  ],
+  "versions": {
+    "next": "16.3.8",
+    "blob": "2.8.1"
+  }
+}

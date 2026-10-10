@@ -4,7 +4,7 @@ import CheckoutStatus from "@/components/CheckoutStatus";
 export default async function CheckoutSuccessPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
   return (
-    <main className="inner-page checkout-success-page">
+    <main id="main-content" className="inner-page checkout-success-page">
       <SiteHeader />
       <CheckoutStatus orderPublicId={order} />
     </main>

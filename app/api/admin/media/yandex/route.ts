@@ -1,3 +1,4 @@
+import { invalidatePublicContent } from "@/lib/server/public-content";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { put } from "@vercel/blob";
@@ -154,6 +155,7 @@ export async function POST(request: Request) {
       await writeAdminAudit(access.userId, "media.photo.yandex_import", "media_photo", String(rows[0].id), {
         eventSlug, sourceName: requestedName,
       });
+      invalidatePublicContent("media");
       return NextResponse.json({ ok: true, photo: rows[0] });
     }
 
