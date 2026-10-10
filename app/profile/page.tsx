@@ -48,7 +48,7 @@ export default async function ProfilePage() {
   const manualLevel = Boolean(user?.loyalty_override_level);
 
   return (
-    <main className="inner-page profile-page-v2">
+    <main id="main-content" className="inner-page profile-page-v2">
       <SiteHeader />
       <div className="profile-shell">
         <section className="profile-identity">

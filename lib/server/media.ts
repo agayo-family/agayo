@@ -18,10 +18,9 @@ export async function getPublicPhotosServer(): Promise<GalleryPhoto[]> {
       SELECT p.id,p.event_slug,p.url,p.caption,e.title AS event_title
       FROM media_photos p
       LEFT JOIN events e ON e.slug=p.event_slug
-      WHERE p.is_published=true
+      WHERE p.is_published=true AND e.status='published'
       ORDER BY p.event_slug,p.sort_order,p.created_at DESC
     `;
-    if (!rows.length) return galleryPhotos;
     return rows.map((row:any) => ({
       id: String(row.id),
       eventSlug: String(row.event_slug),
@@ -31,7 +30,7 @@ export async function getPublicPhotosServer(): Promise<GalleryPhoto[]> {
     }));
   } catch (error) {
     console.warn("Public gallery unavailable:", error instanceof Error ? error.message : error);
-    return galleryPhotos;
+    return [];
   }
 }
 
@@ -42,7 +41,7 @@ export async function getFeaturedReviewServer(): Promise<PublicReview | null> {
     const rows = await sql`
       SELECT id,event_slug,author,body,audio_url,is_featured
       FROM media_reviews
-      WHERE is_published=true
+      WHERE is_published=true AND (event_slug IS NULL OR EXISTS (SELECT 1 FROM events e WHERE e.slug=media_reviews.event_slug AND e.status='published'))
       ORDER BY is_featured DESC,sort_order,created_at DESC
       LIMIT 1
     `;
@@ -54,6 +53,6 @@ export async function getFeaturedReviewServer(): Promise<PublicReview | null> {
     };
   } catch (error) {
     console.warn("Public review unavailable:", error instanceof Error ? error.message : error);
-    return { id:"fallback",eventSlug:null,author:"Алина, 16",text:"Я вообще не хотела идти. Хорошо, что друзья заставили.",featured:true };
+    return null;
   }
 }

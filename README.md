@@ -137,6 +137,20 @@ npm run build
 
 Vercel performs the production Next.js build after deployment.
 
+## Site audit — October 2026
+
+The public home/catalog/gallery now use a 60-second cache with invalidation from admin edits. Event pages and checkout keep live inventory. The audit and next steps are in [docs/AGAYO_AUDIT_2026-10-10.md](docs/AGAYO_AUDIT_2026-10-10.md).
+
+```bash
+npm ci
+npm test
+npm run build
+npm run typecheck
+npm run benchmark -- /tmp/agayo-load-result.json 30
+```
+
+The benchmark starts a local production server and uses built-in fixtures without a database. It performs only read requests, an unauthenticated scan rejection and invalid-input API probes. Its HTML throughput is not a production checkout capacity estimate. Build without production credentials before running it.
+
 
 ## v13.1 — flexible loyalty
 После `db/008_production_launch.sql` примените `db/009_flexible_loyalty.sql`. Она добавляет произвольные условия уровней и ручное назначение уровня пользователю с внутренним комментарием.

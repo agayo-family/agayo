@@ -5,13 +5,15 @@ import { getEventCatalogBadge } from "@/lib/events";
 import { normalizeEmail, normalizePhone, publicId } from "@/lib/server/security";
 import { createPayment } from "@/lib/server/yookassa";
 import { DEFAULT_EVENT_RULES, LEGAL_VERSION } from "@/lib/legal";
+import { parseTicketQuantity } from "@/lib/order-input";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const quantity = parseTicketQuantity(body.quantity);
+    if (quantity === null) return NextResponse.json({ error: "Выбери от 1 до 6 билетов" }, { status: 400 });
     const event = await getEventServer(String(body.eventSlug ?? ""));
     const category = event?.tickets.find((item) => item.id === body.categoryId);
-    const quantity = Math.max(1, Math.min(6, Number(body.quantity) || 1));
     const email = normalizeEmail(body.email ?? "");
     const phone = normalizePhone(body.phone ?? "");
     const ownerName = String(body.name ?? "").trim().slice(0, 120);

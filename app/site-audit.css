@@ -1,0 +1,77 @@
+/* AGAYO: public flow and loading. Existing brand styles remain the baseline. */
+html { scroll-padding-top: 24px; }
+:where(a, button, input, select, textarea):focus-visible { outline: 2px solid #F2F0EA; outline-offset: 5px; }
+.skip-link { position:fixed;top:12px;left:12px;z-index:1000;padding:14px 20px;color:#0B0B0C;background:#F2F0EA;transform:translateY(-150%); }
+.skip-link:focus { transform:translateY(0); }
+.hero-booking { margin-top:32px;padding-top:22px;border-top:1px solid rgba(242,240,234,.22);display:flex;align-items:center;justify-content:space-between;gap:28px;max-width:1100px; }
+.hero-booking>div { min-width:0;display:grid;gap:8px; }
+.hero-booking span,.hero-booking small { color:#C9C1BB;font-size:10px;letter-spacing:.09em; }
+.hero-booking strong { font-size:clamp(17px,1.8vw,26px);line-height:1.1;letter-spacing:-.025em; }
+.hero-booking>.button-link { flex-shrink:0;white-space:nowrap;min-height:52px; }
+.hero-booking>.button-link span { color:inherit;font-size:20px; }
+.home-page .hero h1 { font-size:clamp(48px,7vw,108px); }
+.catalog-section { margin-top:58px; }
+.catalog-title { display:flex;align-items:center;gap:14px;font-size:12px;font-weight:400;letter-spacing:.14em;margin:0 0 22px;color:#C9C1BB; }
+.catalog-title span { border:1px solid #373034;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;font-size:10px; }
+.catalog-empty { padding:26px 0;border-top:1px solid var(--line);color:var(--muted); }
+.event-page-v2 .event-v2-hero h1 { font-size:clamp(52px,8.2vw,128px) !important;line-height:.92 !important;letter-spacing:-.065em !important;max-width:1150px;text-wrap:balance;overflow-wrap:anywhere !important; }
+.event-hero-actions { margin-top:26px; }
+.event-hero-actions .button-link { width:max-content;max-width:100%;min-height:52px; }
+.event-sales-caption { color:#C9C1BB;font-size:12px; }
+.event-location { border-left:2px solid var(--event-accent,#C21F39);padding-left:18px;margin-bottom:28px;display:grid;gap:9px; }
+.event-location span { font-size:10px;letter-spacing:.14em;color:var(--muted); }
+.event-location strong { font-size:20px; }
+.event-location p { margin:0 !important; }
+.gallery-load-more { grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:22px;padding:28px 0; }
+.gallery-load-more .button-link { background:none;color:var(--paper);cursor:pointer; }
+.gallery-load-more p { color:var(--muted);font-size:11px; }
+.gallery-editorial-card { content-visibility:auto;contain-intrinsic-size:auto 500px; }
+.menu-button.is-open span:first-child { transform:translateY(3px) rotate(45deg); }
+.menu-button.is-open span:last-child { transform:translateY(-3px) rotate(-45deg); }
+.menu-button span { transition:transform .2s ease; }
+.agayo-loading-page { min-height:100svh;background:#0B0B0C; }
+.agayo-loading-art { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:75svh;padding:40px 20px;text-align:center; }
+.agayo-loading-orbit { position:relative;width:260px;height:260px;display:grid;place-items:center;isolation:isolate; }
+.agayo-loading-orbit::before { content:"";position:absolute;inset:-70px;background:radial-gradient(circle,rgba(194,31,57,.19),transparent 67%);z-index:-1; }
+.agayo-loading-orbit i { position:absolute;inset:8px;border:1px solid rgba(194,31,57,.18);border-radius:50%;border-top-color:#C21F39;animation:agayo-orbit 3s linear infinite; }
+.agayo-loading-orbit i:nth-child(2) { inset:25px;border-top-color:#F2F0EA;animation-duration:4.8s;animation-direction:reverse;opacity:.45; }
+.agayo-loading-orbit .brand-logo-mark { width:176px;animation:agayo-breathe 2.4s ease-in-out infinite; }
+.agayo-loading-art p { margin:28px 0 18px;color:#F2F0EA;font-size:11px;letter-spacing:.19em; }
+.agayo-loading-track { width:170px;height:2px;background:#282226;overflow:hidden; }
+.agayo-loading-track span { display:block;width:40%;height:100%;background:#C21F39;animation:agayo-track 1.6s ease-in-out infinite; }
+.agayo-loading-art small { margin-top:22px;color:#9C9296;font-size:9px;letter-spacing:.23em; }
+.agayo-entry-reveal { position:fixed;inset:0;z-index:900;pointer-events:none;display:grid;place-items:center;background:#0B0B0C;animation:agayo-reveal .85s cubic-bezier(.22,1,.36,1) forwards; }
+.agayo-entry-mark { display:grid;justify-items:center;gap:24px;animation:agayo-entry-mark .85s cubic-bezier(.22,1,.36,1) forwards; }
+.agayo-entry-mark::before { content:"";position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(194,31,57,.16),transparent 65%);z-index:-1; }
+.agayo-entry-mark .brand-logo-mark { width:min(220px,55vw); }
+.agayo-entry-mark>span:last-child { color:#BCB1B4;font-size:9px;letter-spacing:.3em; }
+.agayo-error-page { min-height:80svh;max-width:900px;margin:0 auto;padding:100px 7vw;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:24px; }
+.agayo-error-page h1 { font-size:clamp(42px,8vw,100px);line-height:.9;letter-spacing:-.06em;margin:0; }
+.agayo-error-page p { max-width:480px;color:var(--muted);line-height:1.6; }
+.agayo-error-page button { cursor:pointer; }
+@keyframes agayo-orbit { to { transform:rotate(360deg); } }
+@keyframes agayo-breathe { 50% { opacity:.55;transform:scale(.97); } }
+@keyframes agayo-track { 0% { transform:translateX(-110%); } 100% { transform:translateX(355%); } }
+@keyframes agayo-reveal { 0%,12% { opacity:1; } 100% { opacity:0;visibility:hidden; } }
+@keyframes agayo-entry-mark { from { opacity:0;transform:translateY(9px) scale(.96); } 22% { opacity:1; } to { opacity:0;transform:translateY(-9px) scale(1.03); } }
+@media(max-width:900px) {
+  .inner-header .desktop-nav { display:none; }
+  .inner-header .mobile-nav-wrap { display:block; }
+  .home-page .hero h1 { font-size:clamp(35px,11.8vw,70px) !important; }
+  .hero-booking { align-items:stretch;gap:16px;flex-direction:column;margin-top:26px;padding-top:18px; }
+  .hero-booking>.button-link { width:100%;font-size:12px; }
+  .event-page-v2 .event-v2-hero h1 { font-size:clamp(34px,9.4vw,70px) !important;line-height:.94 !important; }
+  .event-hero-actions .button-link { width:100%; }
+  .gallery-load-more { flex-direction:column;gap:8px; }
+  .catalog-title { font-size:10px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  html { scroll-behavior:auto; }
+  *,*::before,*::after { animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important; }
+  .agayo-entry-reveal { display:none; }
+  .agayo-loading-orbit i,.agayo-loading-orbit .brand-logo-mark,.agayo-loading-track span { animation:none !important; }
+  .agayo-loading-track span { width:100%;opacity:.5; }
+}
+
+.nav-loading-bar { position:fixed;top:0;left:0;right:0;height:3px;z-index:1001;background:rgba(194,31,57,.1);overflow:hidden;pointer-events:none; }
+.nav-loading-bar i { display:block;width:35%;height:100%;background:#C21F39;animation:agayo-track 1.2s ease-in-out infinite; }

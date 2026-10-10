@@ -16,5 +16,5 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
   const event = await getEventServer(String(ticket.event_slug));
   if (!event) notFound();
   const qrDataUrl = await QRCode.toDataURL(`AGAYO-TICKET:${ticket.qr_token}`, { margin: 1, width: 520, color: { dark: "#260607", light: "#f5e9e3" } });
-  return <main className="inner-page ticket-page"><SiteHeader /><section className="ticket-page-shell"><div className="ticket-page-heading"><div><div className="section-label">04 / БИЛЕТ</div><p>ТВОЙ ВХОД ВНУТРЬ</p></div></div><LiveTicket ticket={{ publicId: ticket.public_id, qrDataUrl, status: ticket.status, ownerName: ticket.owner_name, categoryName: ticket.category_name, zone: ticket.zone, seat: ticket.seat, eventSlug: ticket.event_slug }} event={event} /></section></main>;
+  return <main id="main-content" className="inner-page ticket-page"><SiteHeader /><section className="ticket-page-shell"><div className="ticket-page-heading"><div><div className="section-label">04 / БИЛЕТ</div><p>ТВОЙ ВХОД ВНУТРЬ</p></div></div><LiveTicket ticket={{ publicId: ticket.public_id, qrDataUrl, status: ticket.status, ownerName: ticket.owner_name, categoryName: ticket.category_name, zone: ticket.zone, seat: ticket.seat, eventSlug: ticket.event_slug }} event={event} /></section></main>;
 }

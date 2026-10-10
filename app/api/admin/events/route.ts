@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { invalidatePublicContent } from "@/lib/server/public-content";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
 import { ensureSeedEvents } from "@/lib/server/seed-events";
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
       await sql`INSERT INTO event_program_items(event_id,time_label,title,sort_order) VALUES(${eventId},${label},${titleText},${i})`;
     }
     await writeAdminAudit(actor.userId,"event.create","event",eventId,{slug,title,status:desiredStatus});
-    revalidatePath("/");
+    invalidatePublicContent("events");
     revalidatePath("/events");
     revalidatePath(`/events/${slug}`);
     return NextResponse.json({ok:true,slug,id:eventId});

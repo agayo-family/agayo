@@ -18,12 +18,20 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
   const [eventFilter, setEventFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [activePhotoId, setActivePhotoId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(24);
   const touchStartX = useRef<number | null>(null);
 
   const eventBySlug = useMemo(
     () => new Map(publishedEvents.map((event) => [event.slug, event])),
     [publishedEvents]
   );
+
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("event");
+    if (slug && publishedEvents.some((event) => event.slug === slug)) setEventFilter(slug);
+  }, [publishedEvents]);
+
+  useEffect(() => { setVisibleCount(24); }, [query, eventFilter, sortMode]);
 
   const filteredPhotos = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ru-RU");
@@ -125,7 +133,7 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
             >
               ВСЕ
             </button>
-            {publishedEvents.map((event) => (
+            {publishedEvents.filter((event) => photos.some((photo) => photo.eventSlug === event.slug)).map((event) => (
               <button
                 type="button"
                 key={event.slug}
@@ -154,7 +162,7 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
 
       {filteredPhotos.length ? (
         <section className="gallery-editorial-grid" aria-label="Фотографии AGAYO">
-          {filteredPhotos.map((photo, index) => {
+          {filteredPhotos.slice(0, visibleCount).map((photo, index) => {
             const event = eventBySlug.get(photo.eventSlug);
             if (!event) return null;
             return (
@@ -187,6 +195,7 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
               </article>
             );
           })}
+          {visibleCount < filteredPhotos.length && <div className="gallery-load-more"><button className="button-link" type="button" onClick={() => setVisibleCount((count) => count + 24)}>Ещё фотографии <span>↓</span></button><p>Показано {Math.min(visibleCount, filteredPhotos.length)} из {filteredPhotos.length}</p></div>}
         </section>
       ) : (
         <section className="gallery-empty">
@@ -240,8 +249,22 @@ function Lightbox({
   onTouchStart: (event: TouchEvent<HTMLDivElement>) => void;
   onTouchEnd: (event: TouchEvent<HTMLDivElement>) => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    return () => { if (previous?.isConnected) previous.focus({ preventScroll: true }); };
+  }, []);
+
   return (
-    <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${eventTitle}, фотография ${position}`}>
+    <div ref={dialogRef} onKeyDown={(event) => {
+      if (event.key !== "Tab") return;
+      const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]") ?? []).filter((element) => element.getClientRects().length > 0);
+      const first = controls[0]; const last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }} className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${eventTitle}, фотография ${position}`}>
       <button type="button" className="gallery-lightbox-close" onClick={onClose} aria-label="Закрыть фотографию">×</button>
       <div className="gallery-lightbox-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <Image src={photo.src} alt={`${eventTitle} — ${eventDate}`} fill sizes="100vw" className="gallery-lightbox-image" priority />

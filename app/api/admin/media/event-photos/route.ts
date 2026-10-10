@@ -1,3 +1,4 @@
+import { invalidatePublicContent } from "@/lib/server/public-content";
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { db } from "@/lib/server/db";
@@ -18,6 +19,7 @@ export async function DELETE(request:Request){
     const token=resolveBlobToken();
     if(token){const urls=rows.map((row:any)=>String(row.url||"")).filter(isManagedBlob);if(urls.length){try{await del(urls,{token});}catch(error){console.warn("Bulk blob delete:",error instanceof Error?error.message:error);}}}
     await writeAdminAudit(actor.userId,"media.photo.delete_all","event",eventSlug,{count:rows.length});
+    invalidatePublicContent("media");
     return NextResponse.json({ok:true,deleted:rows.length});
   }catch(error){const status=error instanceof AdminAccessError?error.status:500;return NextResponse.json({error:error instanceof Error?error.message:"Не удалось удалить фотографии"},{status});}
 }

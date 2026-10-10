@@ -1,0 +1,167 @@
+[
+  {
+    "route": "/",
+    "attempt": 1,
+    "status": 200,
+    "url": "https://www.agayo.ru/",
+    "ttfbMs": 6503.79,
+    "totalMs": 6509.86,
+    "bytes": 29827,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/",
+    "attempt": 2,
+    "status": 200,
+    "url": "https://www.agayo.ru/",
+    "ttfbMs": 6590.69,
+    "totalMs": 6596.19,
+    "bytes": 29827,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/",
+    "attempt": 3,
+    "status": 200,
+    "url": "https://www.agayo.ru/",
+    "ttfbMs": 5924.97,
+    "totalMs": 5929.32,
+    "bytes": 29827,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/events",
+    "attempt": 1,
+    "status": 200,
+    "url": "https://www.agayo.ru/events",
+    "ttfbMs": 5943.81,
+    "totalMs": 5947.13,
+    "bytes": 10209,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/events",
+    "attempt": 2,
+    "status": 200,
+    "url": "https://www.agayo.ru/events",
+    "ttfbMs": 5905.08,
+    "totalMs": 5908.44,
+    "bytes": 10209,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/events",
+    "attempt": 3,
+    "status": 200,
+    "url": "https://www.agayo.ru/events",
+    "ttfbMs": 5921.61,
+    "totalMs": 5924.58,
+    "bytes": 10209,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/gallery",
+    "attempt": 1,
+    "status": 200,
+    "url": "https://www.agayo.ru/gallery",
+    "ttfbMs": 5970.7,
+    "totalMs": 5990.04,
+    "bytes": 65717,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/gallery",
+    "attempt": 2,
+    "status": 200,
+    "url": "https://www.agayo.ru/gallery",
+    "ttfbMs": 5934.26,
+    "totalMs": 5939.67,
+    "bytes": 65717,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/gallery",
+    "attempt": 3,
+    "status": 200,
+    "url": "https://www.agayo.ru/gallery",
+    "ttfbMs": 5816.5,
+    "totalMs": 5821.97,
+    "bytes": 65717,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/profile",
+    "attempt": 1,
+    "status": 200,
+    "url": "https://www.agayo.ru/profile",
+    "ttfbMs": 5895.64,
+    "totalMs": 5899.56,
+    "bytes": 22664,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/profile",
+    "attempt": 2,
+    "status": 200,
+    "url": "https://www.agayo.ru/profile",
+    "ttfbMs": 6464.91,
+    "totalMs": 6468.27,
+    "bytes": 22664,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/profile",
+    "attempt": 3,
+    "status": 200,
+    "url": "https://www.agayo.ru/profile",
+    "ttfbMs": 8409.7,
+    "totalMs": 8414.09,
+    "bytes": 22664,
+    "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "vercelCache": "MISS"
+  },
+  {
+    "route": "/legal",
+    "attempt": 1,
+    "status": 200,
+    "url": "https://www.agayo.ru/legal",
+    "ttfbMs": 5919.22,
+    "totalMs": 5922.68,
+    "bytes": 10848,
+    "cacheControl": "public, max-age=0, must-revalidate",
+    "vercelCache": "HIT"
+  },
+  {
+    "route": "/legal",
+    "attempt": 2,
+    "status": 200,
+    "url": "https://www.agayo.ru/legal",
+    "ttfbMs": 5765.76,
+    "totalMs": 5768.91,
+    "bytes": 10848,
+    "cacheControl": "public, max-age=0, must-revalidate",
+    "vercelCache": "HIT"
+  },
+  {
+    "route": "/legal",
+    "attempt": 3,
+    "status": 200,
+    "url": "https://www.agayo.ru/legal",
+    "ttfbMs": 5489.46,
+    "totalMs": 5492.3,
+    "bytes": 10848,
+    "cacheControl": "public, max-age=0, must-revalidate",
+    "vercelCache": "HIT"
+  }
+]

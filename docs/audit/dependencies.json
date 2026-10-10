@@ -1,0 +1,30 @@
+{
+  "command": "npm audit --omit=dev",
+  "before": {
+    "info": 0,
+    "low": 0,
+    "moderate": 1,
+    "high": 2,
+    "critical": 1,
+    "total": 4
+  },
+  "after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "updates": {
+    "next": {
+      "from": "16.3.0",
+      "to": "16.3.8"
+    },
+    "@vercel/blob": {
+      "from": "1.x",
+      "to": "2.8.1"
+    }
+  },
+  "notes": "Known advisories in dependency tree; no exploitation test was performed."
+}

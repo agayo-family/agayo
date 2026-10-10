@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { invalidatePublicContent } from "@/lib/server/public-content";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
 
@@ -105,7 +106,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     });
     await writeAdminAudit(actor.userId, "event.update", "event", id, { slug: current.slug, title, salesState, status: body.status });
-    revalidatePath("/");
+    invalidatePublicContent("events");
     revalidatePath("/events");
     revalidatePath(`/events/${String(current.slug)}`);
     return NextResponse.json({ ok: true });

@@ -1,4 +1,5 @@
 "use client";
+import { uploadAdminFile } from "@/lib/client/upload";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { StoredEvent } from "./AdminEventsManager";
@@ -21,7 +22,7 @@ export default function AdminMediaManager({ events, access, previewMode=false }:
   useEffect(()=>{ void reload(); },[previewMode]);
   useEffect(()=>{ if(!eventSlug && visibleEvents[0]) setEventSlug(visibleEvents[0].slug); },[eventSlug,visibleEvents]);
 
-  async function uploadFile(file:File,kind:"photo"|"audio",slug?:string){ const fd=new FormData(); fd.set("file",file); fd.set("kind",kind); if(slug) fd.set("eventSlug",slug); return json(await fetch("/api/admin/media/upload",{method:"POST",body:fd})); }
+  async function uploadFile(file:File,kind:"photo"|"audio",slug?:string){ return uploadAdminFile(file,kind,slug); }
 
   async function addPhotos(){
     if(previewMode){setMessage("В предпросмотре медиатека не записывается.");return;}

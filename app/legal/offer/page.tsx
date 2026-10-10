@@ -1,11 +1,11 @@
 import SiteHeader from "@/components/SiteHeader";
 import { LEGAL_VERSION, ORGANIZER } from "@/lib/legal";
 
-export const metadata = { title: "Публичная оферта — AGAYO" };
+export const metadata = { title: "Публичная оферта", alternates: { canonical: "/legal/offer" } };
 
 export default function OfferPage() {
   return (
-    <main className="inner-page">
+    <main id="main-content" className="inner-page">
       <SiteHeader />
       <article className="inner-wrap legal-doc">
         <div className="section-label">ПУБЛИЧНАЯ ОФЕРТА · РЕДАКЦИЯ {LEGAL_VERSION}</div>
