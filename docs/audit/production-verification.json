@@ -1,0 +1,69 @@
+{
+  "release": "6f4ce647de1c65aef50b8d293bff5e3008ed259d",
+  "mode": "read-only GET; no orders, auth messages or payment requests",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "cache": "STALE",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "title": "AGAYO HALLOWEEN: ПОСЛЕДНЯЯ УЛЫБКА · 07.11.26",
+      "elapsedMs": 5658
+    },
+    {
+      "path": "/events",
+      "status": 200,
+      "cache": "STALE",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "title": "Мероприятия — AGAYO",
+      "elapsedMs": 5032
+    },
+    {
+      "path": "/gallery",
+      "status": 200,
+      "cache": "STALE",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "title": "Галерея — AGAYO",
+      "elapsedMs": 5520
+    },
+    {
+      "path": "/about",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "title": "О нас — AGAYO",
+      "elapsedMs": 4660
+    },
+    {
+      "path": "/events/no-such-event",
+      "status": 404,
+      "cache": "MISS",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "title": "AGAYO — создавай воспоминания",
+      "elapsedMs": 6010
+    },
+    {
+      "path": "/api/admin/system/status",
+      "status": 403,
+      "cache": "MISS",
+      "cacheControl": "private, no-store",
+      "title": null,
+      "elapsedMs": 5115
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "cache": "HIT",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "title": "AGAYO HALLOWEEN: ПОСЛЕДНЯЯ УЛЫБКА · 07.11.26",
+      "elapsedMs": 4622
+    }
+  ],
+  "browser": {
+    "homepage": "nearest event, date, place, program and public category prices rendered",
+    "checkout": "standard category selected, total 250 RUB; no order or payment submitted",
+    "gallery": "15 photos, lightbox opens; Escape closes and restores focus",
+    "desktopHorizontalOverflow": false,
+    "actualMobileDeviceTested": false
+  }
+}
