@@ -1,0 +1,205 @@
+const YOOKASSA_API = "https://api.yookassa.ru/v3";
+
+export class YooKassaApiError extends Error {
+  status: number | null;
+  retryable: boolean;
+
+  constructor(message: string, status: number | null, retryable: boolean) {
+    super(message);
+    this.name = "YooKassaApiError";
+    this.status = status;
+    this.retryable = retryable;
+  }
+}
+
+export type YooKassaPayment = {
+  id: string;
+  status: string;
+  paid: boolean;
+  amount: { value: string; currency: string };
+  refunded_amount?: { value: string; currency: string };
+  confirmation?: { type?: string; confirmation_url?: string };
+  metadata?: { orderPublicId?: string };
+  cancellation_details?: { party?: string; reason?: string };
+};
+
+export type YooKassaRefund = {
+  id: string;
+  payment_id: string;
+  status: string;
+  amount: { value: string; currency: string };
+  created_at?: string;
+  receipt_registration?: string;
+};
+
+function authHeader() {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secret = process.env.YOOKASSA_SECRET_KEY;
+  if (!shopId || !secret) throw new Error("YooKassa is not configured");
+  return `Basic ${Buffer.from(`${shopId}:${secret}`).toString("base64")}`;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readJson(response: Response) {
+  try { return await response.json(); } catch { return null; }
+}
+
+async function requestYooKassa(url: string, init: RequestInit, attempts = 1) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) });
+      const data = await readJson(response);
+      if (response.ok) return data;
+
+      const retryable = response.status === 429 || response.status >= 500;
+      const message = data?.description || data?.code || `YooKassa error ${response.status}`;
+      const error = new YooKassaApiError(message, response.status, retryable);
+      lastError = error;
+      if (!retryable || attempt === attempts - 1) throw error;
+    } catch (error) {
+      if (error instanceof YooKassaApiError && !error.retryable) throw error;
+      lastError = error;
+      if (attempt === attempts - 1) {
+        if (error instanceof YooKassaApiError) throw error;
+        throw new YooKassaApiError(error instanceof Error ? error.message : "YooKassa network error", null, true);
+      }
+    }
+    await wait([250, 700, 1500, 2500][attempt] ?? 2500);
+  }
+  throw lastError instanceof Error ? lastError : new Error("YooKassa request failed");
+}
+
+export function isYooKassaConfigured() {
+  return Boolean(process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY);
+}
+
+export function isDefinitivePaymentFailure(error: unknown) {
+  // A timeout, an unreadable success response or a 5xx does not prove that
+  // no payment was created. Keep such orders and their reservations pending.
+  return error instanceof YooKassaApiError && !error.retryable && [400,401,403,404,405,415,422].includes(error.status || 0);
+}
+
+export function isReceiptConfigurationReady() {
+  const vatCode = Number(process.env.YOOKASSA_VAT_CODE);
+  const paymentMode = String(process.env.YOOKASSA_PAYMENT_MODE || "").trim();
+  const paymentSubject = String(process.env.YOOKASSA_PAYMENT_SUBJECT || "").trim();
+  return Number.isInteger(vatCode) && vatCode >= 1 && vatCode <= 12 && Boolean(paymentMode) && Boolean(paymentSubject);
+}
+
+export async function createPayment(input: {
+  amount: number;
+  orderPublicId: string;
+  description: string;
+  returnUrl: string;
+  customerEmail: string;
+}) {
+  if (process.env.PAYMENTS_ENABLED !== "1") throw new Error("Платежи временно отключены владельцем сайта");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Сумма платежа должна быть больше 0 ₽");
+
+  const vatCode = Number(process.env.YOOKASSA_VAT_CODE);
+  const paymentMode = String(process.env.YOOKASSA_PAYMENT_MODE || "").trim();
+  const paymentSubject = String(process.env.YOOKASSA_PAYMENT_SUBJECT || "").trim();
+  const receiptReady = isReceiptConfigurationReady();
+  const receiptRequired = process.env.YOOKASSA_RECEIPT_REQUIRED === "1";
+
+  if (receiptRequired && !receiptReady) {
+    throw new Error("Фискальный чек включён, но параметры YooKassa для чека заполнены не полностью");
+  }
+
+  const receipt = receiptReady
+    ? {
+        customer: { email: input.customerEmail },
+        items: [{
+          description: input.description.slice(0, 128),
+          quantity: "1.00",
+          amount: { value: input.amount.toFixed(2), currency: "RUB" },
+          vat_code: vatCode,
+          payment_mode: paymentMode,
+          payment_subject: paymentSubject,
+        }],
+        internet: true,
+      }
+    : undefined;
+
+  const data = await requestYooKassa(
+    `${YOOKASSA_API}/payments`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: authHeader(),
+        "Idempotence-Key": input.orderPublicId.slice(0, 64),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: { value: input.amount.toFixed(2), currency: "RUB" },
+        capture: true,
+        confirmation: { type: "redirect", return_url: input.returnUrl },
+        description: input.description.slice(0, 128),
+        metadata: { orderPublicId: input.orderPublicId },
+        ...(receipt ? { receipt } : {}),
+      }),
+    },
+    4,
+  );
+  return data as YooKassaPayment;
+}
+
+export async function createRefund(input: {
+  paymentId: string;
+  amount: number;
+  idempotenceKey: string;
+  description?: string;
+  partial?: boolean;
+}) {
+  if (!input.paymentId.trim()) throw new Error("Не указан платёж YooKassa");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Сумма возврата должна быть больше 0 ₽");
+
+  // В режиме НПД AGAYO не передаёт receipt в YooKassa: налоговый чек формируется
+  // отдельно в «Мой налог»/через уполномоченного НПД-партнёра. Если когда-нибудь
+  // снова включится 54-ФЗ receipt mode, частичный возврат без состава чека нельзя
+  // отправлять молча — останавливаем его до отдельной реализации receipt.items.
+  if (input.partial && process.env.YOOKASSA_RECEIPT_REQUIRED === "1") {
+    throw new Error("Частичный возврат требует данных чека при включённой 54-ФЗ фискализации YooKassa");
+  }
+
+  const data = await requestYooKassa(
+    `${YOOKASSA_API}/refunds`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: authHeader(),
+        "Idempotence-Key": input.idempotenceKey.slice(0, 64),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        payment_id: input.paymentId,
+        amount: { value: input.amount.toFixed(2), currency: "RUB" },
+        ...(input.description ? { description: input.description.slice(0, 250) } : {}),
+      }),
+    },
+    4,
+  );
+  return data as YooKassaRefund;
+}
+
+export async function getPayment(paymentId: string) {
+  const data = await requestYooKassa(
+    `${YOOKASSA_API}/payments/${encodeURIComponent(paymentId)}`,
+    { headers: { Authorization: authHeader() }, cache: "no-store" },
+    2,
+  );
+  return data as YooKassaPayment;
+}
+
+export async function getRefund(refundId: string) {
+  const data = await requestYooKassa(
+    `${YOOKASSA_API}/refunds/${encodeURIComponent(refundId)}`,
+    { headers: { Authorization: authHeader() }, cache: "no-store" },
+    2,
+  );
+  return data as YooKassaRefund;
+}

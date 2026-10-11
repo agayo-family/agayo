@@ -1,0 +1,88 @@
+/* Liquid light — finite entrance, soft heartbeat, no strobe loop. */
+.agayo-light-intro { background:#10050b; }
+.agayo-intro-active .landing-hero-copy { animation:none; }
+.landing-agenda-card:not([hidden]) { animation:agayo-agenda-enter .55s ease both; }
+@keyframes agayo-agenda-enter { from { opacity:.25;transform:translateY(8px) } to { opacity:1;transform:none } }
+.intro-light-field { position:absolute;inset:-18%;overflow:hidden;animation:light-field-release 2.6s ease forwards; }
+.intro-light-field i { position:absolute;inset:5%;background:radial-gradient(ellipse at 32% 55%,#ff3e6170,transparent 54%),radial-gradient(ellipse at 65% 37%,#a90b4ca0,transparent 53%);filter:blur(35px);animation:light-flow 2.6s cubic-bezier(.3,.7,.3,1) forwards; }
+.intro-light-field i:nth-child(2) { inset:10% -20%;background:radial-gradient(ellipse at 63% 48%,#ff998880,transparent 34%),radial-gradient(ellipse at 36% 60%,#f7277280,transparent 50%);animation-name:light-counterflow; }
+.intro-light-field i:nth-child(3) { background:radial-gradient(ellipse at 50% 58%,#d5105090,transparent 48%);mix-blend-mode:screen;animation:light-heartbeat 2.6s ease forwards; }
+.intro-light-ribbon { position:absolute;inset:14% -30%;background:linear-gradient(165deg,transparent 37%,#ff7e8e38 44%,#ffb2a663 49%,#e8225530 54%,transparent 63%);filter:blur(28px);animation:light-ribbon 2.6s ease forwards; }
+.intro-light-logo { position:relative;width:min(80vw,1060px);aspect-ratio:786/373;flex:0 0 auto;background:linear-gradient(110deg,#c82362,#ffced1 40%,#ff6573 58%,#b52c64);background-size:220% 100%;mask:url('/agayo-logo-mask.png') center/contain no-repeat;-webkit-mask:url('/agayo-logo-mask.png') center/contain no-repeat;animation:light-logo 2.6s cubic-bezier(.22,1,.36,1) forwards; }
+.intro-light-caption { position:absolute;bottom:max(12svh,env(safe-area-inset-bottom));left:16px;right:16px;text-align:center;font-size:9px;letter-spacing:.24em;color:#f7c3d2;animation:light-caption 2.6s ease forwards; }
+@keyframes light-flow { 0%{opacity:0;transform:translate(-14%,14%) rotate(-14deg) scale(1.2)} 24%{opacity:1} 65%{transform:translate(8%,-7%) rotate(12deg) scale(.9);opacity:.8} 100%{transform:translate(16%,-14%) scale(1.45);opacity:0} }
+@keyframes light-counterflow { 0%{opacity:0;transform:translate(18%,-12%) rotate(17deg)} 32%{opacity:.85} 72%{transform:translate(-9%,9%) rotate(-8deg);opacity:.65} 100%{opacity:0;transform:scale(1.4)} }
+@keyframes light-heartbeat { 0%,14%{opacity:0;transform:scale(.8)} 29%{opacity:.65;transform:scale(1.12)} 38%{opacity:.35;transform:scale(.96)} 47%{opacity:.72;transform:scale(1.16)} 68%{opacity:.3;transform:scale(1)} 86%{opacity:.5;transform:scale(1.5)} 100%{opacity:0;transform:scale(1.9)} }
+@keyframes light-ribbon { 0%{opacity:0;transform:translate(-18%,24%) rotate(-15deg)} 32%{opacity:.8} 70%{opacity:.45;transform:translate(12%,-16%) rotate(8deg)} 100%{opacity:0;transform:translate(28%,-24%)} }
+@keyframes light-logo { 0%,12%{opacity:0;transform:scale(.92);filter:blur(12px)} 34%{opacity:1;transform:scale(1.025);filter:blur(0)} 43%{transform:scale(1)} 52%{transform:scale(1.035);background-position:65% 50%} 72%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.12);background-position:100% 50%;filter:blur(4px)} }
+@keyframes light-field-release { 0%,72%{opacity:1}100%{opacity:0} }
+@keyframes light-caption { 0%,23%{opacity:0;transform:translateY(6px)}45%,72%{opacity:.85;transform:none}100%{opacity:0} }
+@media(max-width:600px) { .intro-light-logo { width:91vw; }.intro-light-field { inset:-8% -45%; }.intro-light-caption { bottom:18svh;font-size:8px;letter-spacing:.16em; } }
+@media(prefers-reduced-motion:reduce) { .agayo-light-intro { display:none; } }
+/* Original Halloween artwork is decorative; QR and text remain unobstructed. */
+.halloween-art { position:absolute;width:min(100%,1050px);aspect-ratio:1000/650;bottom:0;right:0;pointer-events:none;color:#bb5b73;opacity:.42; }
+.halloween-art>svg { width:100%;height:100%;display:block; }
+.halloween-clown { position:absolute;width:15%;right:16%;bottom:21%; }
+.halloween-clown svg { width:100%;display:block; }
+.halloween-static-bats { position:absolute;inset:0; }
+.halloween-static-bats svg { position:absolute;width:8%;top:17%;left:22%;transform:rotate(-15deg); }
+.halloween-static-bats svg:nth-child(2) { top:27%;left:77%;width:5%;transform:rotate(15deg); }
+.halloween-static-bats svg:nth-child(3) { top:12%;left:49%;width:4%; }
+.halloween-event-page .event-v2-hero>.halloween-art { z-index:1;width:min(75vw,1050px);opacity:.36; }
+.halloween-event-page .event-v2-hero-content { z-index:2; }
+.halloween-art.is-compact { width:65%;opacity:.25;bottom:4%;right:-4%; }
+.halloween-controls { position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:85;display:flex;gap:5px;align-items:center;max-width:calc(100vw - 24px);padding:6px;background:#140912ed;border:1px solid #71304466;border-radius:20px;color:#efc7d3;box-shadow:0 5px 30px #0005; }
+.halloween-controls button { border:0;background:transparent;color:inherit;font:inherit;font-size:10px;min-height:36px;white-space:nowrap;cursor:pointer;padding:7px 10px; }
+.halloween-controls>span { font-size:9px;padding:0 10px;color:#c09aa8; }
+.halloween-entry { position:fixed;inset:0;z-index:910;background:radial-gradient(ellipse at 62% 40%,#52142b,#0e070e 74%);overflow:hidden;animation:halloween-enter 1.5s ease forwards; }
+.halloween-entry>.halloween-art { width:min(100vw,1100px);top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-45%);opacity:1; }
+.halloween-entry .halloween-clown { animation:clown-jump 1s ease-in-out both; }
+.halloween-entry-copy { position:absolute;top:14svh;left:18px;right:18px;text-align:center;font-size:clamp(24px,6vw,64px);font-weight:700;letter-spacing:-.04em;color:#f1d9d7; }
+.halloween-entry-copy span { display:block;margin-top:12px;font-size:9px;letter-spacing:.2em;color:#d294a7; }
+.halloween-entry-swarm { position:absolute;inset:0;pointer-events:none;animation:bat-wipe 1.5s ease forwards; }
+.halloween-entry-swarm i { position:absolute;right:calc(var(--bat) * 4vw - 10vw);bottom:calc(var(--bat) * 5svh - 20svh);width:clamp(55px,14vw,180px);color:#07060c;animation:bat-flight 1.5s cubic-bezier(.6,0,.3,1) forwards; }
+.halloween-entry-swarm svg { width:100%;display:block; }
+.halloween-scare { position:fixed;inset:0;z-index:920;pointer-events:none;display:grid;place-items:center;background:radial-gradient(ellipse at center,#4f1934e8,#08070ce8);animation:scare-appear .75s ease both; }
+.halloween-scare-face { position:relative;z-index:2;width:min(55vmin,430px);transform:rotate(-7deg); }
+.halloween-scare-face svg { width:100%;max-height:70svh; }
+.halloween-scare-moon { position:absolute;width:60vmin;height:60vmin;top:10svh;left:50%;transform:translateX(-50%);background:radial-gradient(circle at 35% 35%,#d65b60,#8a1538 68%,#3d112b);border-radius:50%;opacity:.75; }
+.halloween-scare-bats { position:absolute;inset:0;color:#06060b; }
+.halloween-scare-bats svg { position:absolute;top:20%;left:8%;width:28%;transform:rotate(-18deg); }
+.halloween-scare-bats svg:nth-child(2) { left:68%;top:55%;width:23%;transform:rotate(22deg); }
+.halloween-scare-bats svg:nth-child(3) { left:12%;top:75%;width:19%; }
+@keyframes clown-jump { 0%,50%,100% { transform:translateY(0) rotate(-5deg) }25% { transform:translateY(-25px) rotate(8deg) }75% { transform:translateY(-16px) rotate(-9deg) } }
+@keyframes bat-flight { 0%,66% { opacity:0;transform:translate(20vw,20svh) rotate(-24deg) scale(.6) }67% { opacity:1 }100% { opacity:1;transform:translate(-120vw,-115svh) rotate(-24deg) scale(1.6) } }
+@keyframes bat-wipe { 0%,66% { background:transparent }82% { background:linear-gradient(135deg,transparent 42%,#05060c 49%,transparent 58%) }100% { background:transparent } }
+@keyframes halloween-enter { 0%,77% { opacity:1;visibility:visible;clip-path:inset(0) }100% { opacity:0;visibility:hidden;clip-path:polygon(0 0,0 0,0 0) } }
+@keyframes scare-appear { 0% { opacity:0;transform:scale(.9) }18%,65% { opacity:1;transform:scale(1) }100% { opacity:0;transform:scale(1.04) } }
+.admin-about-shortcut { display:none;min-height:44px;border:1px solid #692738;background:#26101a;color:#f3d2df;padding:10px 12px;font:inherit;font-size:11px;cursor:pointer;width:100%;margin:0 0 10px; }
+@media(max-width:600px) { .halloween-entry>.halloween-art { width:145vw;max-width:none; }.halloween-entry .halloween-clown { right:24%;width:16%; }.halloween-entry-copy { top:18svh; }.halloween-controls>span { display:none; }.halloween-event-page .event-v2-hero>.halloween-art { width:100vw;opacity:.25; } }
+@media(prefers-reduced-motion:reduce) { .halloween-entry,.halloween-scare { display:none !important; }.halloween-clown { animation:none !important; } }
+
+/* Decoration stays behind content and outside the QR's white reading area. */
+.digital-ticket>.halloween-art { z-index:-1;width:45%;opacity:.3;bottom:95px;right:30%; }
+.personal-ticket-message { position:relative;z-index:1;padding:22px 34px;background:#0b080bc9;border-bottom:1px solid #ffffff22; }
+.personal-ticket-message strong { display:block;font-size:18px;color:#fff1ed; }
+.personal-ticket-message p { margin:10px 0 0;font-size:14px;line-height:1.7;color:#e4cdd8;white-space:pre-wrap;overflow-wrap:anywhere; }
+.profile-live-ticket,.profile-history-ticket-v134 { position:relative;isolation:isolate;overflow:hidden; }
+.profile-live-ticket>.halloween-art,.profile-history-ticket-v134>.halloween-art { z-index:-1;opacity:.3; }
+.profile-history-ticket-v134>.halloween-art { width:160px;bottom:-55px; }
+.profile-history-ticket-v134>span small { display:block;margin-top:8px; }
+.profile-personal-message { padding:14px 0 18px; }
+.profile-personal-message p { font-size:13px;line-height:1.6;white-space:pre-wrap; }
+.profile-ticket-pagination { display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-top:24px;font-size:12px; }
+.profile-ticket-pagination a { padding:12px;border:1px solid #ffffff30; }
+.admin-personal-tickets { margin-bottom:28px; }
+.personal-levels { display:flex;flex-wrap:wrap;gap:12px;border:1px solid #ffffff20;margin:18px 0;padding:16px; }
+.personal-levels legend { font-size:10px;letter-spacing:.1em;padding:0 6px; }
+.personal-levels label { display:flex;align-items:center;gap:8px;min-height:40px;font-size:12px; }
+.personal-levels input { width:20px;height:20px;accent-color:#b12c56; }
+.personal-campaign { margin-top:24px;padding-top:24px;border-top:1px solid #ffffff24; }
+.personal-campaign h3 { font-size:20px;overflow-wrap:anywhere; }
+.personal-campaign p,.admin-personal-message { font-size:13px;line-height:1.7; }
+.personal-campaign>label { display:block;margin:15px 0; }
+.personal-campaign>label>span { display:block;margin-bottom:8px;font-size:10px; }
+.personal-campaign input,.personal-campaign textarea { width:100%;background:#111014;color:#f3e8ee;border:1px solid #ffffff24;padding:12px;font:inherit; }
+.personal-campaign-actions { display:flex;flex-wrap:wrap;gap:12px; }
+.gallery-fetch-message { padding:20px 0;font-size:13px;line-height:1.6; }
+@media(max-width:600px) { .personal-ticket-message { padding:20px; }.personal-campaign-actions>button { width:100%; }.digital-ticket>.halloween-art { width:85%;right:-10%;bottom:100px;opacity:.2; } }

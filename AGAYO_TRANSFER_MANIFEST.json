@@ -1,0 +1,554 @@
+{
+  "schema": "agayo.git-transfer.v1",
+  "transfer_id": "agayo-final-2026-10-12",
+  "repository": "agayo-family/agayo",
+  "target_branch": "main",
+  "transfer_branch": "codex/agayo-transfer-2026-10-12",
+  "base_commit": "2e9f98d3dad88775145ce040482da81ad5efa1d5",
+  "base_tree": "a458ecc01db8306b247e0f53a92ff2013b2ca789",
+  "source_commit": "31a8e3d8c96861e8cc96f056d5a08caed5839433",
+  "expected_tree": "7327a85e0fd283deea1dd1ccc57843a9d8d226b5",
+  "file_count": 60,
+  "files": [
+    {
+      "operation": "upsert",
+      "path": "app/(landing)/landing.css",
+      "mode": "100644",
+      "byte_length": 13145,
+      "git_blob_sha1": "6f089ffe1644c27c588766db85a2020279b6ad45",
+      "sha256": "bc608e6584912b9e40f9f979d10fd88d87ff235af8909ac788aafb5ff4d1e898",
+      "upload_name": "6f089ffe1644c27c588766db85a2020279b6ad45.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/(landing)/page.tsx",
+      "mode": "100644",
+      "byte_length": 5281,
+      "git_blob_sha1": "8c4ee0f61ced0ac13638465fcd2a10376d38d468",
+      "sha256": "3e660b09e1a75a8d04662a7a6f1102b35435da16b06436787038b1abb2dfbfc2",
+      "upload_name": "8c4ee0f61ced0ac13638465fcd2a10376d38d468.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/admin/media/yandex/route.ts",
+      "mode": "100644",
+      "byte_length": 9083,
+      "git_blob_sha1": "c232be7b1cca3f4d4cd32e64601a2728320accb9",
+      "sha256": "1a557bfcb8cdfe87f802494569013f73bffd70e40145a8fd58aa7f9d0099e682",
+      "upload_name": "c232be7b1cca3f4d4cd32e64601a2728320accb9.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/admin/personal-tickets/route.ts",
+      "mode": "100644",
+      "byte_length": 6544,
+      "git_blob_sha1": "776ef8d23a06325149f533cd7ef1e277e56f85ed",
+      "sha256": "e3b9141ebca111475c971f41a50d5d597c279c8b1d7f1f8998c752ca3a371393",
+      "upload_name": "776ef8d23a06325149f533cd7ef1e277e56f85ed.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/admin/system/capacity/route.ts",
+      "mode": "100644",
+      "byte_length": 2319,
+      "git_blob_sha1": "45ce59b03ea8bfed507d7090daba1eadaa7c978d",
+      "sha256": "9239a10e4a0d50de4c299410aa75e74ab65f3c61abb4f407e6d8c7bf08994b5b",
+      "upload_name": "45ce59b03ea8bfed507d7090daba1eadaa7c978d.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/admin/tickets/action/route.ts",
+      "mode": "100644",
+      "byte_length": 14480,
+      "git_blob_sha1": "af4d649bac77c925dcc02fa3c7ee42da7b7329c4",
+      "sha256": "6a53df05f516b6df48d70722da7eb3bdc4bae3d72fb0197d3137ad1e9a9d380f",
+      "upload_name": "af4d649bac77c925dcc02fa3c7ee42da7b7329c4.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/admin/tickets/route.ts",
+      "mode": "100644",
+      "byte_length": 4409,
+      "git_blob_sha1": "03621cdf5c1515d790f00401f7a91293ccb864fe",
+      "sha256": "e9df12baca062fd99c5022e33ceb3093e45818e455ed4942b5db019a66362178",
+      "upload_name": "03621cdf5c1515d790f00401f7a91293ccb864fe.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/favorites/route.ts",
+      "mode": "100644",
+      "byte_length": 3421,
+      "git_blob_sha1": "dcf2d336a8044c4064fd520c2a018c72a2f8b0b0",
+      "sha256": "744f56150fe4ff3e34a92c1cb631b519410b4a6fa44230f9ded3699a55a14473",
+      "upload_name": "dcf2d336a8044c4064fd520c2a018c72a2f8b0b0.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/gallery/route.ts",
+      "mode": "100644",
+      "byte_length": 950,
+      "git_blob_sha1": "e2d667d2d4c9ad9b9a205156c92c022ae46a359a",
+      "sha256": "18052bb4ed88339c3f58c9f5843f19e3d8c670fd602c2f06f4d9695109af34b1",
+      "upload_name": "e2d667d2d4c9ad9b9a205156c92c022ae46a359a.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/api/orders/route.ts",
+      "mode": "100644",
+      "byte_length": 9818,
+      "git_blob_sha1": "268e1e2bcf6f9578881daeb2b9053897629e5903",
+      "sha256": "3ccd6e72f76bf8ee4df358e5286944a59d5aff4d82233177ea910257bf61cdc7",
+      "upload_name": "268e1e2bcf6f9578881daeb2b9053897629e5903.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/events/[slug]/page.tsx",
+      "mode": "100644",
+      "byte_length": 9289,
+      "git_blob_sha1": "540b9859af2e2606485aa165ca44d35af2aa25ab",
+      "sha256": "840b10d6c8480c319b9affaa245ab2603b62e7f0fd2003c73660acadab551763",
+      "upload_name": "540b9859af2e2606485aa165ca44d35af2aa25ab.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/experience.css",
+      "mode": "100644",
+      "byte_length": 11267,
+      "git_blob_sha1": "61c97e2284b27774708c39eebed13c38dce8bc14",
+      "sha256": "3b74f456498373b2982abaecedc22c36c59f450b22b59df9d9a28bd87243766d",
+      "upload_name": "61c97e2284b27774708c39eebed13c38dce8bc14.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/gallery/page.tsx",
+      "mode": "100644",
+      "byte_length": 2006,
+      "git_blob_sha1": "276bf35020a351a39eae57f6952d26d2f181f590",
+      "sha256": "ac819362942546e6b92878656a728a4d85ba05d6730276d896895227ff0a7c98",
+      "upload_name": "276bf35020a351a39eae57f6952d26d2f181f590.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/layout.tsx",
+      "mode": "100644",
+      "byte_length": 1427,
+      "git_blob_sha1": "59cdbd24245635e1f20a5cf4d22b0a4bdc2a0092",
+      "sha256": "3c8aa300e53a06f47b8557a1f121f053a88df89ca8cdb785d1e936b1120526bc",
+      "upload_name": "59cdbd24245635e1f20a5cf4d22b0a4bdc2a0092.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/profile/page.tsx",
+      "mode": "100644",
+      "byte_length": 14029,
+      "git_blob_sha1": "ec00aeb8929d24887af994f94f62720e386a6bbf",
+      "sha256": "737e55d6bfec58b693ac155705c0f1bf225216dde519e53f3c75dad459003320",
+      "upload_name": "ec00aeb8929d24887af994f94f62720e386a6bbf.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/site-audit.css",
+      "mode": "100644",
+      "byte_length": 9496,
+      "git_blob_sha1": "66e2a51895ae461337a99e883384aa99876bd0ee",
+      "sha256": "960191487418a41e438a59440fc88a0c25dce70301cf773d8c7366f2f28342e2",
+      "upload_name": "66e2a51895ae461337a99e883384aa99876bd0ee.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "app/tickets/[token]/page.tsx",
+      "mode": "100644",
+      "byte_length": 1726,
+      "git_blob_sha1": "91531f4759f9e272b2f28f746c2779b6c6c4082d",
+      "sha256": "1c7eadfc4d6c45d000421dc1b9679ee4d794dbff5b6563b6c0cde6005e2d57aa",
+      "upload_name": "91531f4759f9e272b2f28f746c2779b6c6c4082d.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/AdminCapacity.tsx",
+      "mode": "100644",
+      "byte_length": 3399,
+      "git_blob_sha1": "30b08fe8cffdf8be35334f5ab03a855859fd96b1",
+      "sha256": "c6a72f6dc848d731893d8437119a34c883620d5ddc554d11a8d7972fbec5077e",
+      "upload_name": "30b08fe8cffdf8be35334f5ab03a855859fd96b1.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/AdminDashboard.tsx",
+      "mode": "100644",
+      "byte_length": 36504,
+      "git_blob_sha1": "649888eb75a25cac08cddcc10a1a2aa31e9bc9f2",
+      "sha256": "f46b7afabd9bcfbb8dce6adb45011a8d269a7bfc416648b22dd10d1731e3ce78",
+      "upload_name": "649888eb75a25cac08cddcc10a1a2aa31e9bc9f2.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/AdminPersonalTicketsManager.tsx",
+      "mode": "100644",
+      "byte_length": 11736,
+      "git_blob_sha1": "57fe2146227f3296f1172393b25d4775e8c6d079",
+      "sha256": "54254462337ce3ac452bfb345fea45e4e9e9b93e2c76e5fe897877940b0a2397",
+      "upload_name": "57fe2146227f3296f1172393b25d4775e8c6d079.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/CheckoutExperience.tsx",
+      "mode": "100644",
+      "byte_length": 11801,
+      "git_blob_sha1": "a154b7d82f226a5e420a9d20ad8e0eb385cd456c",
+      "sha256": "7de374743f9478e0f191616d1fadd414b37197ac67b13d09ee5e8153893c0029",
+      "upload_name": "a154b7d82f226a5e420a9d20ad8e0eb385cd456c.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/EntryReveal.tsx",
+      "mode": "100644",
+      "byte_length": 2455,
+      "git_blob_sha1": "a77e7d2c6883b28fc501e8f43d829eddbcf7f164",
+      "sha256": "07a8333a15faaa9848fe9aff563ff9ccb99cad3d22ec900900c1127b0225173d",
+      "upload_name": "a77e7d2c6883b28fc501e8f43d829eddbcf7f164.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/GalleryExperience.tsx",
+      "mode": "100644",
+      "byte_length": 14830,
+      "git_blob_sha1": "f170b2c8351ad94697cd3c4366100ced1e2747d3",
+      "sha256": "43945411e6d354cdaf00aa6103a775f9df0484f05e991eb2c1d171e98458c221",
+      "upload_name": "f170b2c8351ad94697cd3c4366100ced1e2747d3.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/HalloweenArt.tsx",
+      "mode": "100644",
+      "byte_length": 860,
+      "git_blob_sha1": "2fb9bcd01e8cb0a7dfbd1d4cc63d22db4e2d27fc",
+      "sha256": "15892835d285517007368301c2fb8008baa6a61b2ec0a3d389ad678b1b150482",
+      "upload_name": "2fb9bcd01e8cb0a7dfbd1d4cc63d22db4e2d27fc.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/HalloweenExperience.tsx",
+      "mode": "100644",
+      "byte_length": 4542,
+      "git_blob_sha1": "50b1747016a58db40a2f92ebefd3e8e5e2ad0fed",
+      "sha256": "c3cdef5c1411456557c450707c6f3bedcf6f6b682011ebfae583274a91626144",
+      "upload_name": "50b1747016a58db40a2f92ebefd3e8e5e2ad0fed.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/HalloweenSoundGate.tsx",
+      "mode": "100644",
+      "byte_length": 610,
+      "git_blob_sha1": "174f8deceaeccbff6a5d84817bc4f6981ede3dc4",
+      "sha256": "0e50359733ba857f23ce2032d760a513031645010936adefb69c737ee6ea3197",
+      "upload_name": "174f8deceaeccbff6a5d84817bc4f6981ede3dc4.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/LiveTicket.tsx",
+      "mode": "100644",
+      "byte_length": 3583,
+      "git_blob_sha1": "6b60b08d6f842fe21816c250ef5bcf5d0d5b0425",
+      "sha256": "8d1043b9262773db102b88c0badd76f1339e16a39bf160bf2cf773f6bf1a59fa",
+      "upload_name": "6b60b08d6f842fe21816c250ef5bcf5d0d5b0425.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/MobileNav.tsx",
+      "mode": "100644",
+      "byte_length": 1720,
+      "git_blob_sha1": "ad67265f5c14c34874262f2861e0804efed804fd",
+      "sha256": "6be1aad182a0cd0335190c38a9e1c8d6e7a56d26331dd64c505bd53904a35887",
+      "upload_name": "ad67265f5c14c34874262f2861e0804efed804fd.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/UpcomingAgenda.tsx",
+      "mode": "100644",
+      "byte_length": 4047,
+      "git_blob_sha1": "47ac5137ffa157925588ad61d1048170f1ba4aeb",
+      "sha256": "e3a3b5bb5108bd254d32d473eb89c2991c6d65c574f7b0fa37e886a4b8fb750e",
+      "upload_name": "47ac5137ffa157925588ad61d1048170f1ba4aeb.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "components/YandexDiskImporter.tsx",
+      "mode": "100644",
+      "byte_length": 7886,
+      "git_blob_sha1": "0c9286f64ddf136b481370f93e33e0a69b0c2958",
+      "sha256": "aca7794c0f482082c7b8b94a203243d63352bb0a80dedf5cd4e6dbcab908abba",
+      "upload_name": "0c9286f64ddf136b481370f93e33e0a69b0c2958.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "db/013_personal_tickets.sql",
+      "mode": "100644",
+      "byte_length": 1156,
+      "git_blob_sha1": "8b33a802d830008e6c7f763d30fe6352c31b69e5",
+      "sha256": "d6ddf8bafdd42df273b5ee662f1b4b8ba0d649acf0d3482968e57b3150d7bd38",
+      "upload_name": "8b33a802d830008e6c7f763d30fe6352c31b69e5.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "docs/AGAYO_AUDIT_2026-10-12.md",
+      "mode": "100644",
+      "byte_length": 15543,
+      "git_blob_sha1": "d221797737251b341b72aecad3316a6f270ad42a",
+      "sha256": "d8ca43c4e69b7026007fd5d81fdce1604fe07f5ce00e811af5aa15e915f39017",
+      "upload_name": "d221797737251b341b72aecad3316a6f270ad42a.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/admin-ticket-view.ts",
+      "mode": "100644",
+      "byte_length": 1141,
+      "git_blob_sha1": "027ea7e263f67bfcbce5e6cb2e36321a6585479e",
+      "sha256": "28ec2b242f71c81d432b42aead6018ba2f017c15336d679f26f319d56f8c47c0",
+      "upload_name": "027ea7e263f67bfcbce5e6cb2e36321a6585479e.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/client/halloween-sound.ts",
+      "mode": "100644",
+      "byte_length": 1090,
+      "git_blob_sha1": "9a2b3b7e07fd7585762d4661ef70ad821bfc4705",
+      "sha256": "ec082876b168ec2e4f1a54bdc6a9ed4f0bbc379a1e99136e134db1388ceef2da",
+      "upload_name": "9a2b3b7e07fd7585762d4661ef70ad821bfc4705.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/event-presentation.ts",
+      "mode": "100644",
+      "byte_length": 544,
+      "git_blob_sha1": "bcb208bc0358245116614b3e09fe6e9ab247b1ec",
+      "sha256": "e22bd7fd21eedb1486850b5d5162c25481a1c392095ef7b86c33395033bb4edc",
+      "upload_name": "bcb208bc0358245116614b3e09fe6e9ab247b1ec.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/halloween-art.ts",
+      "mode": "100644",
+      "byte_length": 2809,
+      "git_blob_sha1": "1887e564463c1d6501b2af5a802bfce8604a51b4",
+      "sha256": "7949a069fae32cb4d3c6d0b56b780586ef9c609e07626195323a6e4ba40a45b5",
+      "upload_name": "1887e564463c1d6501b2af5a802bfce8604a51b4.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/halloween-timing.ts",
+      "mode": "100644",
+      "byte_length": 405,
+      "git_blob_sha1": "e8d34ea8fde2197d14228f03472e61117f4ebea6",
+      "sha256": "752040e98f3df78e237c0120c94a42208cd3ac92bd1fd34f0bbc2941fdef067d",
+      "upload_name": "e8d34ea8fde2197d14228f03472e61117f4ebea6.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/email.ts",
+      "mode": "100644",
+      "byte_length": 11405,
+      "git_blob_sha1": "cbe6ec661ba03897bed0d07a8527a442916ab617",
+      "sha256": "2f33dcc80f183c1db353e20b55d521b5ac7093405c973c8ffffae4081155f9b3",
+      "upload_name": "cbe6ec661ba03897bed0d07a8527a442916ab617.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/media.ts",
+      "mode": "100644",
+      "byte_length": 3715,
+      "git_blob_sha1": "0b46b2d9da6877ed70640f14fbea4410f86f2915",
+      "sha256": "1d1357cdb53a9e807ef7dc88fcc1081e9390ad863e819b99d8a37c2fe15460bc",
+      "upload_name": "0b46b2d9da6877ed70640f14fbea4410f86f2915.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/payment-processing.ts",
+      "mode": "100644",
+      "byte_length": 11582,
+      "git_blob_sha1": "315b389c6b9d1a6f97eca3b8b809ff494915965d",
+      "sha256": "c455ebe4bf84f06f9dd7c4102bc49b9b86005209a5b03c9d44e76799a4cc962a",
+      "upload_name": "315b389c6b9d1a6f97eca3b8b809ff494915965d.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/personal-ticket-delivery.ts",
+      "mode": "100644",
+      "byte_length": 3065,
+      "git_blob_sha1": "c7402460158070b3ae82c008fc5855cb73103b4d",
+      "sha256": "a029112aa2106b5c6f08bfae4478ebbaff4e2913cf79bff66c231c99bac6243b",
+      "upload_name": "c7402460158070b3ae82c008fc5855cb73103b4d.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/personal-ticket-store.ts",
+      "mode": "100644",
+      "byte_length": 7266,
+      "git_blob_sha1": "7944e1266f61128a2581d2917cfb817cc92c8206",
+      "sha256": "c1a1775569c80bd6bffaec0c883bb943e4bb84ef1a5c47bc334ada6f50fbfa3e",
+      "upload_name": "7944e1266f61128a2581d2917cfb817cc92c8206.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/profile-ticket-store.ts",
+      "mode": "100644",
+      "byte_length": 1141,
+      "git_blob_sha1": "eb66f92395c0390b9f2ea76afeaebc56b0ea6482",
+      "sha256": "52dca65e59cab0be31fa5c1b6e7882f9a82e9b2bec716fcdfdbc410f1322c115",
+      "upload_name": "eb66f92395c0390b9f2ea76afeaebc56b0ea6482.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/public-content.ts",
+      "mode": "100644",
+      "byte_length": 1910,
+      "git_blob_sha1": "fce4f4561e75459fc12dd34c0c7fde2a87dc0dca",
+      "sha256": "247b7ca44a27375510575bd798dac2dac996c9a9c93f77d1b1a901abac0a88fe",
+      "upload_name": "fce4f4561e75459fc12dd34c0c7fde2a87dc0dca.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "lib/server/yookassa.ts",
+      "mode": "100644",
+      "byte_length": 7811,
+      "git_blob_sha1": "c9caa030d604ed853f83e1a0a4c6d41de76b7187",
+      "sha256": "5f554a1b89fe4cc75ea1ff8662f6a3b831257a020dd6a5b176fb751a54a35fd1",
+      "upload_name": "c9caa030d604ed853f83e1a0a4c6d41de76b7187.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "package-lock.json",
+      "mode": "100644",
+      "byte_length": 60786,
+      "git_blob_sha1": "a825b08388be866e936bb8e1c89f7648221315be",
+      "sha256": "a5253aece0eaedf36ed24e1d340cc97e730af00e5e1e1e7449bed9120baaaaa0",
+      "upload_name": "a825b08388be866e936bb8e1c89f7648221315be.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "package.json",
+      "mode": "100644",
+      "byte_length": 764,
+      "git_blob_sha1": "c85af8f282a301f06082f0fd52cbee8e8591681e",
+      "sha256": "1feec1dcd86ed5bea9cd49bfacece6590aa8b1ed50135f0deb86b55e6f7306f1",
+      "upload_name": "c85af8f282a301f06082f0fd52cbee8e8591681e.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "public/halloween-ticket-atmosphere.png",
+      "mode": "100644",
+      "byte_length": 43992,
+      "git_blob_sha1": "d311377164fe0a41c8701f3b82f1fb1eaa48c1f3",
+      "sha256": "bb5050c65032f0520825cdd7dd66512690d61f7f3bdc525a3c414a80cadbdb07",
+      "upload_name": "d311377164fe0a41c8701f3b82f1fb1eaa48c1f3.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "public/halloween-ticket-atmosphere.svg",
+      "mode": "100644",
+      "byte_length": 2771,
+      "git_blob_sha1": "5e41f5c848077828164e1be48543b1506eb1f78d",
+      "sha256": "a704e5ab6fb700dc8d0a887222259b219a51f3f5d3319da2cd8afd1cceca1dc4",
+      "upload_name": "5e41f5c848077828164e1be48543b1506eb1f78d.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "scripts/load-test.mjs",
+      "mode": "100644",
+      "byte_length": 7241,
+      "git_blob_sha1": "a7feed5f4cdb257a97fa477f962217ad45218cd8",
+      "sha256": "618e1692e671f8b45e04898c4a7c73b08242be909c4ef7a1de9d99edd94a5679",
+      "upload_name": "a7feed5f4cdb257a97fa477f962217ad45218cd8.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "scripts/storage-scenario.mjs",
+      "mode": "100644",
+      "byte_length": 4018,
+      "git_blob_sha1": "f70f1bb849e75157c004f4a04fe89639464fa063",
+      "sha256": "bf3db4050ef4750db6de2c1bcd9f95ecdf7ff494004179050987afaeda8bcccd",
+      "upload_name": "f70f1bb849e75157c004f4a04fe89639464fa063.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/access-regressions.test.mjs",
+      "mode": "100644",
+      "byte_length": 3788,
+      "git_blob_sha1": "b52e172351f0f64b1b9bc22ec51286fcd5ea1416",
+      "sha256": "ff5353d2818a3f6b3402650bbc34d99cc99f7ebe51c029fa334c2550eb75bf1f",
+      "upload_name": "b52e172351f0f64b1b9bc22ec51286fcd5ea1416.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/database-fixture.mjs",
+      "mode": "100644",
+      "byte_length": 1609,
+      "git_blob_sha1": "4e19fd31d18a1a41fb9efa8f9a2ddcd566535169",
+      "sha256": "6da4f2cea97581670774af950ac2701e7b5deceed630c3504c955eec14d16419",
+      "upload_name": "4e19fd31d18a1a41fb9efa8f9a2ddcd566535169.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/gallery-page.test.mjs",
+      "mode": "100644",
+      "byte_length": 1437,
+      "git_blob_sha1": "90ec4cec5d129d27963fcdf7836f42f8a512a726",
+      "sha256": "642b65efd941cd3bd1a993a49e93b076e6b4412fbe195a8bc94b6171895b0c55",
+      "upload_name": "90ec4cec5d129d27963fcdf7836f42f8a512a726.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/halloween-timing.test.mjs",
+      "mode": "100644",
+      "byte_length": 806,
+      "git_blob_sha1": "522a6256afbdcc6c040f6b62fe28ba618da7ff74",
+      "sha256": "9f20a041e29cf0fe9f0816e0008c0b34ecc861c944529efce47836c03454feef",
+      "upload_name": "522a6256afbdcc6c040f6b62fe28ba618da7ff74.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/payment-outcome.test.mjs",
+      "mode": "100644",
+      "byte_length": 5187,
+      "git_blob_sha1": "eabca0797ce5f43480360fcb9c70649d408af244",
+      "sha256": "aa691abb51a47ac839c7a57f78b86d1961ba625bbd00c65666b8f952a4e9368d",
+      "upload_name": "eabca0797ce5f43480360fcb9c70649d408af244.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/personal-tickets.test.mjs",
+      "mode": "100644",
+      "byte_length": 4959,
+      "git_blob_sha1": "bd0b9b3e6bc8852ece1cf6d21a7323ceb452fdfe",
+      "sha256": "20bfafbb73338725dc3e7f702c4c00369010e53b5625b8d825b06555f11237c3",
+      "upload_name": "bd0b9b3e6bc8852ece1cf6d21a7323ceb452fdfe.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/profile-tickets.test.mjs",
+      "mode": "100644",
+      "byte_length": 1888,
+      "git_blob_sha1": "aafdae51347dd7b9f969229e3f0fa896d02e057e",
+      "sha256": "4df4a5c25494353913cbbef273125bd60b6aff41038b710051097e20e52e549d",
+      "upload_name": "aafdae51347dd7b9f969229e3f0fa896d02e057e.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/public-content-render.test.mjs",
+      "mode": "100644",
+      "byte_length": 2744,
+      "git_blob_sha1": "1f9dc2f45d74ec8c374fd125e1efbafa2eb88832",
+      "sha256": "f7595e3617207a0c28e199ba24e6430e156b6ee021bfcac2ad05cdd2d896965c",
+      "upload_name": "1f9dc2f45d74ec8c374fd125e1efbafa2eb88832.blob"
+    },
+    {
+      "operation": "upsert",
+      "path": "tests/ticket-email.test.mjs",
+      "mode": "100644",
+      "byte_length": 3347,
+      "git_blob_sha1": "e9d00368b08fbac7bdc16eee647566f3d17ed8ad",
+      "sha256": "b9f1877000717e60e02fb0588c1f416be6e5b8e24faefac065aa6fe677c8f066",
+      "upload_name": "e9d00368b08fbac7bdc16eee647566f3d17ed8ad.blob"
+    }
+  ]
+}
