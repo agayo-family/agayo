@@ -99,6 +99,23 @@ export function partitionEvents(items: AgayoEvent[], now: Date = new Date()) {
   };
 }
 
+/** Calendar groups use the venue's Moscow date, including UTC month edges. */
+export function groupEventsByMonth(items: AgayoEvent[]) {
+  const groups = new Map<string, { key: string; label: string; events: AgayoEvent[] }>();
+  const timestamp = (value: string) => Number.isFinite(Date.parse(value)) ? Date.parse(value) : Infinity;
+  const sorted = [...items].sort((a, b) => timestamp(a.startsAt) - timestamp(b.startsAt));
+  for (const event of sorted) {
+    const dateKey = dateKeyInMoscow(event.startsAt);
+    const key = dateKey ? dateKey.slice(0, 7) : "undated";
+    if (!groups.has(key)) groups.set(key, {
+      key, label: dateKey ? new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", month: "long", year: "numeric" }).format(new Date(event.startsAt)) : "Дата уточняется",
+      events: [],
+    });
+    groups.get(key)!.events.push(event);
+  }
+  return [...groups.values()];
+}
+
 export const events: AgayoEvent[] = [
   {
     slug: "vernite-lampovost",

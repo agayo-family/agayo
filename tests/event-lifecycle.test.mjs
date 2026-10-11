@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadTs } from './load-ts.mjs';
-const { getEventCatalogBadge, isEventOnOrAfterToday, partitionEvents } = await loadTs('../lib/events.ts');
+const { getEventCatalogBadge, isEventOnOrAfterToday, partitionEvents, groupEventsByMonth } = await loadTs('../lib/events.ts');
 const now = new Date('2026-10-10T13:00:00Z');
 const event = (slug, startsAt, salesState='open', status='published', endsAt=undefined) => ({ slug, startsAt, salesState, status, endsAt });
 
@@ -29,4 +29,12 @@ test('catalog hides drafts/cancellations and sorts each section in the useful di
   assert.deepEqual(result.upcoming.map(x=>x.slug),['early','late']);
   assert.deepEqual(result.archive.map(x=>x.slug),['recent','older']);
   assert.equal(items[0].slug,'late');
+});
+
+test('monthly agenda keeps several events, uses Moscow month edges and does not mutate the catalog', () => {
+  const items = [event('november-late', '2026-11-20T18:00:00+03:00'), event('october', '2026-10-20T18:00:00+03:00'), event('moscow-november', '2026-10-31T22:30:00Z', 'closed'), event('draft', '2026-10-21', 'open', 'draft'), event('december', '2026-12-02T18:00:00+03:00')];
+  const groups = groupEventsByMonth(partitionEvents(items, now).upcoming);
+  assert.deepEqual(groups.map((group) => group.key), ['2026-10', '2026-11', '2026-12']);
+  assert.deepEqual(groups[1].events.map((item) => item.slug), ['moscow-november', 'november-late']);
+  assert.equal(items[0].slug, 'november-late');
 });

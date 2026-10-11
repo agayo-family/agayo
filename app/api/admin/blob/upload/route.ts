@@ -26,8 +26,8 @@ export async function POST(request: Request) {
         const purpose = input.purpose;
         const eventSlug = typeof input.eventSlug === "string" ? input.eventSlug.trim().slice(0, 180) || null : null;
         if (purpose === "photo" && !eventSlug) throw new Error("Выбери мероприятие");
-        const permission = purpose === "poster" ? "manage_events" : purpose === "loyalty" ? "manage_loyalty" : "manage_media";
-        const access = await requireAdminPermission(permission, purpose === "loyalty" ? null : eventSlug);
+        const permission = purpose === "poster" ? "manage_events" : purpose === "loyalty" ? "manage_loyalty" : purpose === "organizer" ? "manage_about" : "manage_media";
+        const access = await requireAdminPermission(permission, purpose === "loyalty" || purpose === "organizer" ? null : eventSlug);
         if (purpose === "audio" && !eventSlug && access.role !== "owner" && !access.allEvents) throw new AdminAccessError("Недостаточно прав для общего отзыва", 403);
         return { allowedContentTypes: [...uploadPolicies[purpose].allowedContentTypes], maximumSizeInBytes: uploadPolicies[purpose].maximumSizeInBytes,
           addRandomSuffix: true, allowOverwrite: false, validUntil: Date.now() + 10 * 60 * 1000,

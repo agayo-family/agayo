@@ -1,10 +1,11 @@
-export type UploadPurpose = "poster" | "photo" | "audio" | "loyalty";
+export type UploadPurpose = "poster" | "photo" | "audio" | "loyalty" | "organizer";
 const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
 export const uploadPolicies = {
   poster: { maximumSizeInBytes: 12 * 1024 * 1024, allowedContentTypes: imageTypes },
   photo: { maximumSizeInBytes: 16 * 1024 * 1024, allowedContentTypes: imageTypes },
   audio: { maximumSizeInBytes: 30 * 1024 * 1024, allowedContentTypes: ["audio/mpeg", "audio/mp3", "audio/mp4", "audio/x-m4a", "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm", "audio/aac", "audio/flac"] },
   loyalty: { maximumSizeInBytes: 10 * 1024 * 1024, allowedContentTypes: imageTypes },
+  organizer: { maximumSizeInBytes: 8 * 1024 * 1024, allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/avif"] },
 } as const;
 
 export function isUploadPurpose(value: unknown): value is UploadPurpose {
