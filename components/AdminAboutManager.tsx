@@ -143,6 +143,6 @@ export default function AdminAboutManager({ previewMode = false }: { previewMode
       <div className="admin-about-save"><span>{dirty ? "Есть несохранённые изменения" : "Все изменения сохранены"}</span><button type="button" className="admin-secondary" onClick={() => setShowPreview((value) => !value)}>{showPreview ? "Скрыть предпросмотр" : "Предпросмотр страницы"}</button><button className="admin-primary" type="submit" disabled={busy || !dirty}>{busy ? "СОХРАНЯЕМ…" : "Сохранить страницу"}</button></div>
       {message && <p className="admin-about-message" role="status">{message}</p>}
     </form>
-    {showPreview && <div className="admin-about-preview about-page"><div className="admin-about-preview-label">ПРЕДПРОСМОТР · НЕСОХРАНЁННЫЕ ПРАВКИ</div><AboutContentView content={content} /></div>}
+    {showPreview && <div className="admin-about-preview about-page"><div className="admin-about-preview-label">ПРЕДПРОСМОТР СТРАНИЦЫ{dirty ? " · ЕСТЬ НЕСОХРАНЁННЫЕ ПРАВКИ" : ""}</div><AboutContentView content={content} /></div>}
   </div>;
 }

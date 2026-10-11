@@ -1,0 +1,55 @@
+{
+  "commit": "f8e9ee4be08b0592e81da2e9e9d15d065256a45f",
+  "checkedAt": "2026-10-11T16:55:47.226Z",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "cache": "STALE",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "bytes": 67102
+    },
+    {
+      "path": "/about",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "bytes": 16708
+    },
+    {
+      "path": "/events",
+      "status": 200,
+      "cache": "STALE",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "bytes": 17097
+    },
+    {
+      "path": "/gallery",
+      "status": 200,
+      "cache": "STALE",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "bytes": 35727
+    },
+    {
+      "path": "/admin-preview",
+      "status": 200,
+      "cache": "MISS",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "bytes": 16336
+    },
+    {
+      "path": "/api/admin/about",
+      "status": 403,
+      "cache": "MISS",
+      "cacheControl": "private, no-store",
+      "bytes": 62
+    },
+    {
+      "path": "/events/no-such-event",
+      "status": 404,
+      "cache": "MISS",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "bytes": 10260
+    }
+  ]
+}
