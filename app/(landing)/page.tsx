@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import VoiceReview from "@/components/VoiceReview";
+import UpcomingAgenda from "@/components/UpcomingAgenda";
 import { formatPrice, getEventCatalogBadge, partitionEvents } from "@/lib/events";
 import { getFeaturedReview, getPublicCatalog, getPublicPhotos, getPublicProgram } from "@/lib/server/public-content";
 import "./landing.css";
@@ -10,9 +11,10 @@ import "./landing.css";
 export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const upcoming = partitionEvents(await getPublicCatalog()).upcoming[0];
-  const title = upcoming ? `${upcoming.title} · ${upcoming.dateLabel}` : "AGAYO — следующий вечер впереди";
-  const description = upcoming
+  const upcomingEvents = partitionEvents(await getPublicCatalog()).upcoming;
+  const upcoming = upcomingEvents[0];
+  const title = upcomingEvents.length > 1 ? "AGAYO — афиша ближайших событий" : upcoming ? `${upcoming.title} · ${upcoming.dateLabel}` : "AGAYO — следующий вечер впереди";
+  const description = upcomingEvents.length > 1 ? `Ближайшие встречи AGAYO: ${upcomingEvents.slice(0, 3).map((event) => `${event.title} · ${event.dateLabel}`).join("; ")}. Афиша, программа и билеты на каждое событие.` : upcoming
     ? `${upcoming.title}: ${upcoming.dateLabel}, ${upcoming.timeLabel}, ${upcoming.city}. ${upcoming.ageLabel}. Программа и билеты на событие AGAYO.`
     : "Вечеринки, концерты и клабшоу AGAYO в Йошкар-Оле. Фотографии прошлых встреч и анонсы следующих событий.";
   return {
@@ -51,13 +53,16 @@ export default async function Home() {
           {upcoming && <div className="landing-tags"><span>{upcoming.ageLabel}</span>{upcoming.alcoholFree && <span>Без алкоголя</span>}<span>{salesCaption}</span></div>}
           <div className="landing-actions">
             <Link className="button-link button-link-accent" href={upcoming ? "#landing-tickets" : "/events"}>{salesOpen ? "Выбрать билет" : upcoming ? "О билетах" : "Все события"}<span aria-hidden="true">↗</span></Link>
-            <Link className="landing-secondary-link" href={upcoming ? "#next-event" : "/gallery"}>{upcoming ? "Как всё будет" : "Как это было"}<span aria-hidden="true">↓</span></Link>
+            <Link className="landing-secondary-link" href={upcoming ? "#upcoming-events" : "/gallery"}>{upcoming ? "Ближайшие встречи" : "Как это было"}<span aria-hidden="true">↓</span></Link>
           </div>
           <div className="hero-booking landing-booking"><div><span>{upcoming ? "ВСТРЕЧАЕМСЯ" : "ПРОЖИВИ ТАК, ЧТОБЫ ВСПОМНИТЬ"}</span><strong>{upcoming?.venue ?? (upcoming ? upcoming.city : "AGAYO")}</strong>{upcoming?.address && <small>{upcoming.address}</small>}</div>{salesOpen && startingPrice !== null && <div className="landing-starting-price"><span>БИЛЕТЫ ОТ</span><strong>{formatPrice(startingPrice)}</strong></div>}</div>
+          {upcomingEvents.length > 1 && <Link href="#upcoming-events" className="landing-hero-agenda-link">Ближайшие встречи: {upcomingEvents.length}<span aria-hidden="true">↓</span></Link>}
         </div>
         <div className="landing-poster"><Image src={cover} alt={upcoming ? `Афиша ${upcoming.title}` : "Один из вечеров AGAYO"} fill priority sizes="(max-width: 900px) 90vw, 43vw" className="landing-poster-image" /><div className="landing-poster-caption"><span>AGAYO FAMILY</span><span>{upcoming?.dateLabel ?? "МЫ — СВОИ"}</span></div></div>
         <div className="landing-hero-foot"><span>ПРОЖИВИ ЭТОТ ВЕЧЕР</span><Link href={upcoming || !memories.length ? "#next-event" : "#memories"} aria-label="Перейти к подробностям">↓</Link><span>{upcoming?.city ?? "ЙОШКАР-ОЛА"}</span></div>
       </section>
+
+      <UpcomingAgenda events={upcomingEvents} />
 
       {upcoming ? <>
         <section id="next-event" className="landing-details section-pad" aria-labelledby="landing-details-title">
@@ -65,7 +70,7 @@ export default async function Home() {
           <div className="landing-details-grid"><div><h2 id="landing-details-title">Встретимся.<br />Запомним.</h2>{upcoming.description && <p>{upcoming.description}</p>}{upcoming.secondaryDescription && <p>{upcoming.secondaryDescription}</p>}<Link className="text-link" href={upcomingHref}>Подробности события <span aria-hidden="true">↗</span></Link></div><dl className="landing-facts"><div><dt>КОГДА</dt><dd><time dateTime={upcoming.startsAt}>{upcoming.dateLabel}</time><small>{upcoming.timeLabel}</small></dd></div><div><dt>ГДЕ</dt><dd>{upcoming.venue ?? upcoming.city}<small>{upcoming.address ?? upcoming.city}</small></dd></div><div><dt>ДЛЯ КОГО</dt><dd>{upcoming.ageLabel}</dd></div><div><dt>ФОРМАТ</dt><dd>{upcoming.alcoholFree ? "Без алкоголя" : "Событие AGAYO"}</dd></div></dl></div>
         </section>
 
-        {program.length > 0 && <section className="landing-program section-pad" aria-labelledby="landing-program-title"><div className="section-label">02 / ПРОГРАММА</div><div className="landing-section-heading"><h2 id="landing-program-title">В ритме<br />вечера</h2><p>Сохрани дату.<br />Всё остальное — здесь.</p></div><ol className="landing-timeline">{program.map(([time, title], index) => <li key={`${time}-${index}`}><span className="landing-program-time">{time}</span><h3>{title}</h3><span className="landing-program-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span></li>)}</ol></section>}
+        {program.length > 0 && <section className="landing-program section-pad" aria-labelledby="landing-program-title"><div className="section-label">02 / ПРОГРАММА БЛИЖАЙШЕГО СОБЫТИЯ</div><div className="landing-section-heading"><h2 id="landing-program-title">В ритме<br />вечера</h2><p>{upcoming.title}<br />{upcoming.dateLabel} · {upcoming.timeLabel}</p></div><ol className="landing-timeline">{program.map(([time, title], index) => <li key={`${time}-${index}`}><span className="landing-program-time">{time}</span><h3>{title}</h3><span className="landing-program-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span></li>)}</ol></section>}
 
         <section id="landing-tickets" className="landing-tickets section-pad" aria-labelledby="landing-tickets-title"><div className="section-label">03 / БИЛЕТЫ</div><div className="landing-section-heading"><h2 id="landing-tickets-title">Твой вход<br />в этот вечер</h2><p>{salesOpen ? "Выбери категорию. Билет появится в профиле после оплаты." : upcoming.salesState === "coming-soon" ? "Открытие продаж — впереди. Заглядывай за обновлениями." : "Сейчас продажа билетов закрыта."}</p></div>{upcoming.tickets.length > 0 && <div className="landing-ticket-grid">{upcoming.tickets.map((ticket, index) => <article className="landing-ticket-card" key={ticket.id}><div className="landing-ticket-top"><span>AGAYO / {String(index + 1).padStart(2, "0")}</span><span>{upcoming.ageLabel}</span></div><h3>{ticket.name}</h3><div className="landing-ticket-price">{formatPrice(ticket.price)}</div><div className="landing-ticket-date">{upcoming.dateLabel} · {upcoming.timeLabel}</div>{salesOpen ? <Link className="button-link" href={`${upcomingHref}/checkout?category=${encodeURIComponent(ticket.id)}`} prefetch={false} aria-label={`Выбрать билет ${ticket.name} за ${formatPrice(ticket.price)}`}>Выбрать билет <span aria-hidden="true">↗</span></Link> : <span className="landing-ticket-closed">{salesCaption}</span>}</article>)}</div>}<div className="landing-ticket-help"><p>{salesOpen ? "Актуальное наличие билетов проверяется при оформлении." : "Следи за статусом продаж на странице события."}</p><Link href={`${upcomingHref}/rules`}>Правила события ↗</Link></div></section>
       </> : <section id="next-event" className="landing-details section-pad"><div className="section-label">01 / ПРОДОЛЖЕНИЕ СЛЕДУЕТ</div><div className="landing-details-grid"><h2>Скоро<br />увидимся.</h2><div><p>Готовим следующую встречу. Здесь появятся её афиша, программа и билеты, когда событие будет опубликовано.</p><Link className="text-link" href="/events">Наши события <span aria-hidden="true">↗</span></Link></div></div></section>}

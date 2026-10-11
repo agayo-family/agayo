@@ -20,11 +20,12 @@ const versions={next:JSON.parse(await readFile(new URL('../node_modules/next/pac
 const result={environment:'local production build, same machine HTTP client/server',versions,databaseConfigured:false,browser:false,smoke:[],stages:[]};
 try {
   await ready;
-  for(const [path,expected] of [ ['/','200'], ['/events','200'], ['/gallery','200'], ['/about','200'], ['/legal','200'], ['/legal/offer','200'], ['/legal/privacy','200'], ['/legal/user-agreement','200'], ['/events/agayo-night','200'], ['/events/clubshow','200'], ['/events/summer-01','200'], ['/events/agayo-night/tickets','200'], ['/events/no-such-event','404'], ['/events/agayo-night/checkout','404'], ['/robots.txt','200'], ['/sitemap.xml','200'], ['/api/admin/events','403'], ['/api/admin/me','404'] ]) {
+  for(const [path,expected] of [ ['/','200'], ['/events','200'], ['/gallery','200'], ['/about','200'], ['/legal','200'], ['/legal/offer','200'], ['/legal/privacy','200'], ['/legal/user-agreement','200'], ['/events/agayo-night','200'], ['/events/clubshow','200'], ['/events/summer-01','200'], ['/events/agayo-night/tickets','200'], ['/events/no-such-event','404'], ['/events/agayo-night/checkout','404'], ['/robots.txt','200'], ['/sitemap.xml','200'], ['/api/admin/events','403'], ['/api/admin/about','403'], ['/api/admin/me','404'] ]) {
     const r=await fetch(base+path,{signal:AbortSignal.timeout(15000)}); const body=await r.text();
     assert.equal(String(r.status),expected,`${path}: unexpected status`);
     if(['/events/agayo-night','/events/clubshow','/events/summer-01'].includes(path)) assert.equal(body.includes('/checkout?category='),false,`${path}: archived sale is exposed`);
     if(path==='/') assert.ok(body.includes('agayo-entry-reveal') && body.includes('hero-booking'));
+    if(path==='/about') assert.ok(body.includes('about-story') && body.includes('Прожить молодость'));
     if(['/','/events','/gallery','/about','/legal','/legal/offer','/legal/privacy','/legal/user-agreement'].includes(path)) {
       assert.ok(body.includes(`rel="canonical" href="https://www.agayo.ru${path==='/'?'':path}"`),`${path}: incorrect canonical`);
       assert.equal(/AGAYO — AGAYO/.test(body.match(/<title>([^<]*)<\/title>/)?.[1] || ''),false,`${path}: duplicated title suffix`);
@@ -34,6 +35,9 @@ try {
   const scan=await fetch(base+'/api/admin/tickets/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:'untrusted-qr-probe-without-session'})});
   assert.equal(scan.status,403,'Unauthenticated scan must fail before touching inventory');
   result.smoke.push({path:'/api/admin/tickets/scan',method:'POST',status:scan.status});
+  const aboutSave=await fetch(base+'/api/admin/about',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:{title:'Unauthorized probe'},version:0})});
+  assert.equal(aboutSave.status,403,'Unauthenticated page edits must fail before database initialization');
+  result.smoke.push({path:'/api/admin/about',method:'PATCH',status:aboutSave.status});
   for(const path of ['/api/orders','/api/promos/validate']) {
     for(const quantity of [1.5,7,'2']) {
       const response=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantity})});

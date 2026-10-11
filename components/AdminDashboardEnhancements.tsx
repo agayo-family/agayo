@@ -20,7 +20,7 @@ export default function AdminDashboardEnhancements() {
     const sync=()=>{
       const app=document.querySelector<HTMLElement>(".admin-app"); if(!app) return;
       const title=document.querySelector<HTMLElement>(".admin-top h1")?.textContent?.trim().toLowerCase()||"";
-      const section=document.querySelector<HTMLElement>(".admin-main > .admin-content");
+      const section=document.querySelector<HTMLElement>(".admin-main > .admin-content:not([hidden])");
       if(previousTickets && (title!=="билеты" || section!==previousTickets)) previousTickets.classList.remove("admin-ticket-section-enhanced-v133");
       const tickets=title==="билеты"&&section?section:null; if(tickets){tickets.classList.add("admin-ticket-section-enhanced-v133");previousTickets=tickets;}
       const media=title==="фото и отзывы" ? document.querySelector<HTMLElement>(".admin-media-section:first-of-type .admin-media-create") : null;

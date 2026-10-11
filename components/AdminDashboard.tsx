@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import TeamAccessPanel from './TeamAccessPanel';
 import AdminEventsManager, { type StoredEvent } from './AdminEventsManager';
 import AdminMediaManager from './AdminMediaManager';
 import AdminPeriodSummary from './AdminPeriodSummary';
 import { AdminPermission, AdminRole, ROLE_LABELS } from '@/lib/admin-permissions';
 
-type Tab = 'overview' | 'events' | 'tickets' | 'buyers' | 'promo' | 'media' | 'team' | 'settings';
+const AdminAboutManager = dynamic(() => import('./AdminAboutManager'), { loading: () => <p role="status">Загружаем редактор «О нас»…</p> });
+
+type Tab = 'overview' | 'events' | 'tickets' | 'buyers' | 'promo' | 'media' | 'about' | 'team' | 'settings';
 
 const tabs: Array<[Tab, string]> = [
   ['overview', 'Обзор'],
@@ -16,6 +19,7 @@ const tabs: Array<[Tab, string]> = [
   ['buyers', 'Покупатели'],
   ['promo', 'Промокоды'],
   ['media', 'Фото и отзывы'],
+  ['about', 'О нас'],
   ['team', 'Команда'],
   ['settings', 'Настройки'],
 ];
@@ -39,6 +43,7 @@ const tabPermissions: Record<Tab, AdminPermission[]> = {
   buyers: ['view_buyers', 'manage_loyalty'],
   promo: ['manage_promos'],
   media: ['manage_media'],
+  about: ['manage_about'],
   team: ['manage_team'],
   settings: ['manage_system'],
 };
@@ -107,6 +112,7 @@ function BuyerLoyaltyEditor({buyer,levels,onChanged}:{buyer:BuyerView;levels:Loy
 export default function AdminDashboard({ access, previewMode = false }: { access: AdminAccessView; previewMode?: boolean }) {
   const initialTab = tabs.find(([id]) => access.role === 'owner' || tabPermissions[id].some((permission) => access.permissions.includes(permission)))?.[0] ?? 'overview';
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [aboutVisited, setAboutVisited] = useState(initialTab === 'about');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [previewHydrated, setPreviewHydrated] = useState(!previewMode);
   const [dashboard, setDashboard] = useState<DashboardData | null>(previewMode ? {metrics:{revenue:60900,sold:87,used:54,refunds:0},today:{newOrders:3,newUsers:2,paymentErrors:0},upcoming:{slug:'vernite-lampovost',title:'ВЕРНИТЕ ЛАМПОВОСТЬ',starts_at:'2026-09-12T17:30:00+03:00',status:'published',sales_state:'open',age_label:'14+'}} : null);
@@ -281,6 +287,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
               key={id}
               onClick={() => {
                 setTab(id);
+                if (id === 'about') setAboutVisited(true);
                 setMobileMenuOpen(false);
               }}
               className={tab === id ? 'is-active' : ''}
@@ -378,6 +385,10 @@ export default function AdminDashboard({ access, previewMode = false }: { access
 
         {tab === 'media' && (
           <section className="admin-content"><AdminMediaManager events={storedEvents} access={access} previewMode={previewMode} /></section>
+        )}
+
+        {aboutVisited && can('manage_about') && (
+          <section className="admin-content" hidden={tab !== 'about'}><AdminAboutManager previewMode={previewMode} /></section>
         )}
 
         {tab === 'team' && can('manage_team') && (
