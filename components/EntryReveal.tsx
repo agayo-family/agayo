@@ -26,7 +26,10 @@ function IntroArtwork({ portrait = false }: { portrait?: boolean }) {
       <linearGradient id={`${id}-shine`}><stop stopColor="#ffdbc3" stopOpacity="0" /><stop offset=".36" stopColor="#ffdbc3" stopOpacity="0" /><stop offset=".5" stopColor="#ffe0c8" stopOpacity=".46" /><stop offset=".64" stopColor="#ffdbc3" stopOpacity="0" /><stop offset="1" stopColor="#ffdbc3" stopOpacity="0" /></linearGradient>
       <pattern id={`${id}-brushed`} width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1H6" stroke="#260913" strokeOpacity=".14" /><path d="M0 3H6" stroke="#ffd0bc" strokeOpacity=".075" /></pattern>
       <mask id={`${id}-shape`} maskUnits="userSpaceOnUse" x="0" y="0" width={width} height={height} style={{ maskType: "alpha" }}>
-        <ellipse className="agayo-entry-cloud-mask" cx={cx} cy={cy} rx={width * .485} ry={height * .48} fill="white" />
+        <ellipse className="agayo-entry-cloud-mask" cx={cx} cy={cy} rx={width * .485} ry={height * .48} fill="white">
+          <animate attributeName="rx" values={[width * .485, width * .485, width * .485 * .68, 0, 0].join(";")} keyTimes="0;.23;.43;.61;1" keySplines=".72 0 .22 1;.72 0 .22 1;.72 0 .22 1;0 0 1 1" calcMode="spline" dur="2.6s" begin="0s" fill="freeze" />
+          <animate attributeName="ry" values={[height * .48, height * .48, height * .48 * .62, 0, 0].join(";")} keyTimes="0;.23;.43;.61;1" keySplines=".72 0 .22 1;.72 0 .22 1;.72 0 .22 1;0 0 1 1" calcMode="spline" dur="2.6s" begin="0s" fill="freeze" />
+        </ellipse>
         <image href="/agayo-logo-mask.png" x={cx - logoWidth / 2} y={cy - logoHeight / 2} width={logoWidth} height={logoHeight} />
       </mask>
     </defs>
