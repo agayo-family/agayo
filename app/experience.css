@@ -85,4 +85,5 @@
 .personal-campaign input,.personal-campaign textarea { width:100%;background:#111014;color:#f3e8ee;border:1px solid #ffffff24;padding:12px;font:inherit; }
 .personal-campaign-actions { display:flex;flex-wrap:wrap;gap:12px; }
 .gallery-fetch-message { padding:20px 0;font-size:13px;line-height:1.6; }
+@media(max-width:600px) { .halloween-event-page .event-v2-hero-content { padding-bottom:calc(92px + env(safe-area-inset-bottom)); } }
 @media(max-width:600px) { .personal-ticket-message { padding:20px; }.personal-campaign-actions>button { width:100%; }.digital-ticket>.halloween-art { width:85%;right:-10%;bottom:100px;opacity:.2; } }
