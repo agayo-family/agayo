@@ -7,10 +7,12 @@ import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib
 import { resolveBlobToken } from "@/lib/server/blob";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const YANDEX_PUBLIC_API = "https://cloud-api.yandex.net/v1/disk/public/resources";
 const MAX_FILE_SIZE = 16 * 1024 * 1024;
-const MAX_FILES = 250;
+const PAGE_SIZE = 100;
+type FolderCursor = { path?: string; offset: number; depth: number };
 
 type YandexItem = {
   type?: string;
@@ -19,7 +21,7 @@ type YandexItem = {
   size?: number;
   mime_type?: string;
   media_type?: string;
-  _embedded?: { items?: YandexItem[] };
+  _embedded?: { items?: YandexItem[]; total?: number };
 };
 
 function text(value: unknown, max = 2000) {
@@ -34,7 +36,7 @@ function isImage(item: YandexItem) {
 }
 
 async function yandexJson(url: string) {
-  const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+  const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(5000), headers: { Accept: "application/json" } });
   let data: any = null;
   try { data = await response.json(); } catch {}
   if (!response.ok) {
@@ -44,34 +46,32 @@ async function yandexJson(url: string) {
   return data;
 }
 
-async function getResource(publicUrl: string, path?: string) {
-  const params = new URLSearchParams({ public_key: publicUrl, limit: "1000" });
+async function getResource(publicUrl: string, path?: string, offset = 0) {
+  const params = new URLSearchParams({ public_key: publicUrl, limit: String(PAGE_SIZE), offset: String(offset), sort: 'name' });
   if (path) params.set("path", path);
   return yandexJson(`${YANDEX_PUBLIC_API}?${params.toString()}`) as Promise<YandexItem>;
 }
 
-async function walkFolder(publicUrl: string, resource: YandexItem, result: YandexItem[], depth = 0) {
-  if (result.length >= MAX_FILES || depth > 5) return;
-  if (resource.type === "file") {
-    if (isImage(resource) && Number(resource.size || 0) <= MAX_FILE_SIZE) result.push(resource);
-    return;
-  }
-  const items = resource._embedded?.items || [];
-  for (const item of items) {
-    if (result.length >= MAX_FILES) break;
-    if (item.type === "file") {
-      if (isImage(item) && Number(item.size || 0) <= MAX_FILE_SIZE) result.push(item);
-      continue;
-    }
-    if (item.type === "dir" && item.path) {
-      try {
-        const nested = await getResource(publicUrl, item.path);
-        await walkFolder(publicUrl, nested, result, depth + 1);
-      } catch (error) {
-        console.warn("Yandex Disk nested folder:", error instanceof Error ? error.message : error);
+async function listBatch(publicUrl: string, cursor: FolderCursor[]) {
+  const queue = [...cursor], result: YandexItem[] = [];
+  let deepFolders = false;
+  for (let step = 0; step < 8 && queue.length; step++) {
+    const current = queue.shift()!;
+    const resource = await getResource(publicUrl, current.path, current.offset);
+    if (resource.type === 'file') { if (isImage(resource) && Number(resource.size || 0) <= MAX_FILE_SIZE) result.push(resource); continue; }
+    const items = resource._embedded?.items || [];
+    for (const item of items) {
+      if (item.type === 'file' && isImage(item) && Number(item.size || 0) <= MAX_FILE_SIZE) result.push(item);
+      if (item.type === 'dir' && item.path) {
+        if (current.depth >= 5) { deepFolders = true; continue; }
+        queue.push({ path: item.path, offset: 0, depth: current.depth + 1 });
       }
     }
+    const nextOffset = current.offset + items.length;
+    if (resource._embedded?.total != null ? nextOffset < resource._embedded.total : items.length === PAGE_SIZE) queue.unshift({ ...current, offset: nextOffset });
+    if (queue.length > 2000) throw new Error('Слишком много вложенных папок. Импортируй части архива отдельными ссылками');
   }
+  return { resources: result, nextCursor: queue.length ? queue : null, deepFolders };
 }
 
 async function getDownloadHref(publicUrl: string, path?: string) {
@@ -99,17 +99,17 @@ export async function POST(request: Request) {
     const access = await requireAdminPermission("manage_media", eventSlug);
 
     if (action === "list") {
-      const root = await getResource(publicUrl);
-      const found: YandexItem[] = [];
-      await walkFolder(publicUrl, root, found);
+      const cursor: FolderCursor[] = Array.isArray(body.cursor) ? body.cursor.slice(0,2000) : [{ offset: 0, depth: 0 }];
+      if (cursor.some(item => !Number.isInteger(item.offset) || item.offset < 0 || item.offset > 1000000 || !Number.isInteger(item.depth) || item.depth < 0 || item.depth > 5 || (item.path != null && (typeof item.path !== 'string' || item.path.length > 2500)))) return NextResponse.json({ error: 'Некорректная очередь импорта' }, { status: 400 });
+      const batch = await listBatch(publicUrl, cursor);
       return NextResponse.json({
-        resources: found.map((item) => ({
+        resources: batch.resources.map((item) => ({
           path: String(item.path || ""),
           name: String(item.name || "photo"),
           size: Number(item.size || 0),
           mime_type: String(item.mime_type || "image/*"),
         })),
-        truncated: found.length >= MAX_FILES,
+        nextCursor: batch.nextCursor, deepFolders: batch.deepFolders,
       });
     }
 

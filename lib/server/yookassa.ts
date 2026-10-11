@@ -51,7 +51,7 @@ async function requestYooKassa(url: string, init: RequestInit, attempts = 1) {
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) });
       const data = await readJson(response);
       if (response.ok) return data;
 
@@ -75,6 +75,12 @@ async function requestYooKassa(url: string, init: RequestInit, attempts = 1) {
 
 export function isYooKassaConfigured() {
   return Boolean(process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY);
+}
+
+export function isDefinitivePaymentFailure(error: unknown) {
+  // A timeout, an unreadable success response or a 5xx does not prove that
+  // no payment was created. Keep such orders and their reservations pending.
+  return error instanceof YooKassaApiError && !error.retryable && [400,401,403,404,405,415,422].includes(error.status || 0);
 }
 
 export function isReceiptConfigurationReady() {

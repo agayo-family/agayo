@@ -1,13 +1,13 @@
 import Link from "next/link";
 import GalleryExperience from "@/components/GalleryExperience";
 import SiteHeader from "@/components/SiteHeader";
-import { getPublicCatalog, getPublicPhotos } from "@/lib/server/public-content";
+import { getPublicCatalog, getPublicPhotoPage } from "@/lib/server/public-content";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
 export const metadata: Metadata = { title: "Галерея", alternates: { canonical: "/gallery" } };
 export default async function GalleryPage() {
-  const [events, photos] = await Promise.all([getPublicCatalog(), getPublicPhotos()]);
+  const [events, photoPage] = await Promise.all([getPublicCatalog(), getPublicPhotoPage()]);
   const publishedEvents = events.map((event) => ({ slug:event.slug,title:event.title,dateLabel:event.dateLabel,startsAt:event.startsAt,city:event.city }));
   return (
     <main id="main-content" className="inner-page gallery-page-v2">
@@ -22,7 +22,7 @@ export default async function GalleryPage() {
           </div>
         </section>
 
-        <GalleryExperience photos={photos} publishedEvents={publishedEvents} />
+        <GalleryExperience photos={photoPage.photos} total={photoPage.total} publishedEvents={publishedEvents} />
 
         <section className="gallery-memory-cta">
           <div className="section-label">ТВОЙ АРХИВ</div>

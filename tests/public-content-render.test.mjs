@@ -5,11 +5,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { loadTs, loadTsx } from './load-ts.mjs';
 const events = await loadTs('../lib/events.ts');
 const { defaultAboutContent } = await loadTs('../lib/about-content.ts');
-const { default: UpcomingAgenda } = await loadTsx('../components/UpcomingAgenda.tsx', { '@/lib/events': events });
+const presentation = await loadTs('../lib/event-presentation.ts');
+const { default: UpcomingAgenda } = await loadTsx('../components/UpcomingAgenda.tsx', { '@/lib/events': events, '@/lib/event-presentation': presentation });
 const { default: AboutContentView } = await loadTsx('../components/AboutContentView.tsx');
 const event = (slug, day, salesState = 'open') => ({ ...events.events[0], slug, title: `Встреча ${slug}`, startsAt: `2080-11-${day}T18:00:00+03:00`, dateLabel: `${day}.11.80`, salesState });
 
-test('several upcoming events render separate dates and ticket links; closed sales remain in the agenda', () => {
+test('agenda keeps chronological cards and stable links, shows only the first and offers manual arrows', () => {
   const items = [event('first', '01'), event('second', '10', 'closed'), event('третий', '20', 'coming-soon')];
   const html = renderToStaticMarkup(createElement(UpcomingAgenda, { events: items }));
   for (const item of items) assert.ok(html.includes(item.title) && html.includes(item.dateLabel));
@@ -17,6 +18,8 @@ test('several upcoming events render separate dates and ticket links; closed sal
   assert.ok(html.includes('href="/events/second"'));
   assert.ok(html.includes(`href="/events/${encodeURIComponent('третий')}"`));
   assert.equal(html.includes('/events/second#tickets'), false);
+  assert.equal((html.match(/hidden=""/g)||[]).length,2);
+  assert.ok(html.includes('Следующее мероприятие') && html.includes('Предыдущее мероприятие'));
   assert.ok(html.includes('Билеты скоро') && html.includes('Продажа закрыта'));
 });
 test('hidden organizer cards and their photo URLs never appear in public markup; text is escaped', () => {

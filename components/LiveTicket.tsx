@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { AgayoEvent } from "@/lib/events";
+import HalloweenArt from './HalloweenArt';
+import { isHalloweenEvent, eventPalette } from '@/lib/event-presentation';
 
 export type LiveTicketData = {
   publicId: string;
@@ -11,18 +13,22 @@ export type LiveTicketData = {
   zone?: string | null;
   seat?: string | null;
   eventSlug: string;
+  personalTitle?: string;
+  personalDescription?: string;
 };
 
 const labels = { valid: "ДЕЙСТВИТЕЛЕН", used: "ИСПОЛЬЗОВАН", refunded: "ВОЗВРАЩЁН", cancelled: "ОТМЕНЁН" } as const;
 
 export default function LiveTicket({ ticket, event }: { ticket: LiveTicketData; event: AgayoEvent }) {
-  const theme = event.ticketTheme ?? { primary: "#111111", secondary: "#4b0f19", accent: "#c21f39" };
+  const theme = eventPalette(event.ticketTheme);
   const style = { "--ticket-primary": theme.primary, "--ticket-secondary": theme.secondary, "--ticket-accent": theme.accent } as CSSProperties;
   const isUsed = ticket.status === "used";
   const poster = event.posterImage ?? event.heroImage;
 
   return <article className={`digital-ticket poster-driven-ticket status-${ticket.status} ${isUsed ? "is-memory" : ""}`} style={style}>
     <div className="digital-ticket-art" aria-hidden="true"><img src={poster} alt="" /></div>
+    {isHalloweenEvent(event) && <HalloweenArt compact />}
+    {ticket.personalTitle && <div className="personal-ticket-message"><strong>{ticket.personalTitle}</strong><p>{ticket.personalDescription}</p></div>}
     <div className="digital-ticket-topline"><span>AGAYO / DIGITAL TICKET</span><strong>{labels[ticket.status]}</strong></div>
     {isUsed ? <div className="ticket-memory-panel"><p>{event.dateLabel} · {event.city.toUpperCase()}</p><h1>ТЫ БЫЛ<br />ЗДЕСЬ</h1><span>Проход уже зафиксирован. Теперь билет остаётся частью твоей истории AGAYO.</span><Link href="/gallery">Открыть фотографии события <b>↗</b></Link></div> : <>
       <div className="ticket-main-grid">

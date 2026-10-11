@@ -23,6 +23,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const ticketId = clean(body.ticketId, 80);
     const action = clean(body.action, 40);
+    const inventoryAction = ['cancel_ticket','restore_ticket','reset_scan'].includes(action);
+    if (!inventoryAction && !['refund_ticket_policy','refund_order'].includes(action)) return NextResponse.json({ error: 'Неизвестное действие' }, { status: 400 });
+    await requireAdminPermission(inventoryAction ? 'manage_ticket_inventory' : 'view_revenue');
     if (!ticketId) return NextResponse.json({ error: "Билет не указан" }, { status: 400 });
 
     const sql = db();

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type YandexResource = { path:string; name:string; size:number; mime_type:string };
-type Checkpoint = { publicUrl:string; eventSlug:string; done:string[]; total:number; updatedAt:number };
+type Checkpoint = { publicUrl:string; eventSlug:string; done:string[]; total:number; updatedAt:number; cursor?: Array<{ path?: string; offset: number; depth: number }> };
 
 const checkpointKey = "agayo:yandex-import:v134";
 const resourceKey = (resource:YandexResource) => `${resource.path}::${resource.name}`;
@@ -27,7 +27,7 @@ export default function YandexDiskImporter() {
 
   function saveCheckpoint(next:Checkpoint|null){ setCheckpoint(next); try { if(next)localStorage.setItem(checkpointKey,JSON.stringify(next)); else localStorage.removeItem(checkpointKey); } catch {} }
 
-  const resumable = useMemo(()=>Boolean(checkpoint && checkpoint.done.length < checkpoint.total),[checkpoint]);
+  const resumable = useMemo(()=>Boolean(checkpoint),[checkpoint]);
 
   async function importPhotos(useSaved=false) {
     const link=(useSaved?checkpoint?.publicUrl:publicUrl)?.trim()||"";
@@ -36,22 +36,32 @@ export default function YandexDiskImporter() {
     if (!slug) { setMessage("Сначала выбери мероприятие выше"); return; }
     setBusy(true); setMessage(""); setProgress("Проверяем ссылку…");
     try {
-      const listResponse=await fetch("/api/admin/media/yandex",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"list",publicUrl:link,eventSlug:slug})});
-      const listData=await listResponse.json(); if(!listResponse.ok) throw new Error(listData.error||"Не удалось открыть Яндекс Диск");
-      const resources:YandexResource[]=listData.resources||[]; if(!resources.length) throw new Error("По этой ссылке не найдено поддерживаемых фотографий");
-      const previous = checkpoint && checkpoint.publicUrl===link && checkpoint.eventSlug===slug ? new Set<string>(checkpoint.done) : new Set<string>();
-      const next:Checkpoint={publicUrl:link,eventSlug:slug,done:[...previous],total:resources.length,updatedAt:Date.now()}; saveCheckpoint(next);
-      let imported=0, skipped=0;
-      for(let index=0;index<resources.length;index++){
-        const resource=resources[index]; const key=resourceKey(resource);
-        if(previous.has(key)){skipped++;continue;}
-        setProgress(`Файл ${index+1} / ${resources.length}: ${resource.name}`);
-        const response=await fetch("/api/admin/media/yandex",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"import",publicUrl:link,eventSlug:slug,path:resource.path,name:resource.name})});
-        const data=await response.json(); if(!response.ok) throw new Error(`${resource.name}: ${data.error||"ошибка импорта"}`);
-        previous.add(key); if(data.skipped) skipped++; else imported++;
-        saveCheckpoint({...next,done:[...previous],updatedAt:Date.now()});
-      }
-      saveCheckpoint(null); setProgress(""); setPublicUrl(""); setMessage(`Готово: добавлено ${imported}, уже было ${skipped}.`);
+      const saved = useSaved && checkpoint?.publicUrl === link && checkpoint.eventSlug === slug ? checkpoint : null;
+      const previous = checkpoint && checkpoint.publicUrl === link && checkpoint.eventSlug === slug ? new Set<string>(checkpoint.done) : new Set<string>();
+      let cursor = saved?.cursor;
+      let imported = 0, skipped = 0, deepFolders = false;
+      do {
+        const listResponse = await fetch('/api/admin/media/yandex', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'list',publicUrl:link,eventSlug:slug,cursor}) });
+        const listData = await listResponse.json();
+        if (!listResponse.ok) throw new Error(listData.error || 'Не удалось открыть Яндекс Диск');
+        const resources:YandexResource[] = listData.resources || [];
+        deepFolders ||= Boolean(listData.deepFolders);
+        const next:Checkpoint = {publicUrl:link,eventSlug:slug,done:[...previous],total:previous.size+resources.filter(resource=>!previous.has(resourceKey(resource))).length,updatedAt:Date.now(),cursor};
+        saveCheckpoint(next);
+        for (const resource of resources) {
+          const key = resourceKey(resource);
+          if (previous.has(key)) { skipped++; continue; }
+          setProgress(`Обработано ${previous.size} фотографий · ${resource.name}`);
+          const response = await fetch('/api/admin/media/yandex', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'import',publicUrl:link,eventSlug:slug,path:resource.path,name:resource.name})});
+          const data = await response.json(); if (!response.ok) throw new Error(`${resource.name}: ${data.error || 'ошибка импорта'}`);
+          previous.add(key); if (data.skipped) skipped++; else imported++;
+          saveCheckpoint({...next,done:[...previous],updatedAt:Date.now()});
+        }
+        cursor = listData.nextCursor || undefined;
+        if (cursor) saveCheckpoint({...next,cursor,done:[...previous],total:previous.size+1,updatedAt:Date.now()});
+      } while (cursor);
+      if (!previous.size) throw new Error('По этой ссылке не найдено поддерживаемых фотографий');
+      saveCheckpoint(null); setProgress(""); setPublicUrl(""); setMessage(`Готово: добавлено ${imported}, уже было ${skipped}.${deepFolders ? " Папки глубже пяти уровней импортируй отдельной ссылкой." : ""}`);
       window.setTimeout(()=>window.location.reload(),900);
     }catch(error){setMessage(`${error instanceof Error?error.message:"Ошибка импорта"}. Прогресс сохранён — можно продолжить позже.`);setProgress("");}
     finally{setBusy(false);}

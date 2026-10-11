@@ -19,7 +19,7 @@ async function listFavorites(userId: string) {
     FROM photo_favorites f
     JOIN media_photos p ON p.id=f.photo_id
     LEFT JOIN events e ON e.slug=p.event_slug
-    WHERE f.user_id=${userId} AND p.is_published=true
+    WHERE f.user_id=${userId} AND p.is_published=true AND e.status='published'
     ORDER BY f.created_at DESC
   `;
   const photos = rows.map(mapPhoto);
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       SELECT p.id, p.event_slug, p.url, p.caption, e.title AS event_title
       FROM media_photos p
       LEFT JOIN events e ON e.slug=p.event_slug
-      WHERE p.id::text=${photoId} AND p.is_published=true
+      WHERE p.id::text=${photoId} AND p.is_published=true AND e.status='published'
       LIMIT 1
     `;
     if (!photoRows[0]) return NextResponse.json({ error: "Фотография не найдена" }, { status: 404 });

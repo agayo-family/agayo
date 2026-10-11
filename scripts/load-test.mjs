@@ -20,11 +20,11 @@ const versions={next:JSON.parse(await readFile(new URL('../node_modules/next/pac
 const result={environment:'local production build, same machine HTTP client/server',versions,databaseConfigured:false,browser:false,smoke:[],stages:[]};
 try {
   await ready;
-  for(const [path,expected] of [ ['/','200'], ['/events','200'], ['/gallery','200'], ['/about','200'], ['/legal','200'], ['/legal/offer','200'], ['/legal/privacy','200'], ['/legal/user-agreement','200'], ['/events/agayo-night','200'], ['/events/clubshow','200'], ['/events/summer-01','200'], ['/events/agayo-night/tickets','200'], ['/events/no-such-event','404'], ['/events/agayo-night/checkout','404'], ['/robots.txt','200'], ['/sitemap.xml','200'], ['/api/admin/events','403'], ['/api/admin/about','403'], ['/api/admin/me','404'] ]) {
+  for(const [path,expected] of [ ['/','200'], ['/events','200'], ['/gallery','200'], ['/about','200'], ['/legal','200'], ['/legal/offer','200'], ['/legal/privacy','200'], ['/legal/user-agreement','200'], ['/events/agayo-night','200'], ['/events/clubshow','200'], ['/events/summer-01','200'], ['/events/agayo-night/tickets','200'], ['/events/no-such-event','404'], ['/events/agayo-night/checkout','404'], ['/robots.txt','200'], ['/sitemap.xml','200'], ['/api/admin/events','403'], ['/api/admin/about','403'], ['/api/admin/me','404'], ['/api/admin/personal-tickets','403'], ['/api/admin/system/capacity','403'], ['/api/admin/system/status','403'], ['/profile','200'], ['/profile/favorites','200'], ['/auth','200'], ['/checkout/success','200'], ['/events/agayo-night/rules','200'], ['/tickets/demo-agayo-night','200'], ['/tickets/demo-vernite-lampovost','200'], ['/tickets/unknown-token','404'], ['/halloween-ticket-atmosphere.png','200'], ['/api/gallery','200'] ]) {
     const r=await fetch(base+path,{signal:AbortSignal.timeout(15000)}); const body=await r.text();
     assert.equal(String(r.status),expected,`${path}: unexpected status`);
     if(['/events/agayo-night','/events/clubshow','/events/summer-01'].includes(path)) assert.equal(body.includes('/checkout?category='),false,`${path}: archived sale is exposed`);
-    if(path==='/') assert.ok(body.includes('agayo-entry-reveal') && body.includes('hero-booking'));
+    if(path==='/') assert.ok(body.includes('agayo-entry-reveal') && body.includes('ВОСПОМИНАНИЯ,') && body.includes('Познакомиться с командой') && !body.includes('voice-review'));
     if(path==='/about') assert.ok(body.includes('about-story') && body.includes('Прожить молодость'));
     if(['/','/events','/gallery','/about','/legal','/legal/offer','/legal/privacy','/legal/user-agreement'].includes(path)) {
       assert.ok(body.includes(`rel="canonical" href="https://www.agayo.ru${path==='/'?'':path}"`),`${path}: incorrect canonical`);
@@ -45,8 +45,14 @@ try {
       result.smoke.push({path,method:'POST',quantity,status:response.status});
     }
   }
-  const paths=['/','/events','/gallery'];
-  for(const concurrency of [10,25,50]) {
+  const personal=await fetch(base+'/api/admin/personal-tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create'})});
+  assert.equal(personal.status,403,'Unauthorized personal issuance must stop before database initialization');
+  result.smoke.push({path:'/api/admin/personal-tickets',method:'POST',status:personal.status});
+  const ticketAction=await fetch(base+'/api/admin/tickets/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel_ticket',ticketId:'isolated-test'})});
+  assert.equal(ticketAction.status,403,'Ticket action must authenticate before reading a ticket');
+  result.smoke.push({path:'/api/admin/tickets/action',method:'POST',status:ticketAction.status});
+  const paths=['/','/events','/gallery','/about'];
+  for(const concurrency of [10,50,100,250,500]) {
     const durations=[];let errors=0;let bytes=0;
     const started=performance.now();
     await Promise.all(Array.from({length:concurrency},(_,worker)=>(async()=>{

@@ -20,6 +20,6 @@ export default function MobileNav() {
   }, [open]);
   return <div className="mobile-nav-wrap" ref={root}>
     <button ref={trigger} className={`menu-button ${open ? "is-open" : ""}`} type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label={open ? "Закрыть меню" : "Открыть меню"} onClick={() => setOpen((value) => !value)}><span /><span /></button>
-    {open && <nav id="mobile-navigation" className="mobile-nav" aria-label="Мобильная навигация"><Link href="/events" onClick={() => setOpen(false)}>Мероприятия</Link><Link href="/gallery" onClick={() => setOpen(false)}>Галерея</Link><Link href="/profile" prefetch={false} onClick={() => setOpen(false)}>Профиль</Link></nav>}
+    {open && <nav id="mobile-navigation" className="mobile-nav" aria-label="Мобильная навигация"><Link href="/events" onClick={() => setOpen(false)}>Мероприятия</Link><Link href="/gallery" onClick={() => setOpen(false)}>Галерея</Link><Link href="/about" onClick={() => setOpen(false)}>О нас</Link><Link href="/profile" prefetch={false} onClick={() => setOpen(false)}>Профиль</Link></nav>}
   </div>;
 }

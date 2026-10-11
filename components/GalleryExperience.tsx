@@ -13,12 +13,17 @@ function searchableDate(value: string) {
   return value.replace(/[.\-/]/g, " ");
 }
 
-export default function GalleryExperience({ photos, publishedEvents }: { photos: GalleryPhoto[]; publishedEvents: GalleryEvent[] }) {
+export default function GalleryExperience({ photos, total, publishedEvents }: { photos: GalleryPhoto[]; total: number; publishedEvents: GalleryEvent[] }) {
   const [query, setQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [activePhotoId, setActivePhotoId] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(24);
+  const [loadedPhotos, setLoadedPhotos] = useState(photos);
+  const [totalPhotos, setTotalPhotos] = useState(total);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const initial = useRef(true);
+  const moreRequest = useRef<AbortController | null>(null);
   const touchStartX = useRef<number | null>(null);
 
   const eventBySlug = useMemo(
@@ -31,12 +36,52 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
     if (slug && publishedEvents.some((event) => event.slug === slug)) setEventFilter(slug);
   }, [publishedEvents]);
 
-  useEffect(() => { setVisibleCount(24); }, [query, eventFilter, sortMode]);
+  const matchingSlugs = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('ru-RU');
+    return publishedEvents.filter(event => {
+      if (eventFilter !== 'all' && event.slug !== eventFilter) return false;
+      const haystack = [event.title,event.dateLabel,searchableDate(event.dateLabel),event.city].join(' ').toLocaleLowerCase('ru-RU');
+      return !normalized || haystack.includes(normalized) || haystack.includes(searchableDate(normalized));
+    }).map(event => event.slug).join(',');
+  }, [publishedEvents, query, eventFilter]);
+
+  useEffect(() => {
+    moreRequest.current?.abort();
+    if (initial.current && !query && eventFilter === 'all' && sortMode === 'newest') { initial.current = false; return; }
+    initial.current = false;
+    const abort = new AbortController();
+    setLoading(true); setLoadError(''); setActivePhotoId(null);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/gallery?events=${encodeURIComponent(matchingSlugs)}&sort=${sortMode}`, { signal: abort.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Не удалось загрузить фотографии');
+        setLoadedPhotos(data.photos); setTotalPhotos(data.total);
+      } catch (error) { if (!abort.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Ошибка загрузки'); }
+      finally { if (!abort.signal.aborted) setLoading(false); }
+    }, 250);
+    return () => { clearTimeout(timer); abort.abort(); };
+  }, [matchingSlugs, sortMode, query, eventFilter]);
+
+  useEffect(() => () => moreRequest.current?.abort(), []);
+
+  async function loadMore() {
+    const abort = new AbortController(); moreRequest.current = abort;
+    setLoading(true); setLoadError('');
+    try {
+      const response = await fetch(`/api/gallery?events=${encodeURIComponent(matchingSlugs)}&sort=${sortMode}&offset=${loadedPhotos.length}`, { signal: abort.signal });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Не удалось загрузить фотографии');
+      setLoadedPhotos(current => [...current, ...data.photos.filter((photo: GalleryPhoto) => !current.some(item => item.id === photo.id))]);
+      setTotalPhotos(data.total);
+    } catch (error) { if (!abort.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Ошибка загрузки'); }
+    finally { if (!abort.signal.aborted) setLoading(false); }
+  }
 
   const filteredPhotos = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ru-RU");
 
-    return [...photos]
+    return [...loadedPhotos]
       .filter((photo) => {
         const event = eventBySlug.get(photo.eventSlug);
         if (!event) return false;
@@ -59,7 +104,7 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
         const bDate = Date.parse(eventBySlug.get(b.eventSlug)?.startsAt ?? "");
         return sortMode === "newest" ? bDate - aDate : aDate - bDate;
       });
-  }, [eventBySlug, eventFilter, query, sortMode, photos]);
+  }, [eventBySlug, eventFilter, query, sortMode, loadedPhotos]);
 
   const activeIndex = activePhotoId
     ? filteredPhotos.findIndex((photo) => photo.id === activePhotoId)
@@ -133,7 +178,7 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
             >
               ВСЕ
             </button>
-            {publishedEvents.filter((event) => photos.some((photo) => photo.eventSlug === event.slug)).map((event) => (
+            {publishedEvents.map((event) => (
               <button
                 type="button"
                 key={event.slug}
@@ -155,14 +200,16 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
         </div>
 
         <div className="gallery-result-meta" aria-live="polite">
-          <span>{matchingEventCount} МЕРОПРИЯТИЯ</span>
-          <span>{filteredPhotos.length} ФОТОГРАФИЙ</span>
+          <span>ПОКАЗАНО {matchingEventCount} МЕРОПРИЯТИЙ</span>
+          <span>{totalPhotos} ФОТОГРАФИЙ</span>
         </div>
       </section>
 
+      {loading || loadError ? <p className="gallery-fetch-message" role="status">{loading ? 'Загружаем фотографии…' : loadError}</p> : null}
+
       {filteredPhotos.length ? (
         <section className="gallery-editorial-grid" aria-label="Фотографии AGAYO">
-          {filteredPhotos.slice(0, visibleCount).map((photo, index) => {
+          {filteredPhotos.map((photo, index) => {
             const event = eventBySlug.get(photo.eventSlug);
             if (!event) return null;
             return (
@@ -195,9 +242,9 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
               </article>
             );
           })}
-          {visibleCount < filteredPhotos.length && <div className="gallery-load-more"><button className="button-link" type="button" onClick={() => setVisibleCount((count) => count + 24)}>Ещё фотографии <span>↓</span></button><p>Показано {Math.min(visibleCount, filteredPhotos.length)} из {filteredPhotos.length}</p></div>}
+          {loadedPhotos.length < totalPhotos && <div className="gallery-load-more"><button className="button-link" type="button" disabled={loading} onClick={() => void loadMore()}>{loading ? 'Загружаем…' : 'Ещё фотографии'} <span>↓</span></button><p>Показано {filteredPhotos.length} из {totalPhotos}</p></div>}
         </section>
-      ) : (
+      ) : !loading && !loadError ? (
         <section className="gallery-empty">
           <span>НИЧЕГО НЕ НАШЛИ</span>
           <h2>ПОПРОБУЙ<br />ДРУГУЮ ДАТУ</h2>
@@ -206,7 +253,7 @@ export default function GalleryExperience({ photos, publishedEvents }: { photos:
             СБРОСИТЬ ФИЛЬТРЫ ↗
           </button>
         </section>
-      )}
+      ) : null}
 
       {activePhoto && (
         <Lightbox

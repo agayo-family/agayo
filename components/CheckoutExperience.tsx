@@ -68,6 +68,7 @@ export default function CheckoutExperience({ event, initialCategory }: Props) {
         body: JSON.stringify({ eventSlug: event.slug, categoryId: category.id, quantity, email, name, phone, promo: promoResult?.code || "", acceptedDocuments, acceptedPrivacy }),
       });
       const data = await response.json();
+      if (data.pending && data.orderId) { window.location.assign(`/checkout/success?order=${encodeURIComponent(data.orderId)}`); return; }
       if (!response.ok) throw new Error(data.error || "Не удалось создать заказ");
       if (!data.confirmationUrl) throw new Error("Не получена ссылка на оплату");
       window.location.assign(data.confirmationUrl);

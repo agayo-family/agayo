@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, canAccessEvent, requireAdminPermission } from "@/lib/server/admin";
 import { getRefundPolicyQuote, refundAmountForShare } from "@/lib/server/refund-policy";
+import { adminTicketView } from '@/lib/admin-ticket-view';
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,8 @@ export async function GET(request: Request) {
       LEFT JOIN events e ON e.slug=t.event_slug
       LEFT JOIN order_items oi ON oi.order_id=t.order_id AND oi.ticket_category_id=t.category_id
       LEFT JOIN ticket_refunds tr ON tr.ticket_id=t.id
-      WHERE ${q === ""} OR (
+      WHERE (${access.role === 'owner' || access.allEvents} OR t.event_slug IN (SELECT jsonb_array_elements_text(${JSON.stringify(access.eventSlugs)}::jsonb)))
+        AND (${q === ""} OR (
         t.public_id ILIKE ${term} OR
         t.owner_name ILIKE ${term} OR
         o.public_id ILIKE ${term} OR
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
         COALESCE(u.agayo_id,'') ILIKE ${term} OR
         t.event_slug ILIKE ${term} OR
         t.category_name ILIKE ${term}
-      )
+      ))
       ORDER BY t.created_at DESC
       LIMIT 1000
     `;
@@ -56,7 +58,7 @@ export async function GET(request: Request) {
         const ticketCount = Math.max(1,Number(row.order_ticket_count || 1));
         const paidShare = subtotal > 0 && unitPrice > 0 ? Math.round((total * unitPrice / subtotal) * 100) / 100 : Math.round((total / ticketCount) * 100) / 100;
         const refundQuoteAmount = canRefund ? refundAmountForShare(paidShare,quote.percent) : 0;
-        return {
+        return adminTicketView({
           ...row,
           total:canRefund ? total : 0,
           refunded_amount:canRefund ? Number(row.refunded_amount || 0) : 0,
@@ -68,7 +70,7 @@ export async function GET(request: Request) {
           days_before_event:quote.daysBeforeEvent,
           npd_receipt_amount:canRefund ? Number(row.npd_receipt_amount || 0) : 0,
           ticket_refund_amount:canRefund ? Number(row.ticket_refund_amount || 0) : 0,
-        };
+        },canRefund);
       });
 
     return NextResponse.json({

@@ -25,7 +25,10 @@ function absoluteUrl(baseUrl:string,value:string|undefined) {
   try { return new URL(value,baseUrl).toString(); } catch { return undefined; }
 }
 
-async function deliverOrderTickets(order: any, event: any, baseUrl: string) {
+export async function deliverOrderTickets(order: any, event: any, baseUrl: string) {
+  // Personal grants have their own frozen payload and provider key. They are
+  // delivered only by the personal campaign sender, including on retries.
+  if (String(order.public_id).startsWith('AGY-GIFT-')) return;
   const sql = db();
   const tickets = await sql`
     SELECT id,public_id,qr_token,owner_name,category_name,zone,seat
@@ -37,55 +40,32 @@ async function deliverOrderTickets(order: any, event: any, baseUrl: string) {
   const poster=absoluteUrl(baseUrl,String(event.posterImage || event.heroImage || ""));
 
   for (const ticket of tickets) {
-    let sendError: string | null = null;
-    await sql.begin(async (tx: any) => {
-      await tx`
-        INSERT INTO ticket_deliveries(ticket_id,channel,destination,status)
-        VALUES(${ticket.id},'email',${order.email},'pending')
-        ON CONFLICT (ticket_id,channel) DO NOTHING
-      `;
-      const rows = await tx`
-        SELECT id,status
-        FROM ticket_deliveries
-        WHERE ticket_id=${ticket.id} AND channel='email'
-        FOR UPDATE
-      `;
-      const delivery = rows[0];
-      if (!delivery || delivery.status === "sent") return;
-
-      try {
-        await sendTicketEmail(String(order.email), {
-          eventTitle:String(event.title),
-          eventDate:String(event.dateLabel),
-          eventTime:String(event.timeLabel),
-          eventCity:String(event.city),
-          eventAge:String(event.ageLabel),
-          alcoholFree:Boolean(event.alcoholFree),
-          ticketId:String(ticket.public_id),
-          ticketUrl:`${baseUrl}/tickets/${encodeURIComponent(String(ticket.qr_token))}`,
-          qrToken:String(ticket.qr_token),
-          ownerName:String(ticket.owner_name || order.owner_name || "AGAYO"),
-          categoryName:String(ticket.category_name || "БИЛЕТ"),
-          zone:ticket.zone ? String(ticket.zone) : null,
-          seat:ticket.seat ? String(ticket.seat) : null,
-          posterUrl:poster,
-          theme:event.ticketTheme || undefined,
-        });
-        await tx`
-          UPDATE ticket_deliveries
-          SET status='sent',attempts=attempts+1,last_error=NULL,sent_at=now()
-          WHERE id=${delivery.id}
-        `;
-      } catch (error) {
-        sendError = errorText(error);
-        await tx`
-          UPDATE ticket_deliveries
-          SET status='failed',attempts=attempts+1,last_error=${sendError}
-          WHERE id=${delivery.id}
-        `;
-      }
+    const delivery = await sql.begin(async (tx: any) => {
+      await tx`INSERT INTO ticket_deliveries(ticket_id,channel,destination,status)
+        VALUES(${ticket.id},'email',${order.email},'pending') ON CONFLICT (ticket_id,channel) DO NOTHING`;
+      const [row] = await tx`SELECT id,status FROM ticket_deliveries WHERE ticket_id=${ticket.id} AND channel='email' FOR UPDATE`;
+      return row?.status === 'sent' ? null : row;
     });
-    if (sendError) failed.push(`${ticket.public_id}: ${sendError}`);
+    if (!delivery) continue;
+    // Provider I/O must never hold an order lock or SQL connection. Concurrent
+    // retries use the same provider key; a late failure cannot undo a success.
+    try {
+      await sendTicketEmail(String(order.email), {
+        eventTitle:String(event.title), eventSlug:String(event.slug), eventDate:String(event.dateLabel),
+        eventTime:String(event.timeLabel), eventCity:String(event.city), eventAge:String(event.ageLabel),
+        alcoholFree:Boolean(event.alcoholFree), ticketId:String(ticket.public_id),
+        ticketUrl:`${baseUrl}/tickets/${encodeURIComponent(String(ticket.qr_token))}`,
+        qrToken:String(ticket.qr_token), ownerName:String(ticket.owner_name || order.owner_name || 'AGAYO'),
+        categoryName:String(ticket.category_name || 'БИЛЕТ'), zone:ticket.zone ? String(ticket.zone) : null,
+        seat:ticket.seat ? String(ticket.seat) : null, posterUrl:poster, theme:event.ticketTheme || undefined,
+        deliveryKey:`AGAYO-TICKET-${ticket.public_id}`,
+      });
+      await sql`UPDATE ticket_deliveries SET status='sent',attempts=attempts+1,last_error=NULL,sent_at=now() WHERE id=${delivery.id} AND status<>'sent'`;
+    } catch (error) {
+      const sendError = errorText(error);
+      const changed = await sql`UPDATE ticket_deliveries SET status='failed',attempts=attempts+1,last_error=${sendError} WHERE id=${delivery.id} AND status<>'sent' RETURNING id`;
+      if (changed.length) failed.push(`${ticket.public_id}: ${sendError}`);
+    }
   }
 
   if (failed.length) throw new Error(`Не удалось отправить часть билетов: ${failed.join(" | ")}`);
@@ -156,6 +136,7 @@ async function consumePromoReservation(tx: any, order: any) {
 }
 
 export async function retryOrderTicketDelivery(orderPublicId: string, baseUrl: string) {
+  if (orderPublicId.startsWith('AGY-GIFT-')) return false;
   const sql = db();
   const rows = await sql`SELECT * FROM orders WHERE public_id=${orderPublicId} AND status='paid' LIMIT 1`;
   const order = rows[0];

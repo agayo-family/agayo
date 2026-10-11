@@ -9,6 +9,10 @@ import { getCurrentUser } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
 import { getAllEventsServer } from "@/lib/server/events";
 import { getLoyaltyLevels } from "@/lib/server/loyalty";
+import HalloweenArt from '@/components/HalloweenArt';
+import { eventPalette, isHalloweenEvent } from '@/lib/event-presentation';
+import { personalTicketDescriptions } from '@/lib/server/personal-ticket-store';
+import { readProfileTicketPage } from '@/lib/server/profile-ticket-store';
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +24,7 @@ const statusLabels: Record<string,string> = {
 };
 
 function eventTicketStyle(event:any):CSSProperties {
-  const theme=event?.ticketTheme || {primary:'#151517',secondary:'#4B0F19',accent:'#C21F39'};
+  const theme=eventPalette(event?.ticketTheme);
   return {
     '--profile-ticket-primary':String(theme.primary||'#151517'),
     '--profile-ticket-secondary':String(theme.secondary||'#4B0F19'),
@@ -28,20 +32,32 @@ function eventTicketStyle(event:any):CSSProperties {
   } as CSSProperties;
 }
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ page?: string; activePage?: string }> }) {
+  const params = await searchParams;
+  const parsed = Number(params.page);
+  const page = Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 10000) : 1;
+  const activeParsed = Number(params.activePage);
+  const activePage = Number.isInteger(activeParsed) && activeParsed > 0 ? Math.min(activeParsed, 10000) : 1;
   let user: any = null;
   let tickets: any[] = [];
+  let totalTickets = 0, visits = 0, activeTotal = 0;
+  let activeTickets: any[] = [], usedTickets: any[] = [];
+  let personal = new Map<string, { title: string; description: string }>();
   if (process.env.DATABASE_URL) {
     try {
       user = await getCurrentUser();
-      if (user) tickets = await db()`SELECT public_id,qr_token,status,event_slug,category_name,created_at FROM tickets WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 50`;
+      if (user) {
+        const sql = db();
+        const result = await readProfileTicketPage(sql, user.id, page, activePage);
+        tickets = result.history; activeTickets = result.active; usedTickets = result.memories;
+        totalTickets = result.total; visits = result.visits; activeTotal = result.activeTotal;
+        personal = await personalTicketDescriptions(sql, [...tickets,...activeTickets,...usedTickets].map(ticket => String(ticket.public_id)));
+      }
     } catch (error) { console.error(error); }
   }
 
   const [events,loyaltyLevels] = await Promise.all([getAllEventsServer(),getLoyaltyLevels()]);
   const eventMap = new Map(events.map((event) => [event.slug,event]));
-  const activeTickets = tickets.filter((ticket) => ticket.status === "valid");
-  const usedTickets = tickets.filter((ticket) => ticket.status === "used");
   const currentLevelKey = String(user?.loyalty_level || "NEW");
   const currentLevel = loyaltyLevels.find((level) => level.levelKey === currentLevelKey) ?? loyaltyLevels[0];
   const currentLevelIndex = Math.max(0,loyaltyLevels.findIndex((level) => level.levelKey === currentLevelKey));
@@ -69,26 +85,27 @@ export default async function ProfilePage() {
             <div className="agayo-id-mark">A</div>
             <div className="agayo-id-bottom">
               <div><span>УРОВЕНЬ</span><strong>{currentLevel?.displayName || "NEW"}</strong></div>
-              <div><span>ПОСЕЩЕНИЯ</span><strong>{String(usedTickets.length).padStart(2,"0")}</strong></div>
+              <div><span>ПОСЕЩЕНИЯ</span><strong>{String(visits).padStart(2,"0")}</strong></div>
               <div><span>ID</span><strong>{user?.agayo_id || "—"}</strong></div>
             </div>
           </div>
         </section>
 
-        <section className="profile-section profile-tickets-section">
+        <section id="active-tickets" className="profile-section profile-tickets-section">
           <div className="profile-section-head">
-            <div><div className="section-label">01 / БИЛЕТЫ</div><h2>БЛИЖАЙШИЕ</h2></div>
-            <span className="profile-count">{activeTickets.length}</span>
+            <div><div className="section-label">01 / БИЛЕТЫ</div><h2>АКТИВНЫЕ</h2></div>
+            <span className="profile-count">{activeTotal}</span>
           </div>
-          {activeTickets.length ? <div className="profile-live-tickets">{activeTickets.map((ticket) => { const event=eventMap.get(String(ticket.event_slug)); return <Link className="profile-live-ticket profile-event-ticket-v134" style={eventTicketStyle(event)} href={`/tickets/${ticket.qr_token}`} key={ticket.public_id}><span>{event?.dateLabel || "AGAYO"}</span><strong>{event?.title || ticket.event_slug}</strong><p>{ticket.category_name} · {ticket.public_id}</p><b>ОТКРЫТЬ БИЛЕТ ↗</b></Link>; })}</div> : <div className="profile-empty profile-ticket-empty"><div className="profile-empty-number">00</div><div><span>АКТИВНЫХ БИЛЕТОВ НЕТ</span><p>{user ? "После покупки билет появится здесь автоматически." : "Войди в AGAYO ID или купи первый билет — профиль создастся автоматически."}</p><div className="profile-ticket-actions"><Link href="/events" className="button-link">Найти событие <b>↗</b></Link></div></div></div>}
+          {activeTickets.length ? <div className="profile-live-tickets">{activeTickets.map((ticket) => { const event=eventMap.get(String(ticket.event_slug)), invitation=personal.get(String(ticket.public_id)); return <Link className="profile-live-ticket profile-event-ticket-v134" style={eventTicketStyle(event)} href={`/tickets/${ticket.qr_token}`} key={ticket.public_id}>{event && isHalloweenEvent(event) ? <HalloweenArt compact /> : null}<span>{event?.dateLabel || "AGAYO"}</span><strong>{event?.title || ticket.event_slug}</strong><p>{ticket.category_name} · {ticket.public_id}</p>{invitation ? <div className="profile-personal-message"><b>{invitation.title}</b><p>{invitation.description}</p></div> : null}<b>ОТКРЫТЬ БИЛЕТ ↗</b></Link>; })}</div> : <div className="profile-empty profile-ticket-empty"><div className="profile-empty-number">00</div><div><span>{activePage > 1 ? 'НА ЭТОЙ СТРАНИЦЕ НЕТ АКТИВНЫХ БИЛЕТОВ' : 'АКТИВНЫХ БИЛЕТОВ НЕТ'}</span><p>{user ? "После покупки билет появится здесь автоматически." : "Войди в AGAYO ID или купи первый билет — профиль создастся автоматически."}</p><div className="profile-ticket-actions"><Link href="/events" className="button-link">Найти событие <b>↗</b></Link></div></div></div>}
+          {activeTotal > 50 || activePage > 1 ? <nav className="profile-ticket-pagination" aria-label="Страницы активных билетов">{activePage > 1 ? <Link href={`/profile?page=${page}&activePage=${activePage - 1}#active-tickets`}>← Предыдущие</Link> : null}<span>Активных билетов: {activeTotal} · страница {activePage}</span>{activePage * 50 < activeTotal ? <Link href={`/profile?page=${page}&activePage=${activePage + 1}#active-tickets`}>Следующие →</Link> : null}</nav> : null}
         </section>
 
         <section className="profile-section profile-memories-section">
           <div className="profile-section-head">
             <div><div className="section-label">02 / ИСТОРИЯ</div><h2>ТЫ БЫЛ<br />ЗДЕСЬ</h2></div>
-            <span className="profile-count">{usedTickets.length}</span>
+            <span className="profile-count">{visits}</span>
           </div>
-          {usedTickets.length ? <div className="profile-live-tickets">{usedTickets.slice(0,6).map((ticket) => { const event=eventMap.get(String(ticket.event_slug)); return <Link className="profile-live-ticket profile-event-ticket-v134" style={eventTicketStyle(event)} href={`/tickets/${ticket.qr_token}`} key={ticket.public_id}><span>{event?.dateLabel || "AGAYO"}</span><strong>{event?.title || ticket.event_slug}</strong><p>{ticket.category_name} · проход зафиксирован</p><b>ОТКРЫТЬ ВОСПОМИНАНИЕ ↗</b></Link>; })}</div> : <div className="profile-memory-empty"><p>После первого использованного билета событие появится здесь как часть твоей истории AGAYO.</p><span>ПОКА ТИШИНА</span></div>}
+          {usedTickets.length ? <div className="profile-live-tickets">{usedTickets.slice(0,6).map((ticket) => { const event=eventMap.get(String(ticket.event_slug)); return <Link className="profile-live-ticket profile-event-ticket-v134" style={eventTicketStyle(event)} href={`/tickets/${ticket.qr_token}`} key={ticket.public_id}>{event && isHalloweenEvent(event) ? <HalloweenArt compact /> : null}<span>{event?.dateLabel || "AGAYO"}</span><strong>{event?.title || ticket.event_slug}</strong><p>{ticket.category_name} · проход зафиксирован</p><b>ОТКРЫТЬ ВОСПОМИНАНИЕ ↗</b></Link>; })}</div> : <div className="profile-memory-empty"><p>После первого использованного билета событие появится здесь как часть твоей истории AGAYO.</p><span>ПОКА ТИШИНА</span></div>}
         </section>
 
         <section className="profile-section profile-loyalty-section">
@@ -105,7 +122,7 @@ export default async function ProfilePage() {
           </div>
           <div className="loyalty-copy-grid">
             <p>{currentLevel?.conditionsText || 'Условия уровня определяет команда AGAYO.'}</p>
-            <div className="loyalty-perks"><span>{manualLevel ? 'ОСОБЫЙ СТАТУС' : currentLevel?.autoByVisits ? 'ТЕКУЩИЙ ПРОГРЕСС' : 'УСЛОВИЯ УРОВНЯ'}</span><p>{manualLevel ? `Этот уровень назначен командой AGAYO независимо от количества посещений · посещений: ${usedTickets.length}` : currentLevel?.autoByVisits ? `${usedTickets.length} посещений · автоматический уровень обновляется после прохода по билету` : 'Этот уровень выдаётся по условиям, которые определяет команда AGAYO.'}</p></div>
+            <div className="loyalty-perks"><span>{manualLevel ? 'ОСОБЫЙ СТАТУС' : currentLevel?.autoByVisits ? 'ТЕКУЩИЙ ПРОГРЕСС' : 'УСЛОВИЯ УРОВНЯ'}</span><p>{manualLevel ? `Этот уровень назначен командой AGAYO независимо от количества посещений · посещений: ${visits}` : currentLevel?.autoByVisits ? `${visits} посещений · автоматический уровень обновляется после прохода по билету` : 'Этот уровень выдаётся по условиям, которые определяет команда AGAYO.'}</p></div>
           </div>
         </section>
 
@@ -118,10 +135,11 @@ export default async function ProfilePage() {
           <Link className="text-link" href="/profile/favorites">Смотреть все избранные <span>↗</span></Link>
         </section>
 
-        <section className="profile-section profile-history-section">
+        <section id="ticket-history" className="profile-section profile-history-section">
           <div className="profile-section-head"><div><div className="section-label">05 / АРХИВ</div><h2>ИСТОРИЯ<br />БИЛЕТОВ</h2></div></div>
           <div className="ticket-history-head"><span>СОБЫТИЕ</span><span>СТАТУС</span><span>БИЛЕТ</span></div>
-          {tickets.length ? tickets.map((ticket) => { const event=eventMap.get(String(ticket.event_slug)); return <Link href={`/tickets/${ticket.qr_token}`} className="ticket-history-empty profile-history-ticket-v134" style={eventTicketStyle(event)} key={ticket.public_id}><span>{event?.title || ticket.event_slug}</span><b>{statusLabels[String(ticket.status)] || String(ticket.status).toUpperCase()}</b><b>{ticket.public_id}</b></Link>; }) : <div className="ticket-history-empty"><span>История появится после первой покупки</span><b>—</b><b>—</b></div>}
+          {tickets.length ? tickets.map((ticket) => { const event=eventMap.get(String(ticket.event_slug)); return <Link href={`/tickets/${ticket.qr_token}`} className="ticket-history-empty profile-history-ticket-v134" style={eventTicketStyle(event)} key={ticket.public_id}>{event && isHalloweenEvent(event) ? <HalloweenArt compact /> : null}<span>{event?.title || ticket.event_slug}{personal.has(String(ticket.public_id)) ? <small>{personal.get(String(ticket.public_id))?.title}</small> : null}</span><b>{statusLabels[String(ticket.status)] || String(ticket.status).toUpperCase()}</b><b>{ticket.public_id}</b></Link>; }) : <div className="ticket-history-empty"><span>История появится после первой покупки</span><b>—</b><b>—</b></div>}
+          {totalTickets > 50 || page > 1 ? <nav className="profile-ticket-pagination" aria-label="Страницы билетов">{page > 1 ? <Link href={`/profile?page=${page - 1}&activePage=${activePage}#ticket-history`}>← Предыдущие</Link> : null}<span>Страница {page} · всего {totalTickets} билетов</span>{page * 50 < totalTickets ? <Link href={`/profile?page=${page + 1}&activePage=${activePage}#ticket-history`}>Следующие →</Link> : null}</nav> : null}
         </section>
 
         <section className="profile-section profile-settings-section">

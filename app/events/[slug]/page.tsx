@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
+import HalloweenArt from "@/components/HalloweenArt";
+import HalloweenExperience from "@/components/HalloweenExperience";
+import { isHalloweenEvent } from "@/lib/event-presentation";
 import { formatPrice, getEventCatalogBadge } from "@/lib/events";
 import { getEventServer } from "@/lib/server/events";
 import { canAccessEvent, getCurrentAdminAccess, hasPermission } from "@/lib/server/admin";
@@ -41,17 +44,19 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const hasAvailableTickets = event.tickets.some((ticket) => !ticket.soldOut);
   const soldOut = salesOpen && event.tickets.length > 0 && !hasAvailableTickets;
   const isNight = event.slug === "agayo-night";
+  const halloween = isHalloweenEvent(event);
   const theme = event.ticketTheme ?? { primary: "#111111", secondary: "#4b0f19", accent: "#c21f39" };
   const eventStyle = { "--event-primary": theme.primary, "--event-secondary": theme.secondary, "--event-accent": theme.accent } as CSSProperties;
   const eventHeroImage = event.posterImage ?? event.heroImage;
 
   return (
-    <main id="main-content" className={`event-page-v2 ${event.ticketTheme ? "event-page-themed" : ""}`} style={eventStyle}>
+    <>{halloween && !adminPreview && <HalloweenExperience key={event.slug} slug={event.slug} />}<main id="main-content" className={`event-page-v2 ${event.ticketTheme ? "event-page-themed" : ""} ${halloween ? 'halloween-event-page' : ''}`} style={eventStyle}>
       <div className="event-header-shell"><SiteHeader /></div>
       {adminPreview ? <div className="event-admin-preview-banner">ПРЕДПРОСМОТР · ЭТА СТРАНИЦА ЕЩЁ НЕ ОПУБЛИКОВАНА ДЛЯ ГОСТЕЙ</div> : null}
       <section className="event-v2-hero">
         <Image src={eventHeroImage} alt={`Афиша ${event.title}`} fill priority sizes="100vw" className="event-v2-hero-image" />
         <div className="event-v2-hero-overlay" />
+        {halloween && <HalloweenArt />}
         <div className="event-v2-hero-content">
           <div className="event-v2-kicker">{event.dateLabel} · {event.city.toUpperCase()} · {event.ageLabel}</div>
           <h1>{event.title}</h1>
@@ -89,6 +94,6 @@ export default async function EventPage({ params, searchParams }: { params: Prom
       {event.program.length > 0 && <section className="event-v2-program section-pad"><div className="section-label">{isNight ? "04" : "03"} / ПРОГРАММА</div><div className="program-list">{event.program.map(([time, title]) => <div className="program-row" key={`${time}-${title}`}><span>{time}</span><strong>{title}</strong></div>)}</div></section>}
 
       <section className="event-v2-final section-pad"><div className="section-label">{event.title} · {event.dateLabel}</div><h2>{salesOpen ? <>УВИДИМСЯ<br />ВНУТРИ</> : isArchive ? <>ЭТО УЖЕ<br />ПРОИЗОШЛО</> : <>СКОРО<br />УВИДИМСЯ</>}</h2>{salesOpen && hasAvailableTickets ? <Link href="#tickets" className="button-link button-link-accent">Выбрать билет <span>↗</span></Link> : <Link href={`/gallery?event=${encodeURIComponent(event.slug)}`} className="button-link button-link-accent">Смотреть фотографии <span>↗</span></Link>}</section>
-    </main>
+    </main></>
   );
 }

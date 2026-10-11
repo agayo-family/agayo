@@ -3,9 +3,11 @@ import { db } from "@/lib/server/db";
 import { getEventServer } from "@/lib/server/events";
 import { getEventCatalogBadge } from "@/lib/events";
 import { normalizeEmail, normalizePhone, publicId } from "@/lib/server/security";
-import { createPayment } from "@/lib/server/yookassa";
+import { createPayment, isDefinitivePaymentFailure, isYooKassaConfigured, isReceiptConfigurationReady } from "@/lib/server/yookassa";
 import { DEFAULT_EVENT_RULES, LEGAL_VERSION } from "@/lib/legal";
 import { parseTicketQuantity } from "@/lib/order-input";
+
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -27,6 +29,7 @@ export async function POST(request: Request) {
     if (!email.includes("@") || ownerName.length < 2) return NextResponse.json({ error: "Проверь имя и email" }, { status: 400 });
     if (!acceptedDocuments) return NextResponse.json({ error: "Прими Пользовательское соглашение, Публичную оферту и Правила мероприятия" }, { status: 400 });
     if (!acceptedPrivacy) return NextResponse.json({ error: "Нужно отдельно подтвердить согласие на обработку персональных данных" }, { status: 400 });
+    if (process.env.PAYMENTS_ENABLED !== '1' || !isYooKassaConfigured() || (process.env.YOOKASSA_RECEIPT_REQUIRED === '1' && !isReceiptConfigurationReady())) return NextResponse.json({ error: 'Оплата временно недоступна. Попробуй позже.' }, { status: 503 });
 
     const sql = db();
     const requestIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || null;
@@ -124,15 +127,22 @@ export async function POST(request: Request) {
         returnUrl:`${base}/checkout/success?order=${encodeURIComponent(result.order.public_id)}`,
         customerEmail:email,
       });
-      await sql`UPDATE orders SET yookassa_payment_id=${payment.id} WHERE id=${result.order.id}`;
+      if (!payment?.id) throw new Error('Payment result is not yet known');
+      await sql`UPDATE orders SET yookassa_payment_id=${payment.id} WHERE id=${result.order.id} AND (yookassa_payment_id IS NULL OR yookassa_payment_id=${payment.id})`;
       const confirmationUrl = payment.confirmation?.confirmation_url;
       if (!confirmationUrl) throw new Error("YooKassa did not return confirmation URL");
       return NextResponse.json({ ok:true,orderId:result.order.public_id,confirmationUrl });
     } catch (paymentError) {
+      if (!isDefinitivePaymentFailure(paymentError)) {
+        console.warn('Payment creation needs reconciliation for order', result.order.public_id);
+        return NextResponse.json({ pending: true, orderId: result.order.public_id, error: 'Ответ оплаты задерживается. Сверяем этот заказ — не создавай повторную покупку.' }, { status: 503 });
+      }
       await sql.begin(async (tx: any) => {
-        await tx`UPDATE orders SET status='cancelled' WHERE id=${result.order.id} AND status='pending'`;
-        await tx`UPDATE ticket_inventory_reservations SET released_at=now() WHERE order_id=${result.order.id} AND consumed_at IS NULL`;
-        await tx`UPDATE promo_code_reservations SET released_at=now() WHERE order_id=${result.order.id} AND consumed_at IS NULL`;
+        const cancelled = await tx`UPDATE orders SET status='cancelled' WHERE id=${result.order.id} AND status='pending' RETURNING id`;
+        if (cancelled.length) {
+          await tx`UPDATE ticket_inventory_reservations SET released_at=now() WHERE order_id=${result.order.id} AND consumed_at IS NULL`;
+          await tx`UPDATE promo_code_reservations SET released_at=now() WHERE order_id=${result.order.id} AND consumed_at IS NULL`;
+        }
       });
       throw paymentError;
     }
