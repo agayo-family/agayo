@@ -4,6 +4,7 @@ import "./v13_3.css";
 import "./v13_4.css";
 import "./site-audit.css";
 import EntryReveal from "@/components/EntryReveal";
+import PublicMotion from "@/components/PublicMotion";
 import { siteOrigin } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -22,5 +23,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ru"><body><EntryReveal />{children}</body></html>;
+  return <html lang="ru"><body><EntryReveal /><PublicMotion />{children}</body></html>;
 }

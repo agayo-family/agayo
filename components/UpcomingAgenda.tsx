@@ -31,8 +31,8 @@ export default function UpcomingAgenda({ events }: { events: AgayoEvent[] }) {
   const visible = groups.slice(0, 2);
   const later = groups.slice(2);
   return <section id="upcoming-events" className="landing-agenda section-pad" aria-labelledby="landing-agenda-title">
-    <div className="section-label">AGAYO / АФИША</div>
-    <div className="landing-section-heading"><h2 id="landing-agenda-title">Выбери свой<br />следующий вечер.</h2><div className="landing-agenda-heading-note"><p>Все ближайшие встречи — по датам.<br />У каждой своя история и свои билеты.</p><Link className="text-link" href="/events">Вся афиша и архив ↗</Link></div></div>
+    <div className="section-label">01 / АФИША</div>
+    <div className="landing-section-heading"><h2 id="landing-agenda-title">ТВОЙ<br />СЛЕДУЮЩИЙ ВЕЧЕР.</h2><div className="landing-agenda-heading-note"><Link className="text-link" href="/events">Вся афиша и архив ↗</Link></div></div>
     {visible.map((group) => <MonthGroup group={group} key={group.key} />)}
     {later.length > 0 && <details className="landing-agenda-later"><summary>Другие даты <span aria-hidden="true">+</span></summary>{later.map((group) => <MonthGroup group={group} key={group.key} />)}</details>}
   </section>;
