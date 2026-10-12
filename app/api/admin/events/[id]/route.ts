@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { invalidatePublicContent } from "@/lib/server/public-content";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
+import { deleteUnusedEvent, EventDeletionError } from "@/lib/server/event-deletion";
 
 function cleanHex(value: unknown, fallback: string) {
   const s = String(value || "").trim();
@@ -16,6 +17,30 @@ async function eventById(id: string) {
   const sql = db();
   const rows = await sql`SELECT * FROM events WHERE id=${id} LIMIT 1`;
   return rows[0] ?? null;
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await requireAdminPermission('manage_events');
+    const { id } = await params;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return NextResponse.json({ error: 'Некорректное мероприятие' }, { status: 400 });
+    }
+    const current = await eventById(id);
+    if (!current) return NextResponse.json({ error: 'Мероприятие не найдено' }, { status: 404 });
+    const actor = await requireAdminPermission('manage_events', String(current.slug));
+    const body = await request.json().catch(() => null);
+    if (body?.confirmSlug !== current.slug) return NextResponse.json({ error: 'Подтверди удаление выбранного мероприятия' }, { status: 400 });
+    const removed = await deleteUnusedEvent(db(), id, actor.userId, body.confirmSlug);
+    invalidatePublicContent('events');
+    revalidatePath(`/events/${removed.slug}`);
+    revalidatePath(`/events/${removed.slug}/rules`);
+    return NextResponse.json({ ok: true, id: removed.id, message: `Мероприятие «${removed.title}» удалено.` });
+  } catch (error) {
+    const status = error instanceof AdminAccessError || error instanceof EventDeletionError ? error.status : 500;
+    if (status === 500) console.error('Event deletion failed:', error);
+    return NextResponse.json({ error: status === 500 ? 'Не удалось удалить мероприятие. Попробуй ещё раз.' : (error as Error).message }, { status });
+  }
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

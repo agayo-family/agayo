@@ -11,7 +11,7 @@ function EventList({ events }: { events: AgayoEvent[] }) {
   return <div className="event-list">{events.map((event) => {
     const badge = getEventCatalogBadge(event);
     const label = badge === "archive" ? "АРХИВ" : badge === "tickets" ? "БИЛЕТЫ" : "СКОРО";
-    return <Link href={`/events/${encodeURIComponent(event.slug)}`} className="event-list-item" key={event.slug}><span>{event.dateLabel}</span><strong>{event.title}</strong><span>{event.ageLabel} · {event.timeLabel}</span><b>{label} ↗</b></Link>;
+    return <Link href={`/events/${encodeURIComponent(event.slug)}`} className="event-list-item" key={event.slug}><span>{event.dateLabel}</span><strong style={{ color: badge === "archive" ? "var(--burgundy-bright)" : "var(--paper)" }}>{event.title}</strong><span>{event.ageLabel} · {event.timeLabel}</span><b>{label} ↗</b></Link>;
   })}</div>;
 }
 

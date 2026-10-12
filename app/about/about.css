@@ -1,3 +1,11 @@
+.about-page .brand-logo { color:var(--bg); }
+.about-page .menu-button { color:var(--bg); }
+.about-page .menu-button.is-open span:first-child { transform:translateY(4px) rotate(45deg); }
+.about-page .menu-button.is-open span:last-child { width:23px;transform:translateY(-4px) rotate(-45deg); }
+.about-page .mobile-nav { background:var(--paper);color:var(--bg);border-color:rgba(17,17,17,.2);box-shadow:0 18px 50px rgba(17,17,17,.16); }
+.about-page .mobile-nav a { display:flex;align-items:center;min-height:44px;color:var(--bg); }
+.about-page .mobile-nav a:hover { color:#8d3045; }
+@media(max-width:900px) { .about-page .menu-button { width:44px;height:44px; } }
 .about-intro-grid { display:grid;grid-template-columns:1fr 1.05fr;gap:8vw;align-items:start;margin-top:38px; }
 .about-story .about-story-title { margin:0;white-space:pre-line;overflow-wrap:anywhere; }
 .about-story .about-copy { margin:6px 0 0;min-width:0;white-space:pre-line;overflow-wrap:anywhere; }

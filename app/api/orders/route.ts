@@ -43,9 +43,11 @@ export async function POST(request: Request) {
         SELECT c.id,c.inventory FROM event_ticket_categories c
         JOIN events e ON e.id=c.event_id
         WHERE e.slug=${event.slug} AND c.category_key=${category.id}
+          AND e.status='published' AND e.sales_state='open'
         FOR UPDATE
       `;
       const dbCategory = dbCategories[0];
+      if (!dbCategory) throw new Error('Билет недоступен: мероприятие удалено или продажи закрыты');
       if (dbCategory?.inventory != null) {
         const [counts] = await tx`
           SELECT
@@ -149,7 +151,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error(error);
     const message = error instanceof Error ? error.message : "Не удалось создать заказ";
-    const status = message.includes("Доступно") || message.includes("распродана") || message.includes("Лимит") ? 409
+    const status = message.includes("Доступно") || message.includes("распродана") || message.includes("Лимит") || message.includes('Билет недоступен') ? 409
       : message.includes("Промокод") ? 400
       : 500;
     return NextResponse.json({ error:message }, { status });

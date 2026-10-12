@@ -28,6 +28,8 @@ export async function personalSchemaReady(sql: postgres.Sql) {
 export async function savePersonalCampaign(sql: postgres.Sql, input: { actorId: string; eventSlug: string; categoryId: string; title: string; description: string; levels: string[] }) {
   return sql.begin(async tx => {
     await tx`SELECT pg_advisory_xact_lock(714206013)`;
+    const [event] = await tx`SELECT id,status FROM events WHERE slug=${input.eventSlug} FOR UPDATE`;
+    if (!event || event.status !== 'published') throw new PersonalTicketError('Мероприятие недоступно для подготовки приглашений');
     await tx.unsafe(PERSONAL_SCHEMA_SQL);
     const recipients = await tx`SELECT id FROM users WHERE email IS NOT NULL AND email <> ''
       AND loyalty_level IN (SELECT jsonb_array_elements_text(${JSON.stringify(input.levels)}::jsonb)) ORDER BY id LIMIT 5000`;

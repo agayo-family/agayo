@@ -6,6 +6,7 @@ import TeamAccessPanel from './TeamAccessPanel';
 import AdminEventsManager, { type StoredEvent } from './AdminEventsManager';
 import AdminMediaManager from './AdminMediaManager';
 import AdminPeriodSummary from './AdminPeriodSummary';
+import './admin-navigation.css';
 import { AdminPermission, AdminRole, ROLE_LABELS } from '@/lib/admin-permissions';
 
 const AdminAboutManager = dynamic(() => import('./AdminAboutManager'), { loading: () => <p role="status">Загружаем редактор «О нас»…</p> });
@@ -20,7 +21,7 @@ const tabs: Array<[Tab, string]> = [
   ['tickets', 'Билеты'],
   ['buyers', 'Покупатели'],
   ['promo', 'Промокоды'],
-  ['media', 'Фото и отзывы'],
+  ['media', 'Фото'],
   ['about', 'О нас'],
   ['team', 'Команда'],
   ['settings', 'Настройки'],
@@ -125,7 +126,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
 
   useEffect(() => {
     if (!previewMode) return;
-    try { const saved=window.localStorage.getItem('agayo-preview-events'); if(saved){ const parsed=JSON.parse(saved); if(Array.isArray(parsed)&&parsed.length) setStoredEvents(parsed); } } catch {} finally { setPreviewHydrated(true); }
+    try { const saved=window.localStorage.getItem('agayo-preview-events'); if(saved){ const parsed=JSON.parse(saved); if(Array.isArray(parsed)) setStoredEvents(parsed); } } catch {} finally { setPreviewHydrated(true); }
   }, [previewMode]);
 
   useEffect(() => {
@@ -282,12 +283,13 @@ export default function AdminDashboard({ access, previewMode = false }: { access
           </button>
         </div>
         <div className="admin-role"><b>{ROLE_LABELS[access.role]}</b><span>{access.agayoId}</span></div>
-        {can('manage_about') && <button type="button" className="admin-about-shortcut" onClick={() => { setTab('about'); setAboutVisited(true); setMobileMenuOpen(false); }}>О нас · редактировать страницу ↗</button>}
         <nav id="admin-navigation" aria-label="Служебная навигация">
           {visibleTabs.map(([id, label]) => (
             <button
               type="button"
               key={id}
+              data-admin-tab={id}
+              aria-current={tab === id ? 'page' : undefined}
               onClick={() => {
                 setTab(id);
                 if (id === 'about') setAboutVisited(true);
@@ -295,7 +297,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
               }}
               className={tab === id ? 'is-active' : ''}
             >
-              <span>{label}</span><i className="admin-nav-chevron" aria-hidden="true" />
+              <span>{label}{id === 'about' ? <small>Публичная команда AGAYO</small> : id === 'team' ? <small>Сотрудники и права доступа</small> : null}</span><i className="admin-nav-chevron" aria-hidden="true" />
             </button>
           ))}
         </nav>
@@ -400,7 +402,7 @@ export default function AdminDashboard({ access, previewMode = false }: { access
         )}
 
         {tab === 'settings' && (
-          <section className="admin-content">{can('manage_system') ? <AdminCapacity previewMode={previewMode} /> : null}<div className="admin-editor compact"><span className="admin-kicker">СИСТЕМА</span><h2>PRODUCTION</h2><div className={`admin-production-readiness ${systemStatus?.readyForSales ? 'is-ready' : ''}`}><b>{systemStatus?.readyForSales ? 'ГОТОВО К ПРОДАЖАМ' : 'ЕЩЁ НЕ ГОТОВО К ПРОДАЖАМ'}</b><p>Статусы ниже показывают наличие production-настроек, но не раскрывают секретные ключи.</p></div><div className="admin-settings-list"><SystemRow name="PostgreSQL" note={systemStatus?.database.reachable && !systemStatus?.database.schemaReady ? 'Соединение есть, но нужно применить последнюю миграцию db/011_refunds_loyalty_visuals_npd.sql' : 'Пользователи, заказы, билеты и события'} ok={Boolean(systemStatus?.database.reachable && systemStatus?.database.schemaReady)} warn={Boolean(systemStatus?.database.reachable && !systemStatus?.database.schemaReady)} /><SystemRow name="AUTH_SECRET" note="Подпись защищённых сессий AGAYO ID" ok={Boolean(systemStatus?.auth.configured)} /><SystemRow name="Email / Resend" note="Коды входа и доставка билетов" ok={Boolean(systemStatus?.email.configured)} /><SystemRow name="Vercel Blob" note="Афиши, фото и аудиоотзывы" ok={Boolean(systemStatus?.blob.configured)} /><SystemRow name="ЮKassa" note={systemStatus?.yookassa.paymentsEnabled ? 'Ключи заданы, платежи включены' : 'До финального теста PAYMENTS_ENABLED должен быть 0'} ok={Boolean(systemStatus?.yookassa.configured && systemStatus?.yookassa.paymentsEnabled)} warn={Boolean(systemStatus?.yookassa.configured && !systemStatus?.yookassa.paymentsEnabled)} /><SystemRow name="Чеки НПД / Мой налог" note={!systemStatus?.fiscal.confirmed ? 'Проверь рабочий процесс НПД-чека и возврата; YOOKASSA_RECEIPT_REQUIRED остаётся 0' : 'Процесс чеков НПД подтверждён владельцем AGAYO'} ok={Boolean(systemStatus?.fiscal.ready)} warn={Boolean(systemStatus?.fiscal.configured && !systemStatus?.fiscal.confirmed)} /><SystemRow name="Production URL" note="HTTPS-адрес возврата и webhook" ok={Boolean(systemStatus?.siteUrl.configured && systemStatus?.siteUrl.https)} /><SystemRow name="Владелец AGAYO" note="Bootstrap-доступ к админке" ok={Boolean(systemStatus?.owner.configured)} /><SystemRow name="SMS.RU" note="Не обязателен для продаж: email-вход работает отдельно" ok={Boolean(systemStatus?.sms.configured)} optional /></div></div></section>
+          <section className="admin-content">{can('manage_system') ? <AdminCapacity previewMode={previewMode} /> : null}<div className="admin-editor compact"><span className="admin-kicker">СИСТЕМА</span><h2>PRODUCTION</h2><div className={`admin-production-readiness ${systemStatus?.readyForSales ? 'is-ready' : ''}`}><b>{systemStatus?.readyForSales ? 'ГОТОВО К ПРОДАЖАМ' : 'ЕЩЁ НЕ ГОТОВО К ПРОДАЖАМ'}</b><p>Статусы ниже показывают наличие production-настроек, но не раскрывают секретные ключи.</p></div><div className="admin-settings-list"><SystemRow name="PostgreSQL" note={systemStatus?.database.reachable && !systemStatus?.database.schemaReady ? 'Соединение есть, но нужно применить последнюю миграцию db/011_refunds_loyalty_visuals_npd.sql' : 'Пользователи, заказы, билеты и события'} ok={Boolean(systemStatus?.database.reachable && systemStatus?.database.schemaReady)} warn={Boolean(systemStatus?.database.reachable && !systemStatus?.database.schemaReady)} /><SystemRow name="AUTH_SECRET" note="Подпись защищённых сессий AGAYO ID" ok={Boolean(systemStatus?.auth.configured)} /><SystemRow name="Email / Resend" note="Коды входа и доставка билетов" ok={Boolean(systemStatus?.email.configured)} /><SystemRow name="Vercel Blob" note="Афиши и фотографии" ok={Boolean(systemStatus?.blob.configured)} /><SystemRow name="ЮKassa" note={systemStatus?.yookassa.paymentsEnabled ? 'Ключи заданы, платежи включены' : 'До финального теста PAYMENTS_ENABLED должен быть 0'} ok={Boolean(systemStatus?.yookassa.configured && systemStatus?.yookassa.paymentsEnabled)} warn={Boolean(systemStatus?.yookassa.configured && !systemStatus?.yookassa.paymentsEnabled)} /><SystemRow name="Чеки НПД / Мой налог" note={!systemStatus?.fiscal.confirmed ? 'Проверь рабочий процесс НПД-чека и возврата; YOOKASSA_RECEIPT_REQUIRED остаётся 0' : 'Процесс чеков НПД подтверждён владельцем AGAYO'} ok={Boolean(systemStatus?.fiscal.ready)} warn={Boolean(systemStatus?.fiscal.configured && !systemStatus?.fiscal.confirmed)} /><SystemRow name="Production URL" note="HTTPS-адрес возврата и webhook" ok={Boolean(systemStatus?.siteUrl.configured && systemStatus?.siteUrl.https)} /><SystemRow name="Владелец AGAYO" note="Bootstrap-доступ к админке" ok={Boolean(systemStatus?.owner.configured)} /><SystemRow name="SMS.RU" note="Не обязателен для продаж: email-вход работает отдельно" ok={Boolean(systemStatus?.sms.configured)} optional /></div></div></section>
         )}
       </main>
     </div>

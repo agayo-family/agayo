@@ -1,0 +1,11 @@
+.admin-sidebar #admin-navigation button>span { display:grid;gap:5px;min-width:0; }
+.admin-sidebar #admin-navigation button small { color:#8f8288;font-size:9px;font-weight:400;line-height:1.4;letter-spacing:0; }
+.admin-sidebar #admin-navigation button.is-active small { color:#d7b9c3; }
+@media(max-width:900px) {
+  .admin-sidebar.is-mobile-open { max-height:100svh;max-height:100dvh; }
+  .admin-sidebar .admin-sidebar-head,.admin-sidebar .admin-role,.admin-sidebar .admin-public { flex-shrink:0; }
+  .admin-sidebar #admin-navigation { min-height:0; }
+  .admin-sidebar.is-mobile-open #admin-navigation { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:calc(100svh - 170px);max-height:calc(100dvh - 170px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(8px,env(safe-area-inset-bottom)); }
+  .admin-sidebar #admin-navigation button { display:flex;min-height:56px; }
+  .admin-sidebar #admin-navigation button>span { line-height:1.3; }
+}

@@ -11,7 +11,7 @@ export const ADMIN_PERMISSIONS = [
   { id: "scan_tickets", label: "Сканировать QR на входе", group: "КОНТРОЛЬ ВХОДА" },
   { id: "manual_ticket_search", label: "Искать билет вручную", group: "КОНТРОЛЬ ВХОДА" },
   { id: "manage_promos", label: "Создавать и менять промокоды", group: "ПРОМО" },
-  { id: "manage_media", label: "Управлять фото и отзывами", group: "КОНТЕНТ" },
+  { id: "manage_media", label: "Управлять фотографиями", group: "КОНТЕНТ" },
   { id: "manage_about", label: "Редактировать «О нас» и организаторов", group: "КОНТЕНТ" },
   { id: "manage_loyalty", label: "Настраивать уровни лояльности", group: "ПОЛЬЗОВАТЕЛИ" },
   { id: "manage_team", label: "Выдавать роли и права команде", group: "СИСТЕМА" },

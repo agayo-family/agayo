@@ -1,5 +1,6 @@
 import { events as staticEvents } from "@/lib/events";
 import { db } from "./db";
+import { EVENT_SEED_LOCK } from './event-deletion';
 
 function endIso(startsAt: string, timeLabel: string) {
   const end = timeLabel.includes("—") ? timeLabel.split("—")[1]?.trim() : "";
@@ -18,17 +19,20 @@ export async function ensureSeedEvents() {
 
   for (const event of staticEvents) {
     await sql.begin(async (tx: any) => {
+      await tx`SELECT pg_advisory_xact_lock(${EVENT_SEED_LOCK})`;
       const inserted = await tx`
         INSERT INTO events(
           slug,title,starts_at,ends_at,age_label,city,alcohol_free,status,sales_state,ticket_mode,
           hero_image,poster_image,theme_primary,theme_secondary,theme_accent,description,secondary_description
         )
-        VALUES(
+        SELECT
           ${event.slug},${event.title},${new Date(event.startsAt).toISOString()},${endIso(event.startsAt,event.timeLabel)},
           ${event.ageLabel},${event.city},${event.alcoholFree},${event.status},${event.salesState},${event.ticketMode},
           ${event.heroImage},${event.posterImage ?? null},${event.ticketTheme?.primary ?? "#220708"},
           ${event.ticketTheme?.secondary ?? "#751013"},${event.ticketTheme?.accent ?? "#e12622"},
           ${event.description},${event.secondaryDescription}
+        WHERE NOT EXISTS (
+          SELECT 1 FROM admin_audit_log WHERE action='event.delete' AND details->>'slug'=${event.slug}
         )
         ON CONFLICT (slug) DO NOTHING
         RETURNING id

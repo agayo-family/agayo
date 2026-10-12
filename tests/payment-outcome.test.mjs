@@ -54,3 +54,17 @@ test('failure to store a successful provider ID does not cancel the order or rel
     assert.equal((await pg.query('SELECT released_at FROM ticket_inventory_reservations')).rows[0].released_at,null);
   }finally{if(flag===undefined)delete process.env.PAYMENTS_ENABLED;else process.env.PAYMENTS_ENABLED=flag;await pg.close();}
 });
+
+test('stale checkout cannot create an order or payment after its event is deleted or closed',async()=>{
+  const {pg,sql}=await fixture({guests:0});const flag=process.env.PAYMENTS_ENABLED;process.env.PAYMENTS_ENABLED='1';
+  try {
+    let payments=0;
+    const {POST}=await route(sql,async()=>{payments++;throw new Error('Provider must not be reached');});
+    await pg.exec("UPDATE events SET sales_state='closed'");
+    assert.equal((await POST(request())).status,409);
+    await pg.exec('DELETE FROM events');
+    assert.equal((await POST(request())).status,409);
+    assert.equal(payments,0);
+    assert.equal((await pg.query('SELECT count(*)::int AS n FROM orders')).rows[0].n,0);
+  }finally{if(flag===undefined)delete process.env.PAYMENTS_ENABLED;else process.env.PAYMENTS_ENABLED=flag;await pg.close();}
+});

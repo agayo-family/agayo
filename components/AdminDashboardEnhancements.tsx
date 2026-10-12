@@ -19,13 +19,13 @@ export default function AdminDashboardEnhancements() {
     let previousTickets:HTMLElement|null=null;
     const sync=()=>{
       const app=document.querySelector<HTMLElement>(".admin-app"); if(!app) return;
-      const title=document.querySelector<HTMLElement>(".admin-top h1")?.textContent?.trim().toLowerCase()||"";
+      const activeTab=app.querySelector<HTMLElement>("#admin-navigation button[aria-current=page]")?.dataset.adminTab;
       const section=document.querySelector<HTMLElement>(".admin-main > .admin-content:not([hidden])");
-      if(previousTickets && (title!=="билеты" || section!==previousTickets)) previousTickets.classList.remove("admin-ticket-section-enhanced-v133");
-      const tickets=title==="билеты"&&section?section:null; if(tickets){tickets.classList.add("admin-ticket-section-enhanced-v133");previousTickets=tickets;}
-      const media=title==="фото и отзывы" ? document.querySelector<HTMLElement>(".admin-media-section:first-of-type .admin-media-create") : null;
-      const loyalty=title==="покупатели"&&section?section:null;
-      const settings=title==="настройки"&&section?section:null;
+      if(previousTickets && (activeTab!=="tickets" || section!==previousTickets)) previousTickets.classList.remove("admin-ticket-section-enhanced-v133");
+      const tickets=activeTab==="tickets"&&section?section:null; if(tickets){tickets.classList.add("admin-ticket-section-enhanced-v133");previousTickets=tickets;}
+      const media=activeTab==="media" ? document.querySelector<HTMLElement>(".admin-media-section:first-of-type .admin-media-create") : null;
+      const loyalty=activeTab==="buyers"&&section?section:null;
+      const settings=activeTab==="settings"&&section?section:null;
 
       if(settings){
         const articles=[...settings.querySelectorAll<HTMLElement>(".admin-settings-list article")];
