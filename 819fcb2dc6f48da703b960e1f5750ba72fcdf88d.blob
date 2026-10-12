@@ -1,0 +1,40 @@
+.about-page .brand-logo { color:var(--bg); }
+.about-page .menu-button { color:var(--bg); }
+.about-page .menu-button.is-open span:first-child { transform:translateY(4px) rotate(45deg); }
+.about-page .menu-button.is-open span:last-child { width:23px;transform:translateY(-4px) rotate(-45deg); }
+.about-page .mobile-nav { background:var(--paper);color:var(--bg);border-color:rgba(17,17,17,.2);box-shadow:0 18px 50px rgba(17,17,17,.16); }
+.about-page .mobile-nav a { display:flex;align-items:center;min-height:44px;color:var(--bg); }
+.about-page .mobile-nav a:hover { color:#8d3045; }
+@media(max-width:900px) { .about-page .menu-button { width:44px;height:44px; } }
+.about-intro-grid { display:grid;grid-template-columns:1fr 1.05fr;gap:8vw;align-items:start;margin-top:38px; }
+.about-story .about-story-title { margin:0;white-space:pre-line;overflow-wrap:anywhere; }
+.about-story .about-copy { margin:6px 0 0;min-width:0;white-space:pre-line;overflow-wrap:anywhere; }
+.about-story .about-statement { white-space:pre-line;overflow-wrap:anywhere; }
+.about-story .tag-row { white-space:normal;flex-wrap:wrap; }
+.about-team { margin-top:110px;padding-top:26px;border-top:1px solid rgba(17,17,17,.18); }
+.about-team-heading { display:flex;justify-content:space-between;align-items:flex-end;gap:32px;margin:36px 0 48px; }
+.about-team-heading h2 { font-size:clamp(38px,5vw,72px);line-height:1;letter-spacing:-.055em;white-space:pre-line;margin:0;overflow-wrap:anywhere; }
+.about-team-heading>p { max-width:330px;font-size:15px;line-height:1.6;color:#69655e;white-space:pre-line; }
+.about-organizers { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:50px 28px; }
+.about-organizer-photo { position:relative;aspect-ratio:4/5;background:linear-gradient(135deg,#250911,#6c1830,#c21f39);overflow:hidden; }
+.about-organizer-photo img { object-fit:cover; }
+.about-organizer-initials { position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(60px,9vw,130px);letter-spacing:-.07em;color:#efb0b4; }
+.about-organizer-index { position:absolute;bottom:15px;left:15px;padding:8px 10px;background:#f2f0ea;color:#25171b;font-size:10px;letter-spacing:.1em; }
+.about-organizer-role { margin-top:22px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8d3045;overflow-wrap:anywhere; }
+.about-organizer h3 { font-size:clamp(24px,2.6vw,36px);letter-spacing:-.04em;line-height:1.15;margin:10px 0 14px;overflow-wrap:anywhere; }
+.about-organizer p { color:#69655e;font-size:14px;line-height:1.7;margin:0;white-space:pre-line;overflow-wrap:anywhere; }
+.about-story-cta { display:flex;justify-content:space-between;align-items:center;gap:24px;margin-top:90px;padding:25px 0;border-top:1px solid rgba(17,17,17,.18);font-size:14px; }
+.about-story .text-link { color:#8d3045; }
+.about-page :where(a,button):focus-visible { outline-color:#8d3045; }
+@media(max-width:1050px) { .about-organizers { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:650px) {
+  .about-intro-grid { grid-template-columns:1fr;gap:32px;margin-top:28px; }
+  .about-story .about-copy { font-size:17px; }
+  .about-team { margin-top:70px; }
+  .about-team-heading { flex-direction:column;align-items:flex-start;gap:16px; }
+  .about-team-heading>p { margin:0; }
+  .about-organizers { grid-template-columns:1fr;gap:38px; }
+  .about-organizer-photo { max-height:550px; }
+  .about-organizer-initials { font-size:100px; }
+  .about-story-cta { flex-direction:column;align-items:flex-start;margin-top:60px; }
+}

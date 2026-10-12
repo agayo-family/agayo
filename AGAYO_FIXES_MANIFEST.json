@@ -1,0 +1,182 @@
+{
+  "schema": "agayo.fixes-transfer.v1",
+  "repository": "agayo-family/agayo",
+  "target_branch": "main",
+  "base_commit": "c96a2ef510f7e9ef5c6f5c1ce7b337cf497b0559",
+  "base_tree": "023212171b25d50140374288ab892399b21109a1",
+  "local_base": "dd4ce1b160dba6a7877c008dcdaf3594cc4ef3c7",
+  "source_commit": "017935b4ec773979ed6f1d0fc1555990cb037be7",
+  "expected_tree": "3f5851d160bbaaf7c318b2219c779a127c3458bf",
+  "file_count": 18,
+  "files": [
+    {
+      "path": "app/about/about.css",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "819fcb2dc6f48da703b960e1f5750ba72fcdf88d",
+      "byte_length": 3500,
+      "sha256": "57379cbf37b24d472fdc30d8e375f95b870fccfa1a018ef09a679f94d942b203",
+      "upload_name": "819fcb2dc6f48da703b960e1f5750ba72fcdf88d.blob"
+    },
+    {
+      "path": "app/api/admin/events/[id]/route.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7c0fb50ed19adcf13f658ead2215b70e90ea9d7",
+      "byte_length": 9808,
+      "sha256": "fd8976d4371193c1ceebc804106695721721a46850110beee8aaf9daf1687824",
+      "upload_name": "b7c0fb50ed19adcf13f658ead2215b70e90ea9d7.blob"
+    },
+    {
+      "path": "app/api/orders/route.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "938572b5e4a56a11471435235e7f3bbf302f604f",
+      "byte_length": 10084,
+      "sha256": "44c5a1c6b7b64068114030a27ef4d531aceeaf4f5eac4158fafb60ea917979ea",
+      "upload_name": "938572b5e4a56a11471435235e7f3bbf302f604f.blob"
+    },
+    {
+      "path": "app/events/page.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa601f1a9203f231c57f7761e27c223b523b21cf",
+      "byte_length": 2234,
+      "sha256": "06916d505741c03c20326368e229e5bc4f5e0c95e2f31bcbefd3101f99edbb9d",
+      "upload_name": "aa601f1a9203f231c57f7761e27c223b523b21cf.blob"
+    },
+    {
+      "path": "components/AdminDashboard.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1747ff46e37c1c3f475e86d01a5de032d6dab123",
+      "byte_length": 36508,
+      "sha256": "a0305c32fe6e99768368a0be57ddfab39c6e1ef23f912f778545400004c21c4a",
+      "upload_name": "1747ff46e37c1c3f475e86d01a5de032d6dab123.blob"
+    },
+    {
+      "path": "components/AdminDashboardEnhancements.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48e129f92902697b61e1b74c31032c514ea72690",
+      "byte_length": 3849,
+      "sha256": "1fdb7c6c72a659209f43609c96d7f31c2077ca8911a6b34284262fb6530d918b",
+      "upload_name": "48e129f92902697b61e1b74c31032c514ea72690.blob"
+    },
+    {
+      "path": "components/AdminEventsManager.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "84b2c02a47e9c3bad174a4aa27bc3be8b026a338",
+      "byte_length": 36799,
+      "sha256": "671df7fd2db39124696672ca801df881d5163f497bf327bafc5c5e385cf5ff0e",
+      "upload_name": "84b2c02a47e9c3bad174a4aa27bc3be8b026a338.blob"
+    },
+    {
+      "path": "components/AdminMediaManager.tsx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e9d0cd08a552ecc7bdc78739b2c78c45a6b66a0",
+      "byte_length": 7819,
+      "sha256": "0cda7d5fbbd328211421a2011fefd6c04fcd1d7572390330b92f496d35ccab6d",
+      "upload_name": "9e9d0cd08a552ecc7bdc78739b2c78c45a6b66a0.blob"
+    },
+    {
+      "path": "components/admin-navigation.css",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ace426787ef5f49b5d7675a7f6f70d11fe9fe2c",
+      "byte_length": 970,
+      "sha256": "3a7c036605f9b0c67a508f60d2644d2f55d93ed8022f85229a2fc2912ef2efa1",
+      "upload_name": "2ace426787ef5f49b5d7675a7f6f70d11fe9fe2c.blob"
+    },
+    {
+      "path": "lib/admin-permissions.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18e0f5f7c20afa30dd364a6b71ef58f6dbb3bf66",
+      "byte_length": 2883,
+      "sha256": "40414cd8cd1d953694e9714d1567c81169d5caf10cc9634b34cd884a427ecf90",
+      "upload_name": "18e0f5f7c20afa30dd364a6b71ef58f6dbb3bf66.blob"
+    },
+    {
+      "path": "lib/server/admin.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1c6effa0ef6e5cd6bb8826aac4e1a8fbea60b97",
+      "byte_length": 6532,
+      "sha256": "eda871af76e7b7b6ad8f29f141d02f3c2d4b58beb71c355af45e37f1858e27a9",
+      "upload_name": "e1c6effa0ef6e5cd6bb8826aac4e1a8fbea60b97.blob"
+    },
+    {
+      "path": "lib/server/event-deletion.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed651e1397dacedeb5a9babf1d978060491b955f",
+      "byte_length": 3368,
+      "sha256": "59dd3d218bc07fd9941207209342759d8ab3e32203c668f22e979f0a8aab4779",
+      "upload_name": "ed651e1397dacedeb5a9babf1d978060491b955f.blob"
+    },
+    {
+      "path": "lib/server/personal-ticket-store.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63515558eebde9a3b7a766e8c9d03cd6524c58df",
+      "byte_length": 7544,
+      "sha256": "26dfdd8f88dcb599626df1a131d8e1f7a7f29f8ab7e2add89bec7bf8258bb490",
+      "upload_name": "63515558eebde9a3b7a766e8c9d03cd6524c58df.blob"
+    },
+    {
+      "path": "lib/server/seed-events.ts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e26f88e1d6bd2d05183aae91bc1e583b207a4a5",
+      "byte_length": 3229,
+      "sha256": "8d1d2c6aad668f87f090146c6d0f7231d9f8b9a5f3a4612b5dbbbd25a4e39a65",
+      "upload_name": "7e26f88e1d6bd2d05183aae91bc1e583b207a4a5.blob"
+    },
+    {
+      "path": "tests/admin-about-permissions.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "49ab70ea3b815652ebc573fa5fb80ca0bdac75bb",
+      "byte_length": 4406,
+      "sha256": "c788544683ca2f4df87991c458b3efb658e35389c94f9f671c0752f6c6b9bc6d",
+      "upload_name": "49ab70ea3b815652ebc573fa5fb80ca0bdac75bb.blob"
+    },
+    {
+      "path": "tests/admin-content-controls.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c5f1cea1de826427b9558d29f7946a730439aa7",
+      "byte_length": 2303,
+      "sha256": "3d06a210f85da82bb0198452472bca2d4f2b31262cc9e2fb02b58c4ea535b287",
+      "upload_name": "1c5f1cea1de826427b9558d29f7946a730439aa7.blob"
+    },
+    {
+      "path": "tests/event-deletion.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a67be3c93acbdacd7bf831047df502720e08a3d6",
+      "byte_length": 9785,
+      "sha256": "0f0cf20d1bb51f100661db6a6e753fd8a59b074a188c057b617481c6564daff9",
+      "upload_name": "a67be3c93acbdacd7bf831047df502720e08a3d6.blob"
+    },
+    {
+      "path": "tests/payment-outcome.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dfc3087f9138b66e684f4b5352ec050055de1f08",
+      "byte_length": 6001,
+      "sha256": "ed5dc681a45584f7ed6f4bf186e2a18e1f45eac2e1f9ebc2e513c14cae04c239",
+      "upload_name": "dfc3087f9138b66e684f4b5352ec050055de1f08.blob"
+    }
+  ],
+  "tests": {
+    "unit_regression": {
+      "passed": 49,
+      "total": 49
+    },
+    "typescript": "passed"
+  }
+}
