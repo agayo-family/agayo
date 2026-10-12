@@ -5,8 +5,8 @@
   "base_commit": "c96a2ef510f7e9ef5c6f5c1ce7b337cf497b0559",
   "base_tree": "023212171b25d50140374288ab892399b21109a1",
   "local_base": "dd4ce1b160dba6a7877c008dcdaf3594cc4ef3c7",
-  "source_commit": "017935b4ec773979ed6f1d0fc1555990cb037be7",
-  "expected_tree": "3f5851d160bbaaf7c318b2219c779a127c3458bf",
+  "source_commit": "7635f724fea70a8bc1af63bc63c52b43a47f24e0",
+  "expected_tree": "f5dc09a6849872d62d430c428ada8381ca2df97a",
   "file_count": 18,
   "files": [
     {
@@ -103,10 +103,10 @@
       "path": "lib/server/admin.ts",
       "mode": "100644",
       "type": "blob",
-      "sha": "e1c6effa0ef6e5cd6bb8826aac4e1a8fbea60b97",
-      "byte_length": 6532,
-      "sha256": "eda871af76e7b7b6ad8f29f141d02f3c2d4b58beb71c355af45e37f1858e27a9",
-      "upload_name": "e1c6effa0ef6e5cd6bb8826aac4e1a8fbea60b97.blob"
+      "sha": "52072af0c8ab1464bd2e3e4eb68273abe6dd8f67",
+      "byte_length": 6731,
+      "sha256": "63799ae638ad48d7b644a5fcdef5fe26a297680fb4bd51b6d3c5360843963920",
+      "upload_name": "52072af0c8ab1464bd2e3e4eb68273abe6dd8f67.blob"
     },
     {
       "path": "lib/server/event-deletion.ts",
@@ -139,10 +139,10 @@
       "path": "tests/admin-about-permissions.test.mjs",
       "mode": "100644",
       "type": "blob",
-      "sha": "49ab70ea3b815652ebc573fa5fb80ca0bdac75bb",
-      "byte_length": 4406,
-      "sha256": "c788544683ca2f4df87991c458b3efb658e35389c94f9f671c0752f6c6b9bc6d",
-      "upload_name": "49ab70ea3b815652ebc573fa5fb80ca0bdac75bb.blob"
+      "sha": "22d33e204b1d785948f810629c8a8a3edfd48503",
+      "byte_length": 4516,
+      "sha256": "2dcd8db8e885ecca24da5c1110c9d533be2762b9f691a2f67502249db5bfbf2b",
+      "upload_name": "22d33e204b1d785948f810629c8a8a3edfd48503.blob"
     },
     {
       "path": "tests/admin-content-controls.test.mjs",

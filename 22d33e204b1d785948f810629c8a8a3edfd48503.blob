@@ -1,0 +1,73 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { loadTs, loadTsx } from './load-ts.mjs';
+import { taggedSql } from './database-fixture.mjs';
+
+const permissions = await loadTs('../lib/admin-permissions.ts');
+const previousFull = permissions.ROLE_DEFAULTS.administrator.filter(permission => permission !== 'manage_about');
+const actorId = '00000000-0000-0000-0000-000000000001';
+async function fixture() {
+  const pg = new PGlite();
+  await pg.exec('CREATE TABLE users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),email text,display_name text)');
+  await pg.exec(await readFile(new URL('../db/002_admin_access.sql', import.meta.url), 'utf8'));
+  await pg.query('INSERT INTO users(id,email) VALUES($1,$2)', [actorId, 'permission-upgrade@example.test']);
+  const sql = taggedSql(pg);
+  const admin = await loadTsx('../lib/server/admin.ts', {
+    './auth': { getCurrentUser: async () => ({ id: actorId, email: 'permission-upgrade@example.test', agayo_id: 'TEST' }) },
+    './db': { db: () => sql }, './security': { normalizeEmail: value => String(value).trim().toLowerCase() },
+    '../admin-permissions': permissions,
+  });
+  async function membership({ role = 'administrator', grants = previousFull, allEvents = true, created = '2026-10-10T00:00:00Z', updated = created } = {}) {
+    const [row] = (await pg.query('INSERT INTO admin_memberships(user_id,role,permissions,all_events,created_at,updated_at) VALUES($1,$2,$3::jsonb,$4,$5,$6) RETURNING *', [actorId, role, JSON.stringify(grants), allEvents, created, updated])).rows;
+    return row;
+  }
+  return { pg, sql, admin, membership };
+}
+
+test('a legacy full administrator gains the missing permission once and UI/API access agree', async () => {
+  const { pg, admin, membership } = await fixture();
+  try {
+    await membership({ created: '2026-10-11T15:00:00Z', updated: '2026-10-11T16:00:00Z' });
+    const access = await admin.getCurrentAdminAccess();
+    assert.ok(access.permissions.includes('manage_about'));
+    assert.equal(admin.hasPermission(access, 'manage_about'), true);
+    assert.equal((await admin.requireAdminPermission('manage_about')).userId, actorId);
+    assert.equal((await pg.query("SELECT count(*)::int AS count FROM admin_audit_log WHERE action='admin.permissions.about.v1'")).rows[0].count, 1);
+    await pg.query('UPDATE admin_memberships SET permissions=$1::jsonb,updated_at=$2', [JSON.stringify(previousFull), '2026-10-10T00:00:00Z']);
+    const revoked = await admin.getCurrentAdminAccess();
+    assert.equal(admin.hasPermission(revoked, 'manage_about'), false);
+    await assert.rejects(admin.requireAdminPermission('manage_about'), /Недостаточно прав/);
+    assert.equal((await pg.query('SELECT count(*)::int AS count FROM admin_audit_log')).rows[0].count, 1);
+  } finally { await pg.close(); }
+});
+
+test('custom, scoped, organizer, controller and recently edited administrators are never upgraded', async () => {
+  const { pg, sql, admin, membership } = await fixture();
+  try {
+    for (const scenario of [
+      { role: 'organizer' }, { role: 'controller' }, { allEvents: false },
+      { grants: previousFull.filter(permission => permission !== 'view_revenue') },
+      { grants: [...previousFull, previousFull[0]] },
+      { created: '2026-10-11T18:16:14Z' }, { updated: '2026-10-11T18:16:14Z' },
+      { created: '2026-10-11T20:00:00Z' }, { updated: '2026-10-11T20:00:00Z' },
+    ]) {
+      await pg.exec('DELETE FROM admin_memberships');
+      const row = await membership(scenario);
+      const result = await admin.upgradeLegacyAdministratorAboutPermission(sql, row, actorId);
+      assert.equal(result.permissions.includes('manage_about'), false, JSON.stringify(scenario));
+    }
+    assert.equal((await pg.query('SELECT count(*)::int AS count FROM admin_audit_log')).rows[0].count, 0);
+  } finally { await pg.close(); }
+});
+
+test('a failed upgrade audit rolls the permission change back', async () => {
+  const { pg, sql, admin, membership } = await fixture();
+  try {
+    const row = await membership();
+    await pg.exec("ALTER TABLE admin_audit_log ADD CONSTRAINT reject_upgrade CHECK(action <> 'admin.permissions.about.v1')");
+    await assert.rejects(admin.upgradeLegacyAdministratorAboutPermission(sql, row, actorId));
+    assert.deepEqual((await pg.query('SELECT permissions FROM admin_memberships')).rows[0].permissions, previousFull);
+  } finally { await pg.close(); }
+});
