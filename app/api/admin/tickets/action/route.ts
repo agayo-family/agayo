@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const sql = db();
     const rows = await sql`
       SELECT
-        t.id,t.public_id,t.user_id,t.event_slug,t.status,t.used_at,t.order_id,
+        t.id,t.public_id,t.user_id,t.event_slug,t.category_id,t.status,t.used_at,t.order_id,
         o.public_id AS order_public_id,o.status AS order_status,o.total,o.subtotal,o.refunded_amount,o.yookassa_payment_id,
         e.starts_at AS event_starts_at
       FROM tickets t
@@ -54,14 +54,42 @@ export async function POST(request: Request) {
 
     if (action === "restore_ticket") {
       const actor = await requireAdminPermission("manage_ticket_inventory", String(ticket.event_slug));
-      if (ticket.order_status !== "paid") return NextResponse.json({ error: "Нельзя восстановить билет у закрытого или возвращённого заказа" }, { status: 409 });
-      const [refund] = await sql`SELECT status FROM ticket_refunds WHERE ticket_id=${ticket.id} LIMIT 1`;
-      if (refund?.status === "succeeded") return NextResponse.json({ error: "Нельзя восстановить билет после денежного возврата" }, { status: 409 });
-      if (ticket.status === "valid") return NextResponse.json({ ok: true, state: "valid", message: "Билет уже действителен" });
-      if (ticket.status !== "cancelled") return NextResponse.json({ error: "Восстановить можно только вручную отменённый билет" }, { status: 409 });
-      await sql`UPDATE tickets SET status='valid',used_at=NULL,used_by=NULL WHERE id=${ticket.id} AND status='cancelled'`;
-      await writeAdminAudit(actor.userId, "ticket.restore", "ticket", String(ticket.id), { publicId:String(ticket.public_id),eventSlug:String(ticket.event_slug),orderPublicId:String(ticket.order_public_id) });
-      return NextResponse.json({ ok: true, state: "valid", message: "Билет снова действителен" });
+      const result = await sql.begin(async (tx: any) => {
+        // Match checkout's event -> category order. Payment/refund processors
+        // lock the order before changing its tickets, so take those locks next.
+        const [event] = await tx`SELECT id FROM events WHERE slug=${ticket.event_slug} FOR UPDATE`;
+        if (!event) throw new AdminAccessError("Мероприятие не найдено", 409);
+        const [category] = await tx`SELECT id,inventory FROM event_ticket_categories
+          WHERE event_id=${event.id} AND category_key=${ticket.category_id} FOR UPDATE`;
+        if (!category) throw new AdminAccessError("Категория билета не найдена", 409);
+        const [order] = await tx`SELECT status FROM orders WHERE id=${ticket.order_id} FOR UPDATE`;
+        const [current] = await tx`SELECT status FROM tickets WHERE id=${ticket.id}
+          AND order_id=${ticket.order_id} AND event_slug=${ticket.event_slug} AND category_id=${ticket.category_id} FOR UPDATE`;
+        const [refund] = await tx`SELECT status FROM ticket_refunds WHERE ticket_id=${ticket.id} FOR UPDATE`;
+        if (order?.status !== "paid") throw new AdminAccessError("Нельзя восстановить билет у закрытого или возвращённого заказа", 409);
+        // A failed intent may still be a provider timeout with an unknown result.
+        if (refund) throw new AdminAccessError("Для билета уже запрашивали возврат. Сверьте его результат у платёжного провайдера перед восстановлением", 409);
+        if (current?.status === "valid") return { ok: true, state: "valid", message: "Билет уже действителен" };
+        if (current?.status !== "cancelled") throw new AdminAccessError("Восстановить можно только вручную отменённый билет", 409);
+        if (category.inventory != null) {
+          const [counts] = await tx`SELECT
+            (SELECT COUNT(*)::int FROM tickets WHERE event_slug=${ticket.event_slug} AND category_id=${ticket.category_id} AND status IN ('valid','used')) AS sold,
+            (SELECT COALESCE(SUM(quantity),0)::int FROM ticket_inventory_reservations WHERE event_slug=${ticket.event_slug} AND category_id=${ticket.category_id} AND consumed_at IS NULL AND released_at IS NULL) AS reserved,
+            (SELECT COALESCE(SUM(oi.quantity),0)::int FROM order_items oi JOIN orders o ON o.id=oi.order_id
+              WHERE o.event_slug=${ticket.event_slug} AND oi.ticket_category_id=${ticket.category_id} AND o.status='pending'
+                AND NOT EXISTS (SELECT 1 FROM ticket_inventory_reservations r WHERE r.order_id=o.id AND r.event_slug=o.event_slug
+                  AND r.category_id=oi.ticket_category_id AND r.consumed_at IS NULL AND r.released_at IS NULL)) AS unreserved_pending`;
+          if (Number(counts.sold || 0) + Number(counts.reserved || 0) + Number(counts.unreserved_pending || 0) >= Number(category.inventory)) {
+            throw new AdminAccessError("Не осталось свободных билетов этой категории. Увеличь лимит перед восстановлением", 409);
+          }
+        }
+        await tx`UPDATE tickets SET status='valid',used_at=NULL,used_by=NULL WHERE id=${ticket.id} AND status='cancelled'`;
+        await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
+          VALUES(${actor.userId},'ticket.restore','ticket',${String(ticket.id)},
+            ${JSON.stringify({ publicId:String(ticket.public_id),eventSlug:String(ticket.event_slug),orderPublicId:String(ticket.order_public_id) })}::jsonb)`;
+        return { ok: true, state: "valid", message: "Билет снова действителен" };
+      });
+      return NextResponse.json(result);
     }
 
     if (action === "reset_scan") {
