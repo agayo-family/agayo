@@ -51,6 +51,43 @@ export async function getPublicPhotosServer(): Promise<GalleryPhoto[]> {
   return (await getPublicPhotoPageServer()).photos;
 }
 
+const HOME_PHOTO_LIMIT = 6;
+
+function isHomePhotoSource(src: string) {
+  try {
+    const url = new URL(src);
+    return url.protocol === "https:" && !url.username && !url.password && (
+      url.hostname === "images.unsplash.com" || url.hostname.endsWith(".public.blob.vercel-storage.com")
+    );
+  } catch { return false; }
+}
+
+// The home preview needs a few photos, not a full gallery page and count query.
+export async function getHomePhotosServer(): Promise<GalleryPhoto[]> {
+  if (!process.env.DATABASE_URL) {
+    const published = new Map(events.filter(event => event.status === "published").map(event => [event.slug, Date.parse(event.startsAt)]));
+    return galleryPhotos.filter(photo => published.has(photo.eventSlug) && isHomePhotoSource(photo.src))
+      .sort((a, b) => (published.get(b.eventSlug) || 0) - (published.get(a.eventSlug) || 0))
+      .slice(0, HOME_PHOTO_LIMIT);
+  }
+  try {
+    const rows = await db()`
+      SELECT p.id,p.event_slug,p.url,p.caption,e.title AS event_title
+      FROM media_photos p JOIN events e ON e.slug=p.event_slug
+      WHERE p.is_published=true AND e.status='published'
+      ORDER BY e.starts_at DESC,p.is_featured DESC,p.sort_order,p.created_at DESC,p.id
+      LIMIT ${HOME_PHOTO_LIMIT}
+    `;
+    return rows.map((row: any) => ({
+      id: String(row.id), eventSlug: String(row.event_slug), eventTitle: String(row.event_title),
+      src: String(row.url), caption: String(row.caption || ""),
+    })).filter(photo => isHomePhotoSource(photo.src));
+  } catch (error) {
+    console.warn("Home photos unavailable:", error instanceof Error ? error.message : error);
+    return [];
+  }
+}
+
 export async function getFeaturedReviewServer(): Promise<PublicReview | null> {
   if (!process.env.DATABASE_URL) return { id:"fallback",eventSlug:null,author:"Алина, 16",text:"Я вообще не хотела идти. Хорошо, что друзья заставили.",featured:true };
   try {

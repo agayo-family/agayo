@@ -94,7 +94,21 @@ export async function getCurrentAdminAccess(): Promise<AdminAccess | null> {
     LIMIT 1
   `;
   if (!rows[0]) return null;
-  const membership = await upgradeLegacyAdministratorAboutPermission(sql, rows[0], String(user.id));
+  let membership: Record<string, any> | null;
+  try {
+    membership = await upgradeLegacyAdministratorAboutPermission(sql, rows[0], String(user.id));
+  } catch (error) {
+    // This optional upgrade must not make an existing administrator's entire
+    // cabinet unavailable when an older constraint or audit write rejects it.
+    // Never grant the permission in memory: the transaction has rolled back.
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+    console.error("Admin permission upgrade deferred", { code: /^[A-Z0-9]{5}$/.test(code) ? code : "unknown" });
+    // Re-read after rollback. Access may have been revoked or narrowed while
+    // the upgrade was waiting; the earlier snapshot is not safe to reuse.
+    const [current] = await sql`SELECT id, role, permissions, all_events, created_at, updated_at
+      FROM admin_memberships WHERE id=${rows[0].id} AND user_id=${user.id} AND active=true LIMIT 1`;
+    membership = current ?? null;
+  }
   if (!membership) return null;
 
   const rawPermissions = Array.isArray(membership.permissions) ? membership.permissions : [];
