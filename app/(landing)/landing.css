@@ -71,11 +71,18 @@
 }
 .landing-photo-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:22px; }
 .landing-photo>div { position:relative;aspect-ratio:4/5;overflow:hidden;background:#211116; }
-.landing-photo:nth-child(2)>div { aspect-ratio:4/4.4; }
 .landing-photo img { object-fit:cover;transition:transform .5s ease; }
 .landing-photo:hover img { transform:scale(1.035); }
 .landing-photo>span { margin-top:14px;display:flex;justify-content:space-between;gap:15px;font-size:10px;line-height:1.4;color:#D5C4C8; }
 .landing-photo b { color:#D69DAA; }
+.landing-photos { background:radial-gradient(ellipse at 100% 30%,#3d0d1b55,transparent 65%),#0b0b0c;border-top:1px solid #413238; }
+.landing-photos-heading-note { display:grid;gap:20px; }
+.landing-photos-heading-note .text-link { font-size:11px; }
+.landing-photos .landing-photo-grid { grid-template-columns:repeat(3,minmax(0,1fr));row-gap:30px; }
+.landing-photos .landing-photo { display:block;min-width:0; }
+.landing-photos .landing-photo>div { aspect-ratio:4/3; }
+.landing-photos .landing-photo>span>span { overflow-wrap:anywhere; }
+.landing-photos-empty { margin:0;color:#D5C4C8;font-size:14px;line-height:1.7; }
 .landing-team { border-block:1px solid #413238;display:grid;grid-template-columns:1fr 2fr;gap:32px; }
 .landing-team h2 { font-size:clamp(32px,4vw,58px); }
 .landing-team .text-link { grid-column:2;justify-self:start; }
@@ -96,8 +103,7 @@
   .landing-section-heading { align-items:flex-start; }
   .landing-section-heading h2 { font-size:clamp(42px,7vw,66px); }
   .landing-photo-grid { grid-template-columns:repeat(2,1fr); }
-  .landing-photo:nth-child(2)>div { aspect-ratio:4/5; }
-  .landing-photo:last-child { display:none; }
+  .landing-photos .landing-photo-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .landing-team { grid-template-columns:1fr;gap:25px; }
   .landing-team .text-link { grid-column:1; }
 }
@@ -113,9 +119,9 @@
   .landing-section-heading { flex-direction:column;align-items:flex-start;gap:22px;margin:30px 0; }
   .landing-section-heading h2 { font-size:clamp(36px,10vw,52px); }
   .landing-photo-grid { grid-template-columns:1fr;gap:28px; }
-  .landing-photo:last-child { display:block; }
+  .landing-photos .landing-photo-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 12px; }
+  .landing-photos .landing-photo>div { aspect-ratio:1; }
   .landing-photo>div { aspect-ratio:5/4; }
-  .landing-photo:nth-child(2)>div { aspect-ratio:5/4; }
   .landing-team h2 { font-size:clamp(30px,8.5vw,44px); }
   .landing-final h2 { font-size:clamp(42px,11vw,68px); }
   .landing-hero { display:flex;align-items:stretch;justify-content:center;flex-direction:column;min-height:100svh;gap:0;padding:115px 18px 85px; }
