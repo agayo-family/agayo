@@ -10,7 +10,7 @@ function fmtTime(value: Date) {
   return new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Moscow" }).format(value);
 }
 
-function eventFromRow(row: any, tickets: any[], program: any[], reservedByCategory: Map<string, number>): AgayoEvent {
+function eventFromRow(row: any, tickets: any[], program: any[], reservedByCategory: Map<string, number>, unreservedPendingByCategory = new Map<string, number>()): AgayoEvent {
   const start = new Date(row.starts_at as string);
   const end = row.ends_at ? new Date(row.ends_at as string) : null;
   const eventSlug = String(row.slug);
@@ -46,7 +46,8 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
         const inventory = ticket.inventory == null ? null : Number(ticket.inventory);
         const sold = Number(ticket.sold_count) || 0;
         const reserved = reservedByCategory.get(`${eventSlug}:${String(ticket.category_key)}`) || 0;
-        const remaining = inventory == null ? null : Math.max(0, inventory - sold - reserved);
+        const unreservedPending = unreservedPendingByCategory.get(`${eventSlug}:${String(ticket.category_key)}`) || 0;
+        const remaining = inventory == null ? null : Math.max(0, inventory - sold - reserved - unreservedPending);
         return {
           id: String(ticket.category_key),
           name: String(ticket.name),
@@ -92,6 +93,7 @@ async function loadDbEvents(): Promise<AgayoEvent[]> {
   let tickets: any[] = [];
   let program: any[] = [];
   const reservedByCategory = new Map<string, number>();
+  const unreservedPendingByCategory = new Map<string, number>();
 
   try {
     tickets = (await sql`
@@ -113,13 +115,21 @@ async function loadDbEvents(): Promise<AgayoEvent[]> {
 
   try {
     const reservations = (await sql`
-      SELECT event_slug, category_id, COALESCE(SUM(quantity),0)::int AS reserved_count
-      FROM ticket_inventory_reservations
-      WHERE consumed_at IS NULL AND released_at IS NULL
-      GROUP BY event_slug, category_id
+      SELECT event_slug, category_id, SUM(reserved_quantity)::int AS reserved_count,
+        SUM(unreserved_quantity)::int AS unreserved_pending_count
+      FROM (
+        SELECT r.event_slug,r.category_id,r.quantity AS reserved_quantity,0 AS unreserved_quantity
+        FROM ticket_inventory_reservations r WHERE r.consumed_at IS NULL AND r.released_at IS NULL
+        UNION ALL
+        SELECT o.event_slug,oi.ticket_category_id,0,oi.quantity
+        FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.status='pending'
+          AND NOT EXISTS (SELECT 1 FROM ticket_inventory_reservations r WHERE r.order_id=o.id AND r.event_slug=o.event_slug
+            AND r.category_id=oi.ticket_category_id AND r.consumed_at IS NULL AND r.released_at IS NULL)
+      ) AS holds GROUP BY event_slug, category_id
     `) as any[];
     for (const row of reservations) {
       reservedByCategory.set(`${String(row.event_slug)}:${String(row.category_id)}`, Number(row.reserved_count) || 0);
+      unreservedPendingByCategory.set(`${String(row.event_slug)}:${String(row.category_id)}`, Number(row.unreserved_pending_count) || 0);
     }
   } catch (error) {
     // Inventory reservations were introduced after the first event schema. Public
@@ -135,7 +145,7 @@ async function loadDbEvents(): Promise<AgayoEvent[]> {
     console.warn("Event program unavailable:", error instanceof Error ? error.message : error);
   }
 
-  return rows.map((row) => eventFromRow(row, tickets, program, reservedByCategory));
+  return rows.map((row) => eventFromRow(row, tickets, program, reservedByCategory, unreservedPendingByCategory));
 }
 
 async function loadDbEventBySlug(slug: string): Promise<AgayoEvent | null> {
@@ -154,6 +164,7 @@ async function loadDbEventBySlug(slug: string): Promise<AgayoEvent | null> {
   let tickets: any[] = [];
   let program: any[] = [];
   const reservedByCategory = new Map<string, number>();
+  const unreservedPendingByCategory = new Map<string, number>();
 
   try {
     tickets = (await sql`
@@ -174,13 +185,21 @@ async function loadDbEventBySlug(slug: string): Promise<AgayoEvent | null> {
 
   try {
     const reservations = (await sql`
-      SELECT category_id, COALESCE(SUM(quantity),0)::int AS reserved_count
-      FROM ticket_inventory_reservations
-      WHERE event_slug=${slug} AND consumed_at IS NULL AND released_at IS NULL
-      GROUP BY category_id
+      SELECT category_id, SUM(reserved_quantity)::int AS reserved_count,
+        SUM(unreserved_quantity)::int AS unreserved_pending_count
+      FROM (
+        SELECT r.category_id,r.quantity AS reserved_quantity,0 AS unreserved_quantity
+        FROM ticket_inventory_reservations r WHERE r.event_slug=${slug} AND r.consumed_at IS NULL AND r.released_at IS NULL
+        UNION ALL
+        SELECT oi.ticket_category_id,0,oi.quantity
+        FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.event_slug=${slug} AND o.status='pending'
+          AND NOT EXISTS (SELECT 1 FROM ticket_inventory_reservations r WHERE r.order_id=o.id AND r.event_slug=o.event_slug
+            AND r.category_id=oi.ticket_category_id AND r.consumed_at IS NULL AND r.released_at IS NULL)
+      ) AS holds GROUP BY category_id
     `) as any[];
     for (const item of reservations) {
       reservedByCategory.set(`${slug}:${String(item.category_id)}`, Number(item.reserved_count) || 0);
+      unreservedPendingByCategory.set(`${slug}:${String(item.category_id)}`, Number(item.unreserved_pending_count) || 0);
     }
   } catch (error) {
     console.warn(`Reservations for ${slug}:`, error instanceof Error ? error.message : error);
@@ -196,7 +215,7 @@ async function loadDbEventBySlug(slug: string): Promise<AgayoEvent | null> {
     console.warn(`Program for ${slug}:`, error instanceof Error ? error.message : error);
   }
 
-  return eventFromRow(row, tickets, program, reservedByCategory);
+  return eventFromRow(row, tickets, program, reservedByCategory, unreservedPendingByCategory);
 }
 
 export async function getAllEventsServer() {

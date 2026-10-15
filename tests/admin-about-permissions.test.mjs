@@ -8,12 +8,12 @@ import { taggedSql } from './database-fixture.mjs';
 const permissions = await loadTs('../lib/admin-permissions.ts');
 const previousFull = permissions.ROLE_DEFAULTS.administrator.filter(permission => permission !== 'manage_about');
 const actorId = '00000000-0000-0000-0000-000000000001';
-async function fixture() {
+async function fixture({ wrapSql = value => value } = {}) {
   const pg = new PGlite();
   await pg.exec('CREATE TABLE users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),email text,display_name text)');
   await pg.exec(await readFile(new URL('../db/002_admin_access.sql', import.meta.url), 'utf8'));
   await pg.query('INSERT INTO users(id,email) VALUES($1,$2)', [actorId, 'permission-upgrade@example.test']);
-  const sql = taggedSql(pg);
+  const sql = wrapSql(taggedSql(pg), pg);
   const admin = await loadTsx('../lib/server/admin.ts', {
     './auth': { getCurrentUser: async () => ({ id: actorId, email: 'permission-upgrade@example.test', agayo_id: 'TEST' }) },
     './db': { db: () => sql }, './security': { normalizeEmail: value => String(value).trim().toLowerCase() },
@@ -69,5 +69,82 @@ test('a failed upgrade audit rolls the permission change back', async () => {
     await pg.exec("ALTER TABLE admin_audit_log ADD CONSTRAINT reject_upgrade CHECK(action <> 'admin.permissions.about.v1')");
     await assert.rejects(admin.upgradeLegacyAdministratorAboutPermission(sql, row, actorId));
     assert.deepEqual((await pg.query('SELECT permissions FROM admin_memberships')).rows[0].permissions, previousFull);
+  } finally { await pg.close(); }
+});
+
+test('a rejected upgrade audit leaves the cabinet available with only its persisted rights', async () => {
+  const { pg, admin, membership } = await fixture();
+  try {
+    await membership();
+    await pg.exec("ALTER TABLE admin_audit_log ADD CONSTRAINT reject_upgrade CHECK(action <> 'admin.permissions.about.v1')");
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const access = await admin.getCurrentAdminAccess();
+      assert.deepEqual(access.permissions, previousFull);
+      assert.equal(admin.hasPermission(access, 'manage_events'), true);
+      assert.equal(admin.hasPermission(access, 'manage_about'), false);
+    }
+    await assert.rejects(admin.requireAdminPermission('manage_about'), /Недостаточно прав/);
+    assert.deepEqual((await pg.query('SELECT permissions FROM admin_memberships')).rows[0].permissions, previousFull);
+    assert.equal((await pg.query('SELECT count(*)::int AS count FROM admin_audit_log')).rows[0].count, 0);
+  } finally { await pg.close(); }
+});
+
+test('an older permission constraint cannot crash the cabinet or grant an unsaved permission', async () => {
+  const { pg, sql, admin, membership } = await fixture();
+  try {
+    const row = await membership();
+    await pg.exec("ALTER TABLE admin_memberships ADD CONSTRAINT old_permissions CHECK (NOT (permissions ? 'manage_about'))");
+    // Reproduce the former server-render failure at its source.
+    await assert.rejects(admin.upgradeLegacyAdministratorAboutPermission(sql, row, actorId), { code: '23514' });
+    const access = await admin.getCurrentAdminAccess();
+    assert.deepEqual(access.permissions, previousFull);
+    assert.equal((await admin.requireAdminPermission('manage_events')).userId, actorId);
+    await assert.rejects(admin.requireAdminPermission('manage_about'), /Недостаточно прав/);
+    assert.equal((await pg.query('SELECT count(*)::int AS count FROM admin_audit_log')).rows[0].count, 0);
+  } finally { await pg.close(); }
+});
+
+test('fallback rechecks revocation after an upgrade transaction rolls back', async () => {
+  const { pg, admin, membership } = await fixture({ wrapSql(sql, pg) {
+    const begin = sql.begin;
+    sql.begin = async callback => {
+      try { return await begin(callback); }
+      catch (error) {
+        await pg.exec('UPDATE admin_memberships SET active=false');
+        throw error;
+      }
+    };
+    return sql;
+  } });
+  try {
+    await membership();
+    await pg.exec("ALTER TABLE admin_audit_log ADD CONSTRAINT reject_upgrade CHECK(action <> 'admin.permissions.about.v1')");
+    assert.equal(await admin.getCurrentAdminAccess(), null);
+    await assert.rejects(admin.requireAdminPermission('manage_events'), /Требуется служебный доступ/);
+  } finally { await pg.close(); }
+});
+
+test('fallback uses narrowed rights and event scope instead of its pre-upgrade snapshot', async () => {
+  const { pg, admin, membership } = await fixture({ wrapSql(sql, pg) {
+    const begin = sql.begin;
+    sql.begin = async callback => {
+      try { return await begin(callback); }
+      catch (error) {
+        await pg.exec(`UPDATE admin_memberships SET permissions='["view_dashboard"]'::jsonb,all_events=false;
+          INSERT INTO admin_event_access(membership_id,event_slug) SELECT id,'scoped-event' FROM admin_memberships;`);
+        throw error;
+      }
+    };
+    return sql;
+  } });
+  try {
+    await membership();
+    await pg.exec("ALTER TABLE admin_audit_log ADD CONSTRAINT reject_upgrade CHECK(action <> 'admin.permissions.about.v1')");
+    const access = await admin.getCurrentAdminAccess();
+    assert.deepEqual(access.permissions, ['view_dashboard']);
+    assert.equal(access.allEvents, false);
+    assert.deepEqual(access.eventSlugs, ['scoped-event']);
+    assert.equal(admin.canAccessEvent(access, 'other-event'), false);
+    await assert.rejects(admin.requireAdminPermission('manage_events'), /Недостаточно прав/);
   } finally { await pg.close(); }
 });

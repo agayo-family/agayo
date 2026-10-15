@@ -57,8 +57,12 @@ export async function issuePersonalBatch(sql: postgres.Sql, campaignId: string, 
     if (category.inventory != null) {
       const [counts] = await tx`SELECT
         (SELECT count(*)::int FROM tickets WHERE event_slug=${campaign.event_slug} AND category_id=${campaign.category_id} AND status IN ('valid','used')) AS sold,
-        (SELECT coalesce(sum(quantity),0)::int FROM ticket_inventory_reservations WHERE event_slug=${campaign.event_slug} AND category_id=${campaign.category_id} AND consumed_at IS NULL AND released_at IS NULL) AS reserved`;
-      if (Number(category.inventory) - Number(counts.sold) - Number(counts.reserved) < recipients.length) throw new PersonalTicketError('Недостаточно билетов этой категории. Уже выданные билеты сохранены; увеличь лимит или выбери другой выпуск');
+        (SELECT coalesce(sum(quantity),0)::int FROM ticket_inventory_reservations WHERE event_slug=${campaign.event_slug} AND category_id=${campaign.category_id} AND consumed_at IS NULL AND released_at IS NULL) AS reserved,
+        (SELECT coalesce(sum(oi.quantity),0)::int FROM order_items oi JOIN orders o ON o.id=oi.order_id
+          WHERE o.event_slug=${campaign.event_slug} AND oi.ticket_category_id=${campaign.category_id} AND o.status='pending'
+            AND NOT EXISTS (SELECT 1 FROM ticket_inventory_reservations r WHERE r.order_id=o.id AND r.event_slug=o.event_slug
+              AND r.category_id=oi.ticket_category_id AND r.consumed_at IS NULL AND r.released_at IS NULL)) AS unreserved_pending`;
+      if (Number(category.inventory) - Number(counts.sold) - Number(counts.reserved) - Number(counts.unreserved_pending) < recipients.length) throw new PersonalTicketError('Недостаточно билетов этой категории. Уже выданные билеты сохранены; увеличь лимит или выбери другой выпуск');
     }
     for (const user of recipients) {
       const owner = String(user.display_name || user.email || 'Гость AGAYO').slice(0, 120);

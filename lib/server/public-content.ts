@@ -1,6 +1,6 @@
 import { unstable_cache, revalidatePath, revalidateTag } from "next/cache";
 import { getPublicEventCatalogServer, getPublicEventProgramServer } from "./events";
-import { getFeaturedReviewServer, getPublicPhotosServer, getPublicPhotoPageServer } from "./media";
+import { getFeaturedReviewServer, getPublicPhotosServer, getPublicPhotoPageServer, getHomePhotosServer } from "./media";
 import { getPublicAboutServer } from "./about";
 
 // Sessions, orders, ticket tokens and checkout availability never enter this cache.
@@ -8,6 +8,8 @@ export const getPublicCatalog = unstable_cache(getPublicEventCatalogServer,
   ["agayo-public-catalog-v1"], { tags: ["agayo-events"], revalidate: 60 });
 export const getPublicPhotos = unstable_cache(getPublicPhotosServer,
   ["agayo-public-photos-v1"], { tags: ["agayo-media"], revalidate: 60 });
+export const getHomePhotos = unstable_cache(getHomePhotosServer,
+  ["agayo-home-photos-v1"], { tags: ["agayo-media"], revalidate: 60 });
 export const getPublicPhotoPage = unstable_cache(getPublicPhotoPageServer,
   ['agayo-public-photo-page-v1'], { tags: ['agayo-media'], revalidate: 60 });
 export const getFeaturedReview = unstable_cache(getFeaturedReviewServer,

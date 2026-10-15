@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { invalidatePublicContent } from "@/lib/server/public-content";
 import { db } from "@/lib/server/db";
-import { AdminAccessError, requireAdminPermission, writeAdminAudit } from "@/lib/server/admin";
+import { AdminAccessError, requireAdminPermission } from "@/lib/server/admin";
 import { deleteUnusedEvent, EventDeletionError } from "@/lib/server/event-deletion";
 
 function cleanHex(value: unknown, fallback: string) {
@@ -85,6 +85,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const sql = db();
 
     await sql.begin(async (tx: any) => {
+      const [lockedEvent] = await tx`SELECT id FROM events WHERE id=${id} FOR UPDATE`;
+      if (!lockedEvent) throw new AdminAccessError("Мероприятие не найдено", 409);
       await tx`
         UPDATE events SET
           title=${title}, starts_at=${startsAt.toISOString()}, ends_at=${endsAt ? endsAt.toISOString() : null},
@@ -99,7 +101,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         WHERE id=${id}
       `;
 
-      const existing = await tx`SELECT c.category_key, COALESCE((SELECT COUNT(*)::int FROM tickets t WHERE t.event_slug=${current.slug} AND t.category_id=c.category_key AND t.status IN ('valid','used')),0)::int AS sold_count FROM event_ticket_categories c WHERE c.event_id=${id}`;
+      // Lock before counting: a gift batch may have been holding a category
+      // lock without the event lock. The next statement then sees its commit.
+      await tx`SELECT id FROM event_ticket_categories WHERE event_id=${id} ORDER BY category_key FOR UPDATE`;
+      const existing = await tx`SELECT c.category_key,
+        (SELECT COUNT(*)::int FROM tickets t WHERE t.event_slug=${current.slug} AND t.category_id=c.category_key AND t.status IN ('valid','used')) AS sold_count,
+        (SELECT COALESCE(SUM(r.quantity),0)::int FROM ticket_inventory_reservations r WHERE r.event_slug=${current.slug} AND r.category_id=c.category_key AND r.consumed_at IS NULL AND r.released_at IS NULL) AS reserved_count,
+        (SELECT COALESCE(SUM(oi.quantity),0)::int FROM order_items oi JOIN orders o ON o.id=oi.order_id
+          WHERE o.event_slug=${current.slug} AND oi.ticket_category_id=c.category_key AND o.status='pending'
+            AND NOT EXISTS (SELECT 1 FROM ticket_inventory_reservations r WHERE r.order_id=o.id AND r.event_slug=o.event_slug
+              AND r.category_id=oi.ticket_category_id AND r.consumed_at IS NULL AND r.released_at IS NULL)) AS unreserved_pending
+        FROM event_ticket_categories c WHERE c.event_id=${id}`;
       const incomingKeys: string[] = [];
       for (let i = 0; i < categories.length; i++) {
         const item = categories[i];
@@ -109,7 +121,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const inventory = item.inventory === "" || item.inventory == null ? null : Math.max(0, Number(item.inventory) || 0);
         const hotEnabled = Boolean(item.hotEnabled);
         const previous = existing.find((row:any) => String(row.category_key) === categoryKey);
-        if (inventory != null && previous && Number(previous.sold_count || 0) > inventory) throw new Error(`Нельзя поставить лимит ${inventory}: уже продано ${Number(previous.sold_count || 0)} билетов категории ${String(item.name)}`);
+        const occupied = previous ? Number(previous.sold_count || 0) + Number(previous.reserved_count || 0) + Number(previous.unreserved_pending || 0) : 0;
+        if (inventory != null && occupied > inventory) throw new AdminAccessError(`Нельзя поставить лимит ${inventory}: уже продано или ожидает оплаты ${occupied} билетов категории ${String(item.name)}`, 409);
         await tx`
           INSERT INTO event_ticket_categories(event_id,category_key,name,price,note,inventory,hot_enabled,hot_displayed_remaining,theme_primary,theme_secondary,theme_accent,sort_order)
           VALUES(${id},${categoryKey},${String(item.name).trim()},${Math.max(0,Number(item.price)||0)},${String(item.note||"")},${inventory},${hotEnabled},${null},${cleanHex(item.themePrimary,cleanHex(body.themePrimary,"#220708"))},${cleanHex(item.themeSecondary,cleanHex(body.themeSecondary,"#751013"))},${cleanHex(item.themeAccent,cleanHex(body.themeAccent,"#e12622"))},${i})
@@ -129,8 +142,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         if (!titleText) continue;
         await tx`INSERT INTO event_program_items(event_id,time_label,title,sort_order) VALUES(${id},${label},${titleText},${i})`;
       }
+      await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
+        VALUES(${actor.userId},'event.update','event',${id},${JSON.stringify({ slug: current.slug, title, salesState, status: body.status })}::jsonb)`;
     });
-    await writeAdminAudit(actor.userId, "event.update", "event", id, { slug: current.slug, title, salesState, status: body.status });
     invalidatePublicContent("events");
     revalidatePath("/events");
     revalidatePath(`/events/${String(current.slug)}`);
