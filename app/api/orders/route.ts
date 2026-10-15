@@ -39,11 +39,16 @@ export async function POST(request: Request) {
     if (subtotal <= 0) return NextResponse.json({ error:"Бесплатный билет нельзя оформить через платёжный checkout" }, { status:400 });
 
     const result = await sql.begin(async (tx: any) => {
+      // Capacity edits and ticket restoration take event before category.
+      // Keep the same order explicit to avoid cross-path deadlocks.
+      const [lockedEvent] = await tx`
+        SELECT id FROM events WHERE slug=${event.slug}
+          AND status='published' AND sales_state='open' FOR UPDATE
+      `;
+      if (!lockedEvent) throw new Error('Билет недоступен: мероприятие удалено или продажи закрыты');
       const dbCategories = await tx`
-        SELECT c.id,c.inventory FROM event_ticket_categories c
-        JOIN events e ON e.id=c.event_id
-        WHERE e.slug=${event.slug} AND c.category_key=${category.id}
-          AND e.status='published' AND e.sales_state='open'
+        SELECT id,inventory FROM event_ticket_categories
+        WHERE event_id=${lockedEvent.id} AND category_key=${category.id}
         FOR UPDATE
       `;
       const dbCategory = dbCategories[0];
@@ -52,9 +57,13 @@ export async function POST(request: Request) {
         const [counts] = await tx`
           SELECT
             (SELECT COUNT(*)::int FROM tickets t WHERE t.event_slug=${event.slug} AND t.category_id=${category.id} AND t.status IN ('valid','used')) AS sold,
-            (SELECT COALESCE(SUM(r.quantity),0)::int FROM ticket_inventory_reservations r WHERE r.event_slug=${event.slug} AND r.category_id=${category.id} AND r.consumed_at IS NULL AND r.released_at IS NULL) AS reserved
+            (SELECT COALESCE(SUM(r.quantity),0)::int FROM ticket_inventory_reservations r WHERE r.event_slug=${event.slug} AND r.category_id=${category.id} AND r.consumed_at IS NULL AND r.released_at IS NULL) AS reserved,
+            (SELECT COALESCE(SUM(oi.quantity),0)::int FROM order_items oi JOIN orders o ON o.id=oi.order_id
+              WHERE o.event_slug=${event.slug} AND oi.ticket_category_id=${category.id} AND o.status='pending'
+                AND NOT EXISTS (SELECT 1 FROM ticket_inventory_reservations r WHERE r.order_id=o.id AND r.event_slug=o.event_slug
+                  AND r.category_id=oi.ticket_category_id AND r.consumed_at IS NULL AND r.released_at IS NULL)) AS unreserved_pending
         `;
-        const available = Number(dbCategory.inventory) - Number(counts.sold || 0) - Number(counts.reserved || 0);
+        const available = Number(dbCategory.inventory) - Number(counts.sold || 0) - Number(counts.reserved || 0) - Number(counts.unreserved_pending || 0);
         if (available < quantity) throw new Error(available <= 0 ? "Эта категория распродана" : `Доступно только ${available} билет(а)`);
       }
 
