@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       const rows = await sql`
         INSERT INTO media_photos(event_slug,url,caption,sort_order,is_featured,is_published,created_by)
         VALUES(${eventSlug},${url},${text(body.caption,500)},${integer(body.sortOrder,0)},${Boolean(body.isFeatured)},${body.isPublished !== false},${access.userId})
-        ON CONFLICT (url) DO UPDATE SET event_slug=EXCLUDED.event_slug,caption=EXCLUDED.caption,updated_at=now()
+        ON CONFLICT (url) DO UPDATE SET source_key=CASE WHEN media_photos.event_slug IS DISTINCT FROM EXCLUDED.event_slug THEN NULL ELSE media_photos.source_key END,event_slug=EXCLUDED.event_slug,caption=EXCLUDED.caption,updated_at=now()
         RETURNING id,event_slug,url,caption,sort_order,is_featured,is_published,created_at
       `;
       if (Boolean(body.isFeatured)) await sql`UPDATE media_photos SET is_featured=false,updated_at=now() WHERE event_slug=${eventSlug} AND id<>${rows[0].id}`;
@@ -83,7 +83,7 @@ export async function PATCH(request: Request) {
       if (!canAccessEvent(access,String(current[0].event_slug))) return NextResponse.json({error:"Нет доступа к исходному мероприятию"},{status:403});
       const featured = body.isFeatured == null ? Boolean(current[0].is_featured) : Boolean(body.isFeatured);
       if (featured) await sql`UPDATE media_photos SET is_featured=false,updated_at=now() WHERE event_slug=${eventSlug} AND id<>${id}`;
-      const rows = await sql`UPDATE media_photos SET event_slug=${eventSlug},caption=${text(body.caption ?? current[0].caption,500)},sort_order=${integer(body.sortOrder,current[0].sort_order)},is_featured=${featured},is_published=${body.isPublished == null ? Boolean(current[0].is_published) : Boolean(body.isPublished)},updated_at=now() WHERE id=${id} RETURNING id,event_slug,url,caption,sort_order,is_featured,is_published,created_at`;
+      const rows = await sql`UPDATE media_photos SET source_key=CASE WHEN event_slug IS DISTINCT FROM ${eventSlug} THEN NULL ELSE source_key END,event_slug=${eventSlug},caption=${text(body.caption ?? current[0].caption,500)},sort_order=${integer(body.sortOrder,current[0].sort_order)},is_featured=${featured},is_published=${body.isPublished == null ? Boolean(current[0].is_published) : Boolean(body.isPublished)},updated_at=now() WHERE id=${id} RETURNING id,event_slug,url,caption,sort_order,is_featured,is_published,created_at`;
       await writeAdminAudit(access.userId,"media.photo.update","media_photo",id,{eventSlug});
       invalidatePublicContent("media");
       return NextResponse.json({ok:true,photo:rows[0]});
