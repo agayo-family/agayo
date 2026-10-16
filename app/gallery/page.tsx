@@ -3,11 +3,16 @@ import GalleryExperience from "@/components/GalleryExperience";
 import SiteHeader from "@/components/SiteHeader";
 import { getPublicCatalog, getPublicPhotoPage } from "@/lib/server/public-content";
 import type { Metadata } from "next";
+import { getPublicPhotoPageServer } from '@/lib/server/media';
 
 export const revalidate = 60;
 export const metadata: Metadata = { title: "Галерея", alternates: { canonical: "/gallery" } };
 export default async function GalleryPage() {
-  const [events, photoPage] = await Promise.all([getPublicCatalog(), getPublicPhotoPage()]);
+  let notice='';
+  const [events, photoPage] = await Promise.all([getPublicCatalog(), getPublicPhotoPage().catch(async()=>{
+    notice='Внешний альбом временно недоступен. Показываем загруженные фотографии; попробуй обновить страницу позже.';
+    return getPublicPhotoPageServer();
+  })]);
   const publishedEvents = events.map((event) => ({ slug:event.slug,title:event.title,dateLabel:event.dateLabel,startsAt:event.startsAt,city:event.city }));
   return (
     <main id="main-content" className="inner-page gallery-page-v2">
@@ -22,7 +27,7 @@ export default async function GalleryPage() {
           </div>
         </section>
 
-        <GalleryExperience photos={photoPage.photos} total={photoPage.total} publishedEvents={publishedEvents} />
+        <GalleryExperience photos={photoPage.photos} total={photoPage.total} publishedEvents={publishedEvents} notice={notice} />
 
         <section className="gallery-memory-cta">
           <div className="section-label">ТВОЙ АРХИВ</div>
