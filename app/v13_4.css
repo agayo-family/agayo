@@ -16,14 +16,6 @@
 }
 .event-page-themed .event-v2-hero-content,.event-page-themed .event-v2-hero-content h1,
 .event-page-themed .event-v2-hero-content h1 span,.event-page-themed .event-v2-kicker,.event-page-themed .event-v2-hero-bottom p { color:#F2F0EA !important; }
-.event-page-themed .event-v2-intro {
-  color:#111113 !important;
-  background:linear-gradient(135deg,#F2F0EA 0%,color-mix(in srgb,var(--event-accent) 8%,#F2F0EA 92%) 100%) !important;
-}
-.event-page-themed .event-v2-intro h2,.event-page-themed .event-v2-intro p,.event-page-themed .event-v2-intro .section-label { color:#111113 !important; }
-.event-page-themed .event-v2-intro .section-label { opacity:.65; }
-.event-page-themed .event-v2-intro .tag-row span { color:#111113 !important;border-color:rgba(17,17,19,.28) !important;background:rgba(255,255,255,.18); }
-.event-page-themed .event-v2-intro .event-rules-link { color:#111113 !important;border-color:rgba(17,17,19,.48) !important;font-weight:700; }
 .event-page-themed .event-v2-tickets,.event-page-themed .event-v2-program,.event-page-themed .event-v2-map,.event-page-themed .event-v2-final {
   color:#F2F0EA !important;
 }
