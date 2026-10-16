@@ -4,6 +4,7 @@ import SiteHeader from "@/components/SiteHeader";
 import FavoriteSummary from "@/components/FavoriteSummary";
 import ProfileFavoritesPreview from "@/components/ProfileFavoritesPreview";
 import ProfileEditor from "@/components/ProfileEditor";
+import ProfileTelegram from "@/components/ProfileTelegram";
 import LogoutButton from "@/components/LogoutButton";
 import { getCurrentUser } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
@@ -147,7 +148,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           {user ? <ProfileEditor firstName={String(user.first_name || "")} lastName={String(user.last_name || "")} /> : null}
           <div className="profile-settings-list">
             <Link href="/auth" className="profile-setting-row"><span>EMAIL / ТЕЛЕФОН</span><strong>{user ? "ВХОД АКТИВЕН" : "ВОЙТИ ПО КОДУ"}</strong><b>→</b></Link>
-            <div className="profile-setting-row"><span>ДОСТАВКА БИЛЕТОВ</span><strong>EMAIL</strong><b>✓</b></div>
+            {user ? <ProfileTelegram /> : <div className="profile-setting-row"><span>ДОСТАВКА БИЛЕТОВ</span><strong>EMAIL</strong><b>✓</b></div>}
             {user ? <LogoutButton /> : <Link href="/auth" className="profile-setting-row profile-logout"><span>АККАУНТ</span><strong>ВОЙТИ</strong><b>→</b></Link>}
           </div>
           <p className="profile-backend-note">AGAYO ID, профиль, избранные фото, покупки, билеты, QR и история работают из серверной базы и доступны после входа на любом устройстве.</p>
