@@ -98,7 +98,7 @@ test('VK endpoints authorize media and event scope before external calls and kee
   const route = await loadTsx('../app/api/admin/media/vk/route.ts', {
     '@/lib/server/admin': { AdminAccessError, requireAdminPermission: async (permission, slug) => { calls.push([permission,slug]); if (slug || calls.length === 1) throw new AdminAccessError(); return { userId: actor }; } },
     '@/lib/server/db': { db: () => { throw new Error('Unexpected database'); } }, '@/lib/server/blob': { resolveBlobToken: () => 'hidden-blob-token' },
-    '@/lib/server/public-content': { invalidatePublicContent: () => {} }, '@/lib/server/vk-import': vk,
+    '@/lib/server/public-content': { invalidatePublicContent: () => {} }, '@/lib/server/vk-import': vk, '@/lib/server/external-gallery': {},
     '@vercel/blob': { put: () => { throw new Error('Unexpected upload'); }, del: () => { throw new Error('Unexpected delete'); } },
   });
   const request = () => new Request('https://example.test/api/admin/media/vk', { method: 'POST', body: JSON.stringify({ action:'list', albumUrl: album.url, eventSlug:'test-halloween' }) });
@@ -109,31 +109,21 @@ test('VK endpoints authorize media and event scope before external calls and kee
 
 test('photo UI offers VK import without review controls and restores only a bounded, secret-free queue', () => {
   const html = renderToStaticMarkup(createElement(AdminMediaManager, { events: [], access: { userId: actor, role: 'owner', allEvents: true, eventSlugs: [] }, previewMode: true }));
-  assert.match(html, /Импортировать альбом ВК/); assert.doesNotMatch(html, /Добавить отзыв|audio\/\*|<audio/);
+  assert.match(html, /Подключить альбом ВК/); assert.doesNotMatch(html, /Добавить отзыв|audio\/\*|<audio/);
   const job = { albumUrl: album.url, eventSlug: 'test-halloween', nextOffset: 25, items: [17], failed: [{ id:18,error:'Недоступно' }], imported:1, skipped:2,total:100,finished:false };
   assert.deepEqual(restoreVkJob(job), job);
   assert.equal(restoreVkJob({ ...job, access_token:'never-persist' }).access_token, undefined);
   assert.equal(restoreVkJob({ ...job, items:[-1] }), null); assert.equal(restoreVkJob({ ...job, albumUrl:'https://evil.test/album1_2' }), null); assert.equal(restoreVkJob({ ...job, nextOffset:NaN }), null);
 });
 
-test('API cleans up verified failed/duplicate uploads but retains committed or unverifiable uploads', async () => {
-  class AdminAccessError extends Error { constructor() { super('Нет доступа'); this.status=403; } }
-  for (const outcome of ['commit','duplicate','rollback','unknown-commit','unverifiable-commit']) {
-    const deleted=[],permissions=[];
-    const route=await loadTsx('../app/api/admin/media/vk/route.ts',{
-      '@/lib/server/admin':{AdminAccessError,requireAdminPermission:async(permission,slug)=>{permissions.push([permission,slug]);return {userId:actor};}},
-      '@/lib/server/db':{db:()=>async(strings)=>strings.join('').includes('SELECT id FROM events')?[{id:actor}]:[]},
-      '@/lib/server/blob':{resolveBlobToken:()=> 'private-token'},
-      '@/lib/server/public-content':{invalidatePublicContent:()=>{if(outcome==='commit')throw new Error('Cache unavailable');}},
-      '@/lib/server/vk-import':{...vk,getVkPhoto:async()=>vk.normalizeVkPhoto(rawPhoto(),album),downloadVkPhoto:async()=>({bytes:jpeg,contentType:'image/jpeg',extension:'jpg'}),commitVkPhoto:async()=>{if(['rollback','unknown-commit','unverifiable-commit'].includes(outcome))throw new Error('Audit unavailable');return {skipped:outcome==='duplicate',photo:{id:'photo-row'}};},canDeleteVkUpload:async()=>{if(outcome==='unverifiable-commit')throw new Error('Database unreachable');return outcome!=='unknown-commit';}},
-      '@vercel/blob':{put:async()=>({url:'https://store.public.blob.vercel-storage.com/new.jpg'}),del:async(url)=>deleted.push(url)},
-    });
-    const response=await route.POST(new Request('https://example.test/api/admin/media/vk',{method:'POST',body:JSON.stringify({action:'import',albumUrl:album.url,eventSlug:'test-halloween',photoId:17})}));
-    assert.equal(response.status,['rollback','unknown-commit','unverifiable-commit'].includes(outcome)?500:200);
-    assert.equal(deleted.length,['duplicate','rollback'].includes(outcome)?1:0);
-    assert.deepEqual(permissions,[['manage_media',undefined],['manage_media','test-halloween'],['manage_media','test-halloween']]);
-    assert.doesNotMatch(await response.text(),/private-token|Audit unavailable|Cache unavailable/);
-  }
+test('external mode refuses the former Blob-copy operation before any network or database access', async () => {
+  const route=await loadTsx('../app/api/admin/media/vk/route.ts',{
+    '@/lib/server/admin':{AdminAccessError:class extends Error{},requireAdminPermission:async()=>({userId:actor})},
+    '@/lib/server/db':{db:()=>{throw new Error('Unexpected database')}},
+    '@/lib/server/public-content':{},'@/lib/server/vk-import':vk,'@/lib/server/external-gallery':{},
+  });
+  const response=await route.POST(new Request('https://example.test/api/admin/media/vk',{method:'POST',body:JSON.stringify({action:'import',albumUrl:album.url,eventSlug:'test-halloween',photoId:17})}));
+  assert.equal(response.status,410);assert.match(await response.text(),/Копирование/);
 });
 
 test('moving imported photos clears deduplication keys; a stale cross-event key never leaks a scoped photo', async () => {
@@ -159,16 +149,7 @@ test('moving imported photos clears deduplication keys; a stale cross-event key 
     // Simulate a stale key from an older/manual move, then exercise the actual
     // API with an employee who can access only the original event.
     await pg.query('UPDATE media_photos SET source_key=$1 WHERE id=$2',[input().sourceKey,original.photo.id]);
-    const removed=[];
-    const route=await loadTsx('../app/api/admin/media/vk/route.ts',{
-      '@/lib/server/admin':{AdminAccessError,requireAdminPermission:async(permission,slug)=>{if(slug&&slug!=='test-halloween')throw new AdminAccessError();return {userId:actor};}},
-      '@/lib/server/db':{db:()=>sql},'@/lib/server/blob':{resolveBlobToken:()=> 'token'},'@/lib/server/public-content':{invalidatePublicContent:()=>{}},
-      '@/lib/server/vk-import':{...vk,getVkPhoto:async()=>vk.normalizeVkPhoto(rawPhoto(),album),downloadVkPhoto:async()=>({bytes:jpeg,contentType:'image/jpeg',extension:'jpg'})},
-      '@vercel/blob':{put:async()=>({url:'https://store.public.blob.vercel-storage.com/scoped-attempt.jpg'}),del:async url=>removed.push(url)},
-    });
-    const response=await route.POST(new Request('https://example.test/api/admin/media/vk',{method:'POST',body:JSON.stringify({action:'import',albumUrl:album.url,eventSlug:'test-halloween',photoId:17})}));
-    assert.equal(response.status,409);assert.doesNotMatch(await response.text(),/PRIVATE-CAPTION|Private event|photo\.jpg/);assert.equal(removed.length,1);
-    assert.equal((await pg.query('SELECT event_slug,caption FROM media_photos WHERE id=$1',[original.photo.id])).rows[0].caption,'PRIVATE-CAPTION');
+    // External mode no longer copies a moved photo or exposes its former private row.
     const movedByUrl=await media.POST(new Request('https://example.test/api/admin/media',{method:'POST',body:JSON.stringify({type:'photo',eventSlug:'test-halloween',url:input().blobUrl,caption:'Back'})}));
     assert.equal(movedByUrl.status,200);
     assert.equal((await pg.query('SELECT source_key FROM media_photos WHERE id=$1',[original.photo.id])).rows[0].source_key,null);
