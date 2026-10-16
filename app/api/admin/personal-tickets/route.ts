@@ -3,7 +3,7 @@ import { AdminAccessError, canAccessEvent, requireAdminPermission } from '@/lib/
 import { db } from '@/lib/server/db';
 import { getEventServer } from '@/lib/server/events';
 import { getLoyaltyLevels } from '@/lib/server/loyalty';
-import { personalSchemaReady, savePersonalCampaign, issuePersonalBatch, PersonalTicketError } from '@/lib/server/personal-ticket-store';
+import { personalSchemaReady, savePersonalCampaign, issuePersonalBatch, issueIndividualTicket, PersonalTicketError } from '@/lib/server/personal-ticket-store';
 import { deliverPersonalBatch } from '@/lib/server/personal-ticket-delivery';
 import { getEventCatalogBadge } from '@/lib/events';
 import { siteOrigin } from '@/lib/site';
@@ -15,13 +15,18 @@ const clean = (value: unknown, max: number) => String(value || '').trim().slice(
 async function campaigns() {
   const sql = db();
   if (!await personalSchemaReady(sql)) return [];
-  return sql`SELECT c.id,c.event_slug,c.category_id,c.title,c.description,c.levels,c.version,c.created_at,
-    jsonb_array_length(c.recipients)::int AS recipients,count(g.id)::int AS issued,
+  const rows = await sql`SELECT c.id,c.event_slug,c.category_id,c.title,c.description,c.levels,c.version,c.created_at,c.recipients,
+    count(g.id)::int AS issued,
     count(d.id) FILTER (WHERE d.status='sent')::int AS sent,
     count(d.id) FILTER (WHERE d.status='failed')::int AS failed
     FROM personal_ticket_campaigns c LEFT JOIN personal_ticket_grants g ON g.campaign_id=c.id
     LEFT JOIN ticket_deliveries d ON d.ticket_id=g.ticket_id AND d.channel='email'
     GROUP BY c.id ORDER BY c.created_at DESC LIMIT 100`;
+  const array = (value: unknown): unknown[] => {
+    if (Array.isArray(value)) return value;
+    try { const parsed = JSON.parse(String(value)); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+  };
+  return rows.map(row => ({ ...row, event_slug: String(row.event_slug), levels: array(row.levels), recipients: array(row.recipients).length }));
 }
 function failure(error: unknown) {
   const status = error instanceof AdminAccessError ? error.status : error instanceof PersonalTicketError ? 409 : 500;
@@ -30,22 +35,40 @@ function failure(error: unknown) {
 }
 export async function GET(request: Request) {
   try {
-    const actor = await requireAdminPermission('manage_loyalty');
     const slug = new URL(request.url).searchParams.get('event');
     if (slug) {
       await requireAdminPermission('manage_ticket_inventory', slug);
       const event = await getEventServer(slug);
       return NextResponse.json({ categories: event?.tickets.map(ticket => ({ id: ticket.id, name: ticket.name })) || [] });
     }
+    const actor = await requireAdminPermission('manage_loyalty');
     return NextResponse.json({ campaigns: (await campaigns()).filter(row => canAccessEvent(actor, String(row.event_slug))) });
   }
   catch (error) { return failure(error); }
 }
 export async function POST(request: Request) {
   try {
-    await requireAdminPermission('manage_loyalty');
     const body = await request.json();
     const sql = db();
+    if (body.action === 'individual') {
+      const slug = clean(body.eventSlug, 200);
+      const actor = await requireAdminPermission('manage_ticket_inventory', slug);
+      const email = clean(body.email, 254).toLowerCase();
+      const requestId = clean(body.requestId, 36);
+      if (!UUID.test(requestId) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Укажи корректный email' }, { status: 400 });
+      if (!process.env.EMAIL_PROVIDER_API_KEY || !process.env.EMAIL_FROM) throw new PersonalTicketError('Сначала подключи доставку билетов по email');
+      const event = await getEventServer(slug);
+      if (!event) throw new PersonalTicketError('Событие не найдено');
+      const result = await issueIndividualTicket(sql, { requestId, actorId: actor.userId, eventSlug: slug,
+        categoryId: clean(body.categoryId, 100), email,
+        title: clean(body.title, 80) || 'Приглашение AGAYO',
+        description: clean(body.description, 600) || 'Бесплатный билет от команды AGAYO. До встречи!' });
+      const delivery = await deliverPersonalBatch(result.campaignId, event, siteOrigin());
+      return NextResponse.json({ ok: true, ...result, delivery, message: delivery.failed
+        ? 'Билет выдан и сохранён в аккаунте. Доставка не завершилась — повтори отправку этой же кнопкой, новый билет не создастся.'
+        : 'Бесплатный билет выдан и отправлен гостю.' });
+    }
+    await requireAdminPermission('manage_loyalty');
     if (body.action === 'create') {
       const slug = clean(body.eventSlug, 200);
       const actor = await requireAdminPermission('manage_ticket_inventory', slug);

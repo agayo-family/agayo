@@ -4,6 +4,7 @@ import { invalidatePublicContent } from "@/lib/server/public-content";
 import { db } from "@/lib/server/db";
 import { AdminAccessError, requireAdminPermission } from "@/lib/server/admin";
 import { deleteUnusedEvent, EventDeletionError } from "@/lib/server/event-deletion";
+import { ensureHotTicketSchema } from "@/lib/server/hot-tickets";
 
 function cleanHex(value: unknown, fallback: string) {
   const s = String(value || "").trim();
@@ -35,7 +36,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     invalidatePublicContent('events');
     revalidatePath(`/events/${removed.slug}`);
     revalidatePath(`/events/${removed.slug}/rules`);
-    return NextResponse.json({ ok: true, id: removed.id, message: `Мероприятие «${removed.title}» удалено.` });
+    return NextResponse.json({ ok: true, id: removed.id, message: `Мероприятие «${removed.title}» удалено из списка и продаж. Уже выданные билеты, заказы, фотографии и страница события сохранены.` });
   } catch (error) {
     const status = error instanceof AdminAccessError || error instanceof EventDeletionError ? error.status : 500;
     if (status === 500) console.error('Event deletion failed:', error);
@@ -49,6 +50,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const event = await eventById(id);
     if (!event) return NextResponse.json({ error: "Мероприятие не найдено" }, { status: 404 });
     await requireAdminPermission("manage_events", String(event.slug));
+    if (event.deleted_at) return NextResponse.json({ error: "Мероприятие удалено из управления. Его история и билеты сохранены." }, { status: 410 });
     const sql = db();
     const categories = await sql`
       SELECT c.*,
@@ -73,6 +75,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const wantsPublished = body.status === "published";
     const actor = await requireAdminPermission(wantsPublished ? "publish_events" : "manage_events", String(current.slug));
+    if (current.deleted_at) return NextResponse.json({ error: "Удалённое мероприятие нельзя изменить или снова опубликовать." }, { status: 410 });
     const title = String(body.title || "").trim();
     if (title.length < 2) return NextResponse.json({ error: "Укажи название мероприятия" }, { status: 400 });
     const startsAt = new Date(String(body.startsAt || ""));
@@ -84,9 +87,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const program = Array.isArray(body.program) ? body.program.slice(0, 40) : [];
     const sql = db();
 
+    await ensureHotTicketSchema(sql);
     await sql.begin(async (tx: any) => {
-      const [lockedEvent] = await tx`SELECT id FROM events WHERE id=${id} FOR UPDATE`;
+      const [lockedEvent] = await tx`SELECT e.id,to_jsonb(e)->>'deleted_at' AS deleted_at FROM events e WHERE id=${id} FOR UPDATE`;
       if (!lockedEvent) throw new AdminAccessError("Мероприятие не найдено", 409);
+      if (lockedEvent.deleted_at) throw new AdminAccessError("Удалённое мероприятие нельзя изменить или снова опубликовать.", 410);
       await tx`
         UPDATE events SET
           title=${title}, starts_at=${startsAt.toISOString()}, ends_at=${endsAt ? endsAt.toISOString() : null},
@@ -124,9 +129,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const occupied = previous ? Number(previous.sold_count || 0) + Number(previous.reserved_count || 0) + Number(previous.unreserved_pending || 0) : 0;
         if (inventory != null && occupied > inventory) throw new AdminAccessError(`Нельзя поставить лимит ${inventory}: уже продано или ожидает оплаты ${occupied} билетов категории ${String(item.name)}`, 409);
         await tx`
-          INSERT INTO event_ticket_categories(event_id,category_key,name,price,note,inventory,hot_enabled,hot_displayed_remaining,theme_primary,theme_secondary,theme_accent,sort_order)
-          VALUES(${id},${categoryKey},${String(item.name).trim()},${Math.max(0,Number(item.price)||0)},${String(item.note||"")},${inventory},${hotEnabled},${null},${cleanHex(item.themePrimary,cleanHex(body.themePrimary,"#220708"))},${cleanHex(item.themeSecondary,cleanHex(body.themeSecondary,"#751013"))},${cleanHex(item.themeAccent,cleanHex(body.themeAccent,"#e12622"))},${i})
-          ON CONFLICT(event_id,category_key) DO UPDATE SET name=EXCLUDED.name,price=EXCLUDED.price,note=EXCLUDED.note,inventory=EXCLUDED.inventory,hot_enabled=EXCLUDED.hot_enabled,hot_displayed_remaining=NULL,theme_primary=EXCLUDED.theme_primary,theme_secondary=EXCLUDED.theme_secondary,theme_accent=EXCLUDED.theme_accent,sort_order=EXCLUDED.sort_order
+          INSERT INTO event_ticket_categories(event_id,category_key,name,price,note,inventory,hot_enabled,hot_displayed_remaining,hot_batch_started_at,theme_primary,theme_secondary,theme_accent,sort_order)
+          VALUES(${id},${categoryKey},${String(item.name).trim()},${Math.max(0,Number(item.price)||0)},${String(item.note||"")},${inventory},${hotEnabled},${null},CASE WHEN ${hotEnabled} THEN now() ELSE NULL END,${cleanHex(item.themePrimary,cleanHex(body.themePrimary,"#220708"))},${cleanHex(item.themeSecondary,cleanHex(body.themeSecondary,"#751013"))},${cleanHex(item.themeAccent,cleanHex(body.themeAccent,"#e12622"))},${i})
+          ON CONFLICT(event_id,category_key) DO UPDATE SET name=EXCLUDED.name,price=EXCLUDED.price,note=EXCLUDED.note,inventory=EXCLUDED.inventory,
+            hot_enabled=EXCLUDED.hot_enabled,hot_displayed_remaining=NULL,
+            hot_batch_started_at=CASE WHEN NOT EXCLUDED.hot_enabled THEN NULL
+              WHEN event_ticket_categories.hot_enabled THEN COALESCE(event_ticket_categories.hot_batch_started_at,EXCLUDED.hot_batch_started_at)
+              ELSE EXCLUDED.hot_batch_started_at END,
+            theme_primary=EXCLUDED.theme_primary,theme_secondary=EXCLUDED.theme_secondary,theme_accent=EXCLUDED.theme_accent,sort_order=EXCLUDED.sort_order
         `;
       }
       for (const row of existing) {
@@ -143,7 +153,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         await tx`INSERT INTO event_program_items(event_id,time_label,title,sort_order) VALUES(${id},${label},${titleText},${i})`;
       }
       await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
-        VALUES(${actor.userId},'event.update','event',${id},${JSON.stringify({ slug: current.slug, title, salesState, status: body.status })}::jsonb)`;
+        VALUES(${actor.userId},'event.update','event',${id},${JSON.stringify({ slug: current.slug, title, salesState, status: body.status })}::text::jsonb)`;
     });
     invalidatePublicContent("events");
     revalidatePath("/events");

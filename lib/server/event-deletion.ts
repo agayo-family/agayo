@@ -11,37 +11,27 @@ export class EventDeletionError extends Error {
 export async function deleteUnusedEvent(sql: postgres.Sql, id: string, actorId: string, confirmedSlug: string) {
   return sql.begin(async tx => {
     await tx`SELECT pg_advisory_xact_lock(${EVENT_SEED_LOCK})`;
+    // Initialize before taking a row lock: an ACCESS EXCLUSIVE lock upgrade
+    // after FOR UPDATE could deadlock with a checkout waiting on that row.
+    const [schema] = await tx`SELECT EXISTS (SELECT 1 FROM pg_attribute
+      WHERE attrelid='public.events'::regclass AND attname='deleted_at' AND NOT attisdropped) AS ready`;
+    if (!schema?.ready) await tx`ALTER TABLE public.events ADD COLUMN IF NOT EXISTS deleted_at timestamptz`;
     // Checkout and personal preparation take the same event row lock before
     // creating history. A checkout that waits for deletion must recheck it.
-    const [event] = await tx`SELECT id,slug,title FROM events WHERE id=${id} FOR UPDATE`;
+    const [event] = await tx`SELECT e.id,e.slug,e.title,e.status,e.sales_state,
+      to_jsonb(e)->>'deleted_at' AS deleted_at FROM events e WHERE e.id=${id} FOR UPDATE`;
     if (!event) throw new EventDeletionError('Мероприятие не найдено', 404);
     if (confirmedSlug !== event.slug) throw new EventDeletionError('Подтверди удаление выбранного мероприятия', 400);
 
-    const [history] = await tx`SELECT
-      EXISTS (SELECT 1 FROM orders WHERE event_slug=${event.slug}) AS orders,
-      EXISTS (SELECT 1 FROM tickets WHERE event_slug=${event.slug}) AS tickets`;
-    if (history.orders || history.tickets) {
-      throw new EventDeletionError('У мероприятия есть заказы или билеты. Удаление запрещено, чтобы сохранить историю. Сними его с публикации и закрой продажи.');
-    }
-    const [schema] = await tx`SELECT
-      to_regclass('public.personal_ticket_campaigns') IS NOT NULL AS personal,
-      to_regclass('public.admin_event_access') IS NOT NULL AS access`;
-    if (schema.personal) {
-      const [campaign] = await tx`SELECT id FROM personal_ticket_campaigns WHERE event_slug=${event.slug} LIMIT 1`;
-      if (campaign) throw new EventDeletionError('У мероприятия есть персональные выпуски билетов. Сними событие с публикации и закрой продажи, чтобы сохранить историю приглашений.');
-    }
-    const [content] = await tx`SELECT
-      EXISTS (SELECT 1 FROM media_photos WHERE event_slug=${event.slug}) AS photos,
-      EXISTS (SELECT 1 FROM media_reviews WHERE event_slug=${event.slug}) AS reviews,
-      EXISTS (SELECT 1 FROM promo_codes WHERE event_slug=${event.slug}) AS promos`;
-    if (content.photos || content.reviews || content.promos) {
-      throw new EventDeletionError('У мероприятия есть фото, отзывы или промокоды. Сначала перенеси или удали связанные материалы либо сними событие с публикации.');
-    }
-    if (schema.access) await tx`DELETE FROM admin_event_access WHERE event_slug=${event.slug}`;
-    await tx`DELETE FROM events WHERE id=${id}`;
-    // Keep the audit and deletion atomic. The slug also prevents seed revival.
+    // Deletion retires the event from management and discovery, while keeping
+    // the original page, galleries, issued tickets and financial history.
+    // The marker is event data, independent of audit retention. On older
+    // deployments an authenticated deletion can initialize this additive column;
+    // public reads remain compatible and never execute schema changes.
+    if (event.deleted_at) return { id: String(event.id), slug: String(event.slug), title: String(event.title) };
+    await tx`UPDATE events SET sales_state='closed',deleted_at=now(),updated_at=now() WHERE id=${id}`;
     await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
-      VALUES(${actorId},'event.delete','event',${id},${JSON.stringify({ slug: event.slug, title: event.title })}::jsonb)`;
+      VALUES(${actorId},'event.delete','event',${id},${JSON.stringify({ slug: event.slug, title: event.title, mode: 'retired', previousStatus: event.status, previousSalesState: event.sales_state })}::text::jsonb)`;
     return { id: String(event.id), slug: String(event.slug), title: String(event.title) };
   });
 }

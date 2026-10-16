@@ -1,4 +1,5 @@
 .about-page .brand-logo { color:var(--bg); }
+.about-page .inner-nav { color:#69655e; }
 .about-page .menu-button { color:var(--bg); }
 .about-page .menu-button.is-open span:first-child { transform:translateY(4px) rotate(45deg); }
 .about-page .menu-button.is-open span:last-child { width:23px;transform:translateY(-4px) rotate(-45deg); }

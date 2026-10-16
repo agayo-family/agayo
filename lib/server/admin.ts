@@ -58,11 +58,11 @@ export async function upgradeLegacyAdministratorAboutPermission(sql: ReturnType<
       WHERE action=${ABOUT_PERMISSION_UPGRADE_ACTION} AND target_type='admin_membership' AND target_id=${String(current.id)} LIMIT 1`;
     if (completed) return current;
     const permissions = [...current.permissions, "manage_about"];
-    const [updated] = await tx`UPDATE admin_memberships SET permissions=${JSON.stringify(permissions)}::jsonb, updated_at=now()
+    const [updated] = await tx`UPDATE admin_memberships SET permissions=${JSON.stringify(permissions)}::text::jsonb, updated_at=now()
       WHERE id=${current.id} RETURNING id, role, permissions, all_events, active, created_at, updated_at`;
     await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
       VALUES(${actorUserId},${ABOUT_PERMISSION_UPGRADE_ACTION},'admin_membership',${String(current.id)},
-        ${JSON.stringify({ version: 1, permission: "manage_about", previousPermissions: current.permissions })}::jsonb)`;
+        ${JSON.stringify({ version: 1, permission: "manage_about", previousPermissions: current.permissions })}::text::jsonb)`;
     return updated;
   });
 }
@@ -150,6 +150,6 @@ export async function writeAdminAudit(actorUserId: string, action: string, targe
   const sql = db();
   await sql`
     INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
-    VALUES(${actorUserId},${action},${targetType ?? null},${targetId ?? null},${JSON.stringify(details)}::jsonb)
+    VALUES(${actorUserId},${action},${targetType ?? null},${targetId ?? null},${JSON.stringify(details)}::text::jsonb)
   `;
 }

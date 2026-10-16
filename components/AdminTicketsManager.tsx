@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminIndividualTicketsManager from './AdminIndividualTicketsManager';
 
 type TicketRow = {
   id:string; public_id:string; event_slug:string; owner_name:string; category_name:string; status:string;
@@ -10,6 +11,7 @@ type TicketRow = {
   order_ticket_count:number; event_starts_at:string|null; paid_share:number;
   refund_quote_percent:0|30|50|100; refund_quote_amount:number; refund_quote_label:string; days_before_event:number;
   ticket_refund_id:string|null; ticket_refund_yookassa_id:string|null; ticket_refund_percent:number|null; ticket_refund_amount:number; ticket_refund_status:string|null;
+  legal_version:string|null; refund_request:{id:string;ticket_id:string|null;status:string;amount:number;reason:string}|null;
   npd_receipt_status:string; npd_receipt_id:string|null; npd_receipt_url:string|null; npd_receipt_amount:number;
 };
 
@@ -44,6 +46,7 @@ export default function AdminTicketsManager() {
   const [message,setMessage]=useState("");
   const [busyId,setBusyId]=useState("");
   const [npdInputs,setNpdInputs]=useState<Record<string,string>>({});
+  const [refundInputs,setRefundInputs]=useState<Record<string,{amount:string;reason:string}>>({});
 
   const load = useCallback(async (search = "") => {
     setLoading(true); setMessage("");
@@ -62,7 +65,7 @@ export default function AdminTicketsManager() {
 
   const uniqueOrders=useMemo(()=>new Set(tickets.map((ticket)=>ticket.order_id)).size,[tickets]);
 
-  async function action(ticket:TicketRow, name:"cancel_ticket"|"restore_ticket"|"reset_scan"|"refund_order"|"refund_ticket_policy") {
+  async function action(ticket:TicketRow, name:"cancel_ticket"|"restore_ticket"|"reset_scan"|"refund_order"|"refund_ticket_policy"|"refund_ticket_custom") {
     let confirmText = "";
     if (name === "cancel_ticket") confirmText = `Отменить билет ${ticket.public_id}?\n\nДеньги покупателю НЕ возвращаются. Билет просто станет недействительным.`;
     if (name === "restore_ticket") confirmText = `Восстановить билет ${ticket.public_id}?`;
@@ -72,11 +75,19 @@ export default function AdminTicketsManager() {
       const remaining=Math.max(0,Number(ticket.total)-Number(ticket.refunded_amount||0));
       confirmText = `Вернуть ВЕСЬ оставшийся платёж по заказу ${ticket.order_public_id}?\n\nК возврату: ${money(remaining)} ₽. Все билеты этого заказа станут недействительными. Используй это действие для отмены мероприятия или полного возврата организатором.`;
     }
+    const custom = refundInputs[ticket.id] || { amount:'',reason:'' };
+    if (name === 'refund_ticket_custom') confirmText = `Вернуть ${custom.amount} ₽ по билету ${ticket.public_id}?\nОснование: ${custom.reason}\nПосле подтверждения возврата билет станет недействительным.`;
+    if (ticket.refund_request && name.startsWith('refund_')) confirmText = `Проверить существующий возврат ${money(ticket.refund_request.amount)} ₽?\n${ticket.refund_request.reason}\nНовая сумма и новый запрос не создаются.`;
+    if (name.startsWith('refund_') && !ticket.refund_request) confirmText += `\n\nПредварительный расчёт: проверь условия, действовавшие при покупке${ticket.legal_version ? ` (редакция ${ticket.legal_version})` : ''}, и обязательные исключения.`;
     if (!window.confirm(confirmText)) return;
 
     setBusyId(ticket.id); setMessage("");
     try {
-      const response = await fetch("/api/admin/tickets/action", { method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticketId:ticket.id,action:name}) });
+      const response = await fetch("/api/admin/tickets/action", { method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticketId:ticket.id,action:name,
+        ...(name === 'refund_ticket_policy' ? { expectedAmount:ticket.refund_quote_amount } : {}),
+        ...(name === 'refund_order' ? { expectedAmount:Math.max(0,Number(ticket.total)-Number(ticket.refunded_amount||0)) } : {}),
+        ...(name === 'refund_ticket_custom' ? { refundAmount:Number(custom.amount),reason:custom.reason } : {}),
+        ...(name === 'refund_order' ? { reason: custom.reason || 'Полный возврат по решению организатора: условия и законные основания проверены' } : {}) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Действие не выполнено");
       setMessage(data.message || "Готово");
@@ -98,6 +109,7 @@ export default function AdminTicketsManager() {
   }
 
   return <div className="admin-tickets-v133 admin-tickets-v134">
+    {permissions.canManageTickets ? <AdminIndividualTicketsManager /> : null}
     <div className="admin-ticket-toolbar-v133">
       <form onSubmit={(event)=>{event.preventDefault();void load(query);}}><input value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Билет, заказ, имя, email, телефон, AGAYO ID, категория или событие"/><button className="admin-secondary" disabled={loading} type="submit">{loading?"ЗАГРУЖАЕМ…":"Найти"}</button></form>
       <button className="admin-secondary" type="button" disabled={loading} onClick={()=>{setQuery("");void load("");}}>Все билеты</button>
@@ -123,6 +135,7 @@ export default function AdminTicketsManager() {
             {permissions.canRefund?<div className="admin-refund-policy-v134"><span>ВОЗВРАТ ПО ПРАВИЛАМ</span><b>{ticket.refund_quote_label}</b>{ticket.ticket_refund_status?<small>Этот билет: {ticket.ticket_refund_status==="succeeded"?`возвращено ${money(ticket.ticket_refund_amount)} ₽ (${ticket.ticket_refund_percent}%)`:ticket.ticket_refund_status==="pending"?"возврат обрабатывается":"предыдущая попытка возврата не завершилась"}</small>:ticket.refund_quote_percent>0?<small>Расчёт: {money(ticket.refund_quote_amount)} ₽ от фактически оплаченной доли билета</small>:<small>Автоматический добровольный возврат сейчас равен 0%.</small>}</div>:null}
 
             <div className="admin-ticket-actions-v133">
+              {permissions.canRefund && ticket.refund_request ? <button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={() => void action(ticket,ticket.refund_request?.ticket_id ? 'refund_ticket_policy' : 'refund_order')}>Проверить возврат · {money(ticket.refund_request.amount)} ₽</button> : null}
               {permissions.canManageTickets&&ticket.status==="valid"?<button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={()=>void action(ticket,"cancel_ticket")}>Отменить билет</button>:null}
               {permissions.canManageTickets&&ticket.status==="cancelled"&&ticket.order_status==="paid"&&!ticket.ticket_refund_id?<button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={()=>void action(ticket,"restore_ticket")}>Восстановить</button>:null}
               {permissions.canManageTickets&&ticket.status==="used"?<button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={()=>void action(ticket,"reset_scan")}>Сбросить проход</button>:null}
@@ -131,6 +144,14 @@ export default function AdminTicketsManager() {
               {ticket.order_status==="refunded"?<span className="admin-ticket-order-refunded-v133">ЗАКАЗ ВОЗВРАЩЁН</span>:null}
               {permissions.canRefund&&ticket.order_status==="paid"&&ticket.yookassa_payment_id?<details className="admin-ticket-more-v134"><summary>Доп. действия</summary><button className="admin-danger" type="button" disabled={busyId===ticket.id} onClick={()=>void action(ticket,"refund_order")}>Вернуть весь остаток заказа</button></details>:null}
             </div>
+
+            {permissions.canRefund && ticket.order_status==='paid' && ticket.yookassa_payment_id && !ticket.refund_request ? <details className="admin-ticket-more-v134"><summary>Возврат по обязательному исключению или отдельному решению</summary>
+              <p>Предварительный график не заменяет условия покупки и законные основания. Здесь можно вернуть обоснованную сумму даже при 0% в базовом графике. {ticket.legal_version !== '2026-10-16' ? `Покупка оформлена по прежней редакции${ticket.legal_version ? ` ${ticket.legal_version}` : ''} — проверь её отдельно.` : ''}</p>
+              <label><span>ОСНОВАНИЕ</span><textarea value={refundInputs[ticket.id]?.reason || ''} maxLength={600} placeholder="Отмена/перенос, подтверждённое исключение или иное основание" onChange={event => setRefundInputs(current => ({...current,[ticket.id]:{amount:current[ticket.id]?.amount||'',reason:event.target.value}}))} /></label>
+              <label><span>СУММА ПО ЭТОМУ БИЛЕТУ, ₽ · НЕ БОЛЕЕ {money(ticket.paid_share)}</span><input type="number" min="1" step="0.01" max={ticket.paid_share} value={refundInputs[ticket.id]?.amount || ''} onChange={event => setRefundInputs(current => ({...current,[ticket.id]:{reason:current[ticket.id]?.reason||'',amount:event.target.value}}))} /></label>
+              {['valid','cancelled'].includes(ticket.status) && !ticket.ticket_refund_id ? <button className="admin-danger" type="button" disabled={busyId===ticket.id || (refundInputs[ticket.id]?.reason.trim().length || 0)<10 || !Number(refundInputs[ticket.id]?.amount)} onClick={() => void action(ticket,'refund_ticket_custom')}>Вернуть обоснованную сумму</button> : null}
+              <button className="admin-danger" type="button" disabled={busyId===ticket.id || (refundInputs[ticket.id]?.reason.trim().length || 0)<10} onClick={() => void action(ticket,'refund_order')}>Вернуть весь остаток заказа по указанному основанию</button>
+            </details> : null}
 
             {permissions.canManageNpd?<details className={`admin-npd-v134 status-${ticket.npd_receipt_status}`}>
               <summary><span>НПД / МОЙ НАЛОГ</span><b>{npdLabel(ticket.npd_receipt_status)}</b>{ticket.npd_receipt_amount>0?<small>{money(ticket.npd_receipt_amount)} ₽</small>:null}</summary>

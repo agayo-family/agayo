@@ -6,8 +6,9 @@ import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import HalloweenArt from "@/components/HalloweenArt";
 import HalloweenExperience from "@/components/HalloweenExperience";
+import EventTicketCard from "@/components/EventTicketCard";
 import { isHalloweenEvent } from "@/lib/event-presentation";
-import { formatPrice, getEventCatalogBadge } from "@/lib/events";
+import { getEventCatalogBadge } from "@/lib/events";
 import { getEventServer } from "@/lib/server/events";
 import { canAccessEvent, getCurrentAdminAccess, hasPermission } from "@/lib/server/admin";
 
@@ -79,11 +80,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           <div className="event-v2-section-head"><h2>{soldOut ? <>ВСЕ БИЛЕТЫ<br />РАЗОБРАЛИ</> : salesOpen ? <>ТЫ<br />ВНУТРИ?</> : isArchive ? <>ПРОДАЖИ<br />ЗАВЕРШЕНЫ</> : <>ПРОДАЖИ<br />СКОРО</>}</h2><p>{soldOut ? "В этой встрече больше нет свободных билетов." : salesOpen ? "Выбирай формат. Остальное сделаем мы." : isArchive ? "Это событие уже прошло. Билетные категории оставлены в архиве события." : "Мероприятие опубликовано, но продажи пока не открыты."}</p></div>
           <div className="ticket-grid">
             {event.tickets.map((ticket, index) => (
-              <article className={`ticket-card ticket-tone-${index % 3} ${ticket.hotTickets?.enabled && salesOpen ? "ticket-card-hot" : ""}`} key={ticket.id}>
-                <div className="ticket-card-top"><span>0{index + 1}</span>{ticket.hotTickets?.enabled && salesOpen && <b>ГОРЯЧИЕ БИЛЕТЫ · ОСТАЛОСЬ {ticket.hotTickets.displayedRemaining}</b>}</div>
-                <h3>{ticket.name}</h3><p>{ticket.note}</p>
-                <div className="ticket-card-bottom"><strong>{formatPrice(ticket.price)}</strong>{salesOpen && !ticket.soldOut ? <Link className="ticket-select" href={`/events/${encodeURIComponent(event.slug)}/checkout?category=${encodeURIComponent(ticket.id)}`} prefetch={false}>Выбрать ↗</Link> : <span className="ticket-closed">{ticket.soldOut ? "SOLD OUT" : "Закрыто"}</span>}</div>
-              </article>
+              <EventTicketCard key={ticket.id} ticket={ticket} index={index} eventSlug={event.slug} salesOpen={salesOpen} hotBatchRemaining={ticket.hotTickets?.batchRemaining} />
             ))}
           </div>
         </section>

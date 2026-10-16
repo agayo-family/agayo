@@ -27,13 +27,13 @@ export async function getPublicPhotoPageServer(input: PhotoPageInput = {}): Prom
       SELECT p.id,p.event_slug,p.url,p.caption,e.title AS event_title
       FROM media_photos p
       LEFT JOIN events e ON e.slug=p.event_slug
-      WHERE p.is_published=true AND e.status='published'
-        AND (${slugs === null} OR p.event_slug IN (SELECT jsonb_array_elements_text(${JSON.stringify(slugs || [])}::jsonb)))
+      WHERE p.is_published=true AND e.status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL
+        AND (${slugs === null} OR p.event_slug IN (SELECT jsonb_array_elements_text(${JSON.stringify(slugs || [])}::text::jsonb)))
       ORDER BY CASE WHEN ${oldest} THEN e.starts_at END ASC,CASE WHEN ${!oldest} THEN e.starts_at END DESC,p.sort_order,p.created_at DESC,p.id
       LIMIT 24 OFFSET ${offset}
     `, sql`SELECT count(*)::int AS total FROM media_photos p JOIN events e ON e.slug=p.event_slug
-      WHERE p.is_published=true AND e.status='published'
-      AND (${slugs === null} OR p.event_slug IN (SELECT jsonb_array_elements_text(${JSON.stringify(slugs || [])}::jsonb)))`]);
+      WHERE p.is_published=true AND e.status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL
+      AND (${slugs === null} OR p.event_slug IN (SELECT jsonb_array_elements_text(${JSON.stringify(slugs || [])}::text::jsonb)))`]);
     return { total: Number(counts[0]?.total || 0), photos: rows.map((row:any) => ({
       id: String(row.id),
       eventSlug: String(row.event_slug),
@@ -74,7 +74,7 @@ export async function getHomePhotosServer(): Promise<GalleryPhoto[]> {
     const rows = await db()`
       SELECT p.id,p.event_slug,p.url,p.caption,e.title AS event_title
       FROM media_photos p JOIN events e ON e.slug=p.event_slug
-      WHERE p.is_published=true AND e.status='published'
+      WHERE p.is_published=true AND e.status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL
       ORDER BY e.starts_at DESC,p.is_featured DESC,p.sort_order,p.created_at DESC,p.id
       LIMIT ${HOME_PHOTO_LIMIT}
     `;
@@ -95,7 +95,7 @@ export async function getFeaturedReviewServer(): Promise<PublicReview | null> {
     const rows = await sql`
       SELECT id,event_slug,author,body,audio_url,is_featured
       FROM media_reviews
-      WHERE is_published=true AND (event_slug IS NULL OR EXISTS (SELECT 1 FROM events e WHERE e.slug=media_reviews.event_slug AND e.status='published'))
+      WHERE is_published=true AND (event_slug IS NULL OR EXISTS (SELECT 1 FROM events e WHERE e.slug=media_reviews.event_slug AND e.status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL))
       ORDER BY is_featured DESC,sort_order,created_at DESC
       LIMIT 1
     `;

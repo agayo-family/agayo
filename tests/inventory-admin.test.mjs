@@ -5,9 +5,12 @@ import { fixture, actor } from './database-fixture.mjs';
 
 const security = await loadTs('../lib/server/security.ts');
 const lifecycle = await loadTs('../lib/events.ts');
+const legal = await loadTs('../lib/legal.ts');
 const orderInput = await loadTs('../lib/order-input.ts');
 const yookassa = await loadTs('../lib/server/yookassa.ts');
 const personal = await loadTs('../lib/server/personal-ticket-store.ts');
+const hot = await loadTs('../lib/server/hot-tickets.ts');
+const refundStore = await loadTs('../lib/server/admin-refund-store.ts');
 const event = { ...lifecycle.events[0], slug: 'test-halloween', title: 'AGAYO HALLOWEEN', status: 'published', salesState: 'open', startsAt: '2080-11-01T18:00:00Z', tickets: [{ id: 'standard', name: 'STANDARD', price: 300 }] };
 class AdminAccessError extends Error { constructor(message, status = 403) { super(message); this.status = status; } }
 const allow = async () => ({ userId: actor });
@@ -26,6 +29,7 @@ async function restoreApi(sql, requireAdminPermission = allow) {
     '@/lib/server/payment-processing': { syncYooKassaRefund: unexpected },
     '@/lib/server/loyalty': { updateUserLoyaltyByVisits: unexpected }, '@/lib/server/refund-policy': {},
     '@/lib/server/ticket-refunds': {}, '@/lib/server/npd': {},
+    '@/lib/server/admin-refund-store': refundStore,
   });
 }
 
@@ -33,13 +37,14 @@ async function eventApi(sql, requireAdminPermission = allow) {
   return loadTsx('../app/api/admin/events/[id]/route.ts', {
     '@/lib/server/db': { db: () => sql }, '@/lib/server/admin': { AdminAccessError, requireAdminPermission },
     '@/lib/server/event-deletion': {}, '@/lib/server/public-content': { invalidatePublicContent: () => {} },
+    '@/lib/server/hot-tickets': hot,
     'next/cache': { revalidatePath: () => {} },
   });
 }
 
-async function checkoutApi(sql) {
+async function checkoutApi(sql, selectedEvent = event) {
   return loadTsx('../app/api/orders/route.ts', {
-    '@/lib/server/db': { db: () => sql }, '@/lib/server/events': { getEventServer: async () => event },
+    '@/lib/server/db': { db: () => sql }, '@/lib/server/events': { getEventServer: async () => selectedEvent },
     '@/lib/events': lifecycle, '@/lib/server/security': security,
     '@/lib/server/yookassa': { ...yookassa, isYooKassaConfigured: () => true, isReceiptConfigurationReady: () => true,
       createPayment: async input => ({ id: input.orderPublicId, confirmation: { confirmation_url: 'https://example.test/payment' } }) },
@@ -216,7 +221,10 @@ test('simultaneous limit reduction and checkout serialize, preserving the winnin
     const inventory = (await pg.query('SELECT inventory FROM event_ticket_categories')).rows[0].inventory;
     const pending = (await pg.query("SELECT count(*)::int AS n FROM orders WHERE status='pending'")).rows[0].n;
     assert.ok((inventory === 0 && pending === 0) || (inventory === 1 && pending === 1));
-    for (const statements of transactions) {
+    // Additive schema initialization commits before business locks.
+    const business = transactions.filter(statements => statements.some(statement => statement.includes('FOR UPDATE')));
+    assert.equal(business.length, 2);
+    for (const statements of business) {
       const locks = statements.filter(statement => statement.includes('FOR UPDATE'));
       assert.match(locks[0], /FROM events/); assert.match(locks[1], /FROM event_ticket_categories/);
       const count = statements.findIndex(statement => statement.includes('AS unreserved_pending'));
@@ -237,13 +245,13 @@ test('live event getters include old unreserved pending in remaining/soldOut/hot
     await pg.query("UPDATE order_items SET ticket_category_id='other' WHERE order_id=$1", [other.id]);
     await pg.exec("INSERT INTO event_ticket_categories(event_id,category_key,name,price,inventory) SELECT id,'other','OTHER',300,5 FROM events");
     await addOrder(pg, { status: 'cancelled', quantity: 6 });
-    const getters = await loadTsx('../lib/server/events.ts', { './db': { db: () => sql }, '../events': lifecycle, '../legal': { DEFAULT_EVENT_RULES: 'Правила' }, react: { cache: callback => callback } });
+    const getters = await loadTsx('../lib/server/events.ts', { './db': { db: () => sql }, './hot-tickets': hot, '../events': lifecycle, '../legal': legal, react: { cache: callback => callback } });
     for (const read of [() => getters.getEventServer(event.slug), async () => (await getters.getAllEventsServer())[0]]) {
       const loaded = await read();
       const standard = loaded.tickets.find(item => item.id === 'standard');
       assert.equal(standard.remaining, 4);
       assert.equal(standard.soldOut, false);
-      assert.deepEqual(standard.hotTickets, { enabled: true, displayedRemaining: 4 });
+      assert.deepEqual(standard.hotTickets, { enabled: true, batchRemaining: 4 });
       assert.equal(loaded.tickets.find(item => item.id === 'other').remaining, 1);
     }
     await pg.exec("UPDATE event_ticket_categories SET inventory=6 WHERE category_key='standard'");
@@ -256,4 +264,23 @@ test('live event getters include old unreserved pending in remaining/soldOut/hot
     await pg.exec("UPDATE event_ticket_categories SET inventory=NULL WHERE category_key='standard'");
     assert.equal((await getters.getEventServer(event.slug)).tickets.find(item => item.id === 'standard').remaining, null);
   } finally { if (configured === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = configured; await pg.close(); }
+});
+
+test('checkout shares one account across events, preserves the existing profile and does not create an authenticated session', async () => {
+  const { pg, sql } = await setup({ guests: 0, inventory: 10 });
+  const flag = process.env.PAYMENTS_ENABLED; process.env.PAYMENTS_ENABLED = '1';
+  try {
+    await pg.exec("INSERT INTO events(slug,title,starts_at,status,sales_state,ticket_mode) VALUES('other-event','OTHER','2080-11-01T18:00:00Z','published','open','zones'); INSERT INTO event_ticket_categories(event_id,category_key,name,price,inventory) SELECT id,'standard','STANDARD',300,10 FROM events WHERE slug='other-event'");
+    const secondEvent = { ...event, slug: 'other-event' };
+    const [first, second] = await Promise.all([checkoutApi(sql), checkoutApi(sql, secondEvent)]);
+    const buy = (slug, email, name, phone = '') => new Request('https://example.test/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventSlug: slug, categoryId: 'standard', quantity: 1, email, name, phone, acceptedDocuments: true, acceptedPrivacy: true }) });
+    const responses = await Promise.all([first.POST(buy(event.slug, 'NEW@EXAMPLE.TEST', 'Первый гость')), second.POST(buy(secondEvent.slug, 'new@example.test', 'Другой гость'))]);
+    assert.deepEqual(responses.map(response => response.status), [200, 200]);
+    assert.ok(responses.every(response => response.headers.get('set-cookie') === null));
+    assert.equal((await pg.query("SELECT count(*)::int AS n FROM users WHERE email='new@example.test'")).rows[0].n, 1);
+    assert.equal((await pg.query("SELECT count(DISTINCT user_id)::int AS n FROM orders WHERE email='new@example.test'")).rows[0].n, 1);
+    await pg.exec("UPDATE users SET display_name='Имя в профиле',phone=NULL WHERE email='owner@example.test'");
+    assert.equal((await first.POST(buy(event.slug, 'owner@example.test', 'Имя на билете', '+7 (900) 123-45-67'))).status, 200);
+    assert.deepEqual((await pg.query("SELECT display_name,phone FROM users WHERE email='owner@example.test'")).rows, [{ display_name: 'Имя в профиле', phone: '+79001234567' }]);
+  } finally { if (flag === undefined) delete process.env.PAYMENTS_ENABLED; else process.env.PAYMENTS_ENABLED = flag; await pg.close(); }
 });

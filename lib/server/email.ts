@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { isHalloweenEvent } from '@/lib/event-presentation';
 import { CIRCUS_ART, CLOWN_ART, BAT_ART } from '@/lib/halloween-art';
+import { deliverTicketTelegram } from './telegram';
 
 const endpoint = "https://api.resend.com/emails";
 
@@ -121,6 +122,11 @@ export async function sendTicketEmail(to: string, input:TicketEmailInput) {
     color:{dark:"#0B0B0C",light:"#F2F0EA"},
   });
   const qrBase64=qrBuffer.toString("base64");
+  const telegram = await deliverTicketTelegram(to, {
+    ticketId: input.ticketId, ticketUrl: input.ticketUrl, deliveryKey: input.deliveryKey, qrBuffer,
+    caption: [input.eventTitle, `${input.eventDate} · ${input.eventTime} · ${input.eventCity}`, `${input.eventAge}${input.alcoholFree ? ' · ALCOHOL FREE' : ''}`, `Владелец: ${input.ownerName}`, `Категория: ${input.categoryName}`, `Билет: ${input.ticketId}`, 'Один билет = один вход. QR находится в приложенном файле.', input.personalTitle, input.personalDescription, [input.zone, input.seat].filter(Boolean).join(' · ')].filter(Boolean).join('\n'),
+  });
+  if (telegram.handled) return;
   const svg=ticketSvg(input,qrBase64);
   const primary=safeHex(input.theme?.primary,"#0B0B0C");
   const secondary=safeHex(input.theme?.secondary,"#4B0F19");

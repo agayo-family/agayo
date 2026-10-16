@@ -11,7 +11,9 @@ export type TicketCategory = {
   soldOut?: boolean;
   hotTickets?: {
     enabled: boolean;
-    displayedRemaining: 1 | 2 | 3 | 4;
+    displayedRemaining?: 1 | 2 | 3 | 4;
+    /** Actual remainder of a rolling promotion batch, separate from inventory. */
+    batchRemaining?: number;
   };
   theme?: {
     primary: string;

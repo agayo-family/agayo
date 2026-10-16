@@ -31,7 +31,7 @@ export async function deliverOrderTickets(order: any, event: any, baseUrl: strin
   if (String(order.public_id).startsWith('AGY-GIFT-')) return;
   const sql = db();
   const tickets = await sql`
-    SELECT id,public_id,qr_token,owner_name,category_name,zone,seat
+    SELECT id,public_id,qr_token,owner_name,category_id,category_name,zone,seat
     FROM tickets
     WHERE order_id=${order.id} AND status IN ('valid','used')
     ORDER BY created_at,id
@@ -57,7 +57,7 @@ export async function deliverOrderTickets(order: any, event: any, baseUrl: strin
         ticketUrl:`${baseUrl}/tickets/${encodeURIComponent(String(ticket.qr_token))}`,
         qrToken:String(ticket.qr_token), ownerName:String(ticket.owner_name || order.owner_name || 'AGAYO'),
         categoryName:String(ticket.category_name || 'БИЛЕТ'), zone:ticket.zone ? String(ticket.zone) : null,
-        seat:ticket.seat ? String(ticket.seat) : null, posterUrl:poster, theme:event.ticketTheme || undefined,
+        seat:ticket.seat ? String(ticket.seat) : null, posterUrl:poster, theme:event.tickets?.find((category:any)=>category.id===String(ticket.category_id))?.theme || event.ticketTheme || undefined,
         deliveryKey:`AGAYO-TICKET-${ticket.public_id}`,
       });
       await sql`UPDATE ticket_deliveries SET status='sent',attempts=attempts+1,last_error=NULL,sent_at=now() WHERE id=${delivery.id} AND status<>'sent'`;
@@ -208,6 +208,18 @@ export async function syncYooKassaPayment(paymentId: string, baseUrl: string): P
 
 export async function syncYooKassaRefund(refundId: string): Promise<SyncResult> {
   const refund = await getRefund(refundId);
+  if (refund.status === 'canceled') {
+    const sql = db();
+    await sql.begin(async (tx:any) => {
+      const [mapped] = await tx`SELECT order_id FROM ticket_refunds WHERE yookassa_refund_id=${refund.id} LIMIT 1`;
+      if (mapped) await tx`SELECT id FROM orders WHERE id=${mapped.order_id} FOR UPDATE`;
+      await tx`UPDATE ticket_refunds SET status='failed',reason='provider_canceled',updated_at=now() WHERE yookassa_refund_id=${refund.id} AND status<>'succeeded'`;
+      const [ready] = await tx`SELECT to_regclass('public.admin_refund_requests') IS NOT NULL AS ready`;
+      if (ready?.ready) await tx`UPDATE admin_refund_requests SET status='canceled',claim_until=NULL,last_error='Возврат отменён провайдером',updated_at=now()
+        WHERE provider_refund_id=${refund.id} AND status<>'succeeded'`;
+    });
+    return { state:'canceled' };
+  }
   if (refund.status !== 'succeeded') return { state:'pending' };
 
   const payment = await getPayment(String(refund.payment_id));
@@ -221,7 +233,7 @@ export async function syncYooKassaRefund(refundId: string): Promise<SyncResult> 
   if (!Number.isFinite(refundedAmount)) throw new Error(`Invalid YooKassa refund amount for ${order.public_id}`);
   const orderTotal=exactMoney(order.total);
   const remaining=exactMoney(Math.max(0,orderTotal-refundedAmount));
-  const full=remaining < 0.005;
+  let full=remaining < 0.005;
 
   const mappedRows = await sql`
     SELECT id,ticket_id,status
@@ -232,7 +244,12 @@ export async function syncYooKassaRefund(refundId: string): Promise<SyncResult> 
   const mapped=mappedRows[0];
 
   await sql.begin(async (tx:any)=>{
-    const locked=await tx`SELECT status FROM orders WHERE id=${order.id} FOR UPDATE`;
+    const locked=await tx`SELECT status,refunded_amount FROM orders WHERE id=${order.id} FOR UPDATE`;
+    // Provider reads occur before the row lock; a delayed webhook must never
+    // lower the cumulative refund already recorded by a newer webhook.
+    const confirmedAmount=Math.max(refundedAmount,exactMoney(locked[0]?.refunded_amount));
+    const confirmedRemaining=exactMoney(Math.max(0,orderTotal-confirmedAmount));
+    full=confirmedRemaining < 0.005;
     if(mapped){
       await tx`
         UPDATE ticket_refunds
@@ -249,15 +266,18 @@ export async function syncYooKassaRefund(refundId: string): Promise<SyncResult> 
     if(full){
       await tx`
         UPDATE orders
-        SET status='refunded',refunded_at=COALESCE(refunded_at,now()),refunded_amount=${refundedAmount}
+        SET status='refunded',refunded_at=COALESCE(refunded_at,now()),refunded_amount=${confirmedAmount}
         WHERE id=${order.id}
       `;
       await tx`UPDATE tickets SET status='refunded' WHERE order_id=${order.id} AND status IN ('valid','used','cancelled')`;
     } else {
       if (String(locked[0]?.status) === 'refunded') throw new Error(`Partial refund is linked to already refunded order ${order.public_id}`);
-      await tx`UPDATE orders SET refunded_amount=${refundedAmount} WHERE id=${order.id}`;
+      await tx`UPDATE orders SET refunded_amount=${confirmedAmount} WHERE id=${order.id}`;
     }
-    await markNpdAfterRefund(String(order.id),remaining,tx);
+    const [requestSchema] = await tx`SELECT to_regclass('public.admin_refund_requests') IS NOT NULL AS ready`;
+    if (requestSchema?.ready) await tx`UPDATE admin_refund_requests SET status='succeeded',claim_until=NULL,last_error=NULL,updated_at=now()
+      WHERE provider_refund_id=${refund.id}`;
+    await markNpdAfterRefund(String(order.id),confirmedRemaining,tx);
   });
 
   await updateUserLoyaltyByVisits(String(order.user_id));

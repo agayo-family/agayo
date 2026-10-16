@@ -86,6 +86,14 @@ export async function getVkPhoto(album: VkAlbum, photoId: number, token: string,
   return normalizeVkPhoto(result[0], album);
 }
 
+// External gallery mode: return CDN links directly; never download or persist photos.
+export async function getVkExternalPage(album: VkAlbum, offset: number, count: number, token: string, fetcher: typeof fetch = fetch) {
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000 || !Number.isSafeInteger(count) || count < 1 || count > 24) throw new VkImportError('Некорректная страница альбома');
+  const result = await vkApi('photos.get', { owner_id: String(album.ownerId), album_id: String(album.albumId), offset: String(offset), count: String(count), photo_sizes: '1', rev: '0' }, token, fetcher);
+  if (!Array.isArray(result?.items) || !Number.isSafeInteger(result?.count) || result.count < 0 || result.items.length > count) throw new VkImportError('ВК вернул неверный список фотографий', 502);
+  return { total: result.count as number, items: result.items.map((raw: unknown) => normalizeVkPhoto(raw, album)) as VkPhoto[] };
+}
+
 function imageExtension(bytes: Uint8Array, contentType: string): string | null {
   if (contentType === "image/jpeg" && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
   if (contentType === "image/png" && Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "png";
@@ -172,7 +180,7 @@ export async function commitVkPhoto(sql: any, input: { album: VkAlbum; photo: Vk
       if (!existing[0]) throw new VkImportError("Источник фотографии уже связан с другим мероприятием. Проверь перенос фотографии в медиатеке", 409);
       return { skipped: true, photo: existing[0] };
     }
-    await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details) VALUES(${input.userId},'media.photo.vk_import','media_photo',${String(rows[0].id)},${JSON.stringify({ eventSlug: input.eventSlug, ownerId: input.album.ownerId, albumId: input.album.albumId, photoId: input.photo.id })}::jsonb)`;
+    await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details) VALUES(${input.userId},'media.photo.vk_import','media_photo',${String(rows[0].id)},${JSON.stringify({ eventSlug: input.eventSlug, ownerId: input.album.ownerId, albumId: input.album.albumId, photoId: input.photo.id })}::text::jsonb)`;
     return { skipped: false, photo: rows[0] };
   });
 }

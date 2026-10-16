@@ -2,16 +2,28 @@ import { unstable_cache, revalidatePath, revalidateTag } from "next/cache";
 import { getPublicEventCatalogServer, getPublicEventProgramServer } from "./events";
 import { getFeaturedReviewServer, getPublicPhotosServer, getPublicPhotoPageServer, getHomePhotosServer } from "./media";
 import { getPublicAboutServer } from "./about";
+import { externalPhotoPage } from './external-gallery';
 
 // Sessions, orders, ticket tokens and checkout availability never enter this cache.
 export const getPublicCatalog = unstable_cache(getPublicEventCatalogServer,
   ["agayo-public-catalog-v1"], { tags: ["agayo-events"], revalidate: 60 });
 export const getPublicPhotos = unstable_cache(getPublicPhotosServer,
   ["agayo-public-photos-v1"], { tags: ["agayo-media"], revalidate: 60 });
-export const getHomePhotos = unstable_cache(getHomePhotosServer,
+const getLocalHomePhotos = unstable_cache(getHomePhotosServer,
   ["agayo-home-photos-v1"], { tags: ["agayo-media"], revalidate: 60 });
-export const getPublicPhotoPage = unstable_cache(getPublicPhotoPageServer,
+const getLocalPhotoPage = unstable_cache(getPublicPhotoPageServer,
   ['agayo-public-photo-page-v1'], { tags: ['agayo-media'], revalidate: 60 });
+export async function getPublicPhotoPage(input: Parameters<typeof getPublicPhotoPageServer>[0] = {}) {
+  return externalPhotoPage(input, getLocalPhotoPage);
+}
+export async function getHomePhotos() {
+  const local = await getLocalHomePhotos();
+  if (local.length >= 6) return local;
+  try {
+    const page = await getPublicPhotoPage();
+    return [...local, ...page.photos.filter(photo => !local.some(item => item.id === photo.id))].slice(0, 6);
+  } catch { return local; }
+}
 export const getFeaturedReview = unstable_cache(getFeaturedReviewServer,
   ["agayo-public-review-v1"], { tags: ["agayo-media"], revalidate: 60 });
 export const getPublicProgram = unstable_cache(getPublicEventProgramServer,

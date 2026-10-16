@@ -18,6 +18,7 @@ export default function AdminPersonalTicketsManager({ events, levels, previewMod
   const [description, setDescription] = useState('Персональное приглашение от команды AGAYO. До встречи!');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [showCategory, setShowCategory] = useState(false);
   const alive = useRef(true);
   const eligible = events.filter(event => event.status === 'published' && event.ticket_mode !== 'seats' && (previewMode || Date.parse(event.ends_at || event.starts_at) > Date.now()));
   const availableLevels = levels.length ? levels : previewMode ? [{ levelKey: 'GOLD', displayName: 'GOLD' }, { levelKey: 'LEGEND', displayName: 'LEGEND' }] : [];
@@ -113,10 +114,49 @@ export default function AdminPersonalTicketsManager({ events, levels, previewMod
       <label><span>НАЗВАНИЕ ДЛЯ ГОСТЯ</span><input value={title} maxLength={80} disabled={busy} onChange={event => setTitle(event.target.value)} /></label>
       <label><span>ОПИСАНИЕ ДЛЯ ГОСТЯ</span><textarea value={description} maxLength={600} rows={4} disabled={busy} onChange={event => setDescription(event.target.value)} /></label>
     </div>
+    <button className="admin-secondary" type="button" disabled={busy || !slug} onClick={() => setShowCategory(value => !value)}>{showCategory ? 'Закрыть новую категорию' : '+ Создать категорию билета'}</button>
+    {showCategory ? <NewCategory eventSlug={slug} previewMode={previewMode} onCreated={item => {
+      setCategories(current => [...current, item]); setCategory(item.id); setShowCategory(false);
+      setMessage('Категория создана и выбрана. Её оформление и описание появятся в выборе билетов события.');
+    }} /> : null}
     <fieldset className="personal-levels"><legend>УРОВНИ ПОЛУЧАТЕЛЕЙ</legend>{availableLevels.map(level => <label key={level.levelKey}><input type="checkbox" checked={selected.includes(level.levelKey)} disabled={busy} onChange={event => setSelected(current => event.target.checked ? [...current, level.levelKey] : current.filter(key => key !== level.levelKey))} />{level.displayName}</label>)}</fieldset>
     <button className="admin-primary" type="button" disabled={busy || !slug || !category || !title.trim() || !description.trim() || !selected.length} onClick={() => void prepare()}>{busy ? 'Выполняем…' : 'Подготовить и посчитать гостей'}</button>
     {message ? <p className="admin-personal-message" role="status">{message}</p> : null}
     {campaigns.map(campaign => <CampaignCard key={campaign.id} campaign={campaign} title={events.find(event => event.slug === campaign.event_slug)?.title || campaign.event_slug} busy={busy} onDeliver={retry => void deliver(campaign, retry)} onSave={(title, description) => void edit(campaign, title, description)} />)}
+  </div>;
+}
+
+function NewCategory({ eventSlug, previewMode, onCreated }: { eventSlug: string; previewMode: boolean; onCreated: (category: Category) => void }) {
+  const [name, setName] = useState(''), [note, setNote] = useState('');
+  const [price, setPrice] = useState('300'), [inventory, setInventory] = useState('');
+  const [primary, setPrimary] = useState('#220708'), [secondary, setSecondary] = useState('#751013'), [accent, setAccent] = useState('#e12622');
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  async function create() {
+    setBusy(true); setError('');
+    try {
+      if (previewMode) { onCreated({ id: `preview-${crypto.randomUUID()}`, name }); return; }
+      const response = await fetch('/api/admin/personal-tickets/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventSlug, name, note, price: Number(price), inventory, primary, secondary, accent }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Категория не сохранена');
+      onCreated(data.category);
+    } catch (error) { setError(error instanceof Error ? error.message : 'Категория не сохранена'); }
+    finally { setBusy(false); }
+  }
+  return <div className="personal-campaign">
+    <h3>НОВАЯ КАТЕГОРИЯ БИЛЕТА</h3><p>Категория появится и в продаже на странице события. При выдаче приглашения гость получает билет бесплатно, независимо от цены. Для создания нужны права управления событием и билетами.</p>
+    <div className="admin-form-grid">
+      <label><span>НАЗВАНИЕ</span><input value={name} maxLength={80} onChange={e => setName(e.target.value)} /></label>
+      <label><span>ОПИСАНИЕ И ОСОБЕННОСТИ</span><textarea value={note} maxLength={600} onChange={e => setNote(e.target.value)} /></label>
+      <label><span>ЦЕНА В ПРОДАЖЕ, ₽</span><input type="number" min="1" max="1000000" value={price} onChange={e => setPrice(e.target.value)} /></label>
+      <label><span>ОБЩИЙ ЛИМИТ · ПУСТО = БЕЗ ЛИМИТА</span><input type="number" min="1" max="1000000" value={inventory} onChange={e => setInventory(e.target.value)} /></label>
+      <label><span>ОСНОВНОЙ ЦВЕТ</span><input type="color" value={primary} onChange={e => setPrimary(e.target.value)} /></label>
+      <label><span>ВТОРОЙ ЦВЕТ</span><input type="color" value={secondary} onChange={e => setSecondary(e.target.value)} /></label>
+      <label><span>АКЦЕНТ</span><input type="color" value={accent} onChange={e => setAccent(e.target.value)} /></label>
+    </div>
+    <div style={{ background: `linear-gradient(135deg,${primary},${secondary})`, border: `1px solid ${accent}`, padding: '20px', color: '#fff' }}><strong>{name || 'Новая категория'}</strong><p>{note || 'Описание билета'}</p></div>
+    <button className="admin-primary" type="button" disabled={busy || !name.trim() || !eventSlug} onClick={() => void create()}>{busy ? 'Сохраняем…' : 'Создать и выбрать категорию'}</button>
+    {error ? <p role="status">{error}</p> : null}
   </div>;
 }
 
