@@ -3,14 +3,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { loadTs } from './load-ts.mjs';
+import { postgresDriverSql } from './postgres-driver-sql.mjs';
 const { readSitePage, saveSitePage, ContentConflictError } = await loadTs('../lib/server/site-content-store.ts');
 
 // Exercise the actual SQL on PostgreSQL, rather than returning canned rows.
-function taggedSql(pg) {
-  const sql = async (strings, ...values) => (await pg.sql(strings, ...values)).rows;
-  sql.begin = (callback) => pg.transaction((tx) => callback(taggedSql(tx)));
-  return sql;
-}
+const taggedSql = postgresDriverSql;
 const actor = '00000000-0000-0000-0000-000000000001';
 async function database() {
   const pg = new PGlite();
@@ -34,6 +31,20 @@ test('public reads do not create schema; first save initializes and persists an 
     assert.deepEqual(audits, [{ action: 'site.page.publish', target_id: 'about', details: { version: 1 } }]);
     await assert.rejects(saveSitePage(sql, 'about', { title: 'stale' }, 0, actor), ContentConflictError);
     assert.equal((await readSitePage(sql, 'about')).content.title, 'AGAYO');
+  } finally { await pg.close(); }
+});
+
+test('production driver describes JSON parameters: portrait publication stores an object rather than encoded JSON text', async () => {
+  const pg = await database();
+  try {
+    const sql = taggedSql(pg);
+    const content = { title: 'Команда', organizers: [{ id: 'person', name: 'Организатор', photoUrl: 'https://fgl49tcnktrldw67.public.blob.vercel-storage.com/agayo/uploads/organizer/photo.jpg', visible: true }] };
+    const [legacy] = await sql`SELECT ${JSON.stringify(content)}::jsonb AS content`;
+    assert.equal(typeof legacy.content, 'string', 'the old bind double encoded the object with postgres.js');
+    await saveSitePage(sql, 'about', content, 0, actor);
+    assert.deepEqual((await readSitePage(sql, 'about')).content, content);
+    assert.deepEqual((await pg.query("SELECT jsonb_typeof(content) AS content_type FROM site_pages")).rows, [{ content_type: 'object' }]);
+    assert.deepEqual((await pg.query("SELECT jsonb_typeof(details) AS details_type FROM admin_audit_log")).rows, [{ details_type: 'object' }]);
   } finally { await pg.close(); }
 });
 
