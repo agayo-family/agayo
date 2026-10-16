@@ -42,8 +42,8 @@ export async function POST(request: Request) {
       // Capacity edits and ticket restoration take event before category.
       // Keep the same order explicit to avoid cross-path deadlocks.
       const [lockedEvent] = await tx`
-        SELECT id FROM events WHERE slug=${event.slug}
-          AND status='published' AND sales_state='open' FOR UPDATE
+        SELECT id FROM events e WHERE slug=${event.slug}
+          AND status='published' AND sales_state='open' AND (to_jsonb(e)->>'deleted_at') IS NULL FOR UPDATE
       `;
       if (!lockedEvent) throw new Error('Билет недоступен: мероприятие удалено или продажи закрыты');
       const dbCategories = await tx`
@@ -103,9 +103,11 @@ export async function POST(request: Request) {
         if (total <= 0) throw new Error("Промокод не может снижать публичный заказ до 0 ₽. Уменьши скидку");
       }
 
-      let users = await tx`SELECT * FROM users WHERE email=${email} LIMIT 1`;
-      if (!users[0]) users = await tx`INSERT INTO users(email,phone,display_name) VALUES(${email},${phone || null},${ownerName}) RETURNING *`;
-      else await tx`UPDATE users SET display_name=COALESCE(display_name,${ownerName}),phone=COALESCE(phone,${phone || null}),updated_at=now() WHERE id=${users[0].id}`;
+      // Concurrent checkouts for the same email share one account. Preserve
+      // profile fields already set by its owner rather than overwriting them.
+      const users = await tx`INSERT INTO users(email,phone,display_name) VALUES(${email},${phone || null},${ownerName})
+        ON CONFLICT(email) DO UPDATE SET display_name=COALESCE(users.display_name,EXCLUDED.display_name),
+          phone=COALESCE(users.phone,EXCLUDED.phone),updated_at=now() RETURNING *`;
       const user = users[0];
       const orderPublicId = publicId("AGY");
       const orders = await tx`
