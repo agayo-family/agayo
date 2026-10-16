@@ -16,7 +16,7 @@ export default function HomePhotos({ photos }: { photos: GalleryPhoto[] }) {
       {photos.length ? <div className="landing-photo-grid">
         {photos.map(photo => (
           <Link className="landing-photo" href={`/gallery?event=${encodeURIComponent(photo.eventSlug)}`} key={photo.id}>
-            <div><Image src={photo.src} alt={photo.caption || `Фотография с мероприятия «${photo.eventTitle}»`} fill loading="lazy" sizes="(max-width: 600px) 45vw, (max-width: 900px) 46vw, 29vw" /></div>
+            <div><Image src={photo.src} unoptimized={photo.id.startsWith('vk:')} alt={photo.caption || `Фотография с мероприятия «${photo.eventTitle}»`} fill loading="lazy" sizes="(max-width: 600px) 45vw, (max-width: 900px) 46vw, 29vw" /></div>
             <span><span>{photo.eventTitle}</span><b aria-hidden="true">↗</b></span>
           </Link>
         ))}

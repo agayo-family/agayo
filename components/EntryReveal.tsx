@@ -22,16 +22,20 @@ export default function EntryReveal() {
     if (main) main.inert = true;
     document.body.style.overflow = 'hidden';
     const elapsed = Number(element.getAnimations()[0]?.currentTime ?? 0);
-    const timer = window.setTimeout(() => setFinished(true), Math.max(0, 2600 - elapsed) + 100);
-    return () => { clearTimeout(timer); if (main) main.inert = previousInert; document.body.style.overflow = previousOverflow; if (!hadIntroClass) document.body.classList.remove('agayo-intro-active'); };
+    const timer = window.setTimeout(() => setFinished(true), Math.max(0, 1650 - elapsed) + 100);
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const reduceMotion = () => { if (preference.matches) setFinished(true); };
+    preference.addEventListener('change', reduceMotion);
+    return () => { clearTimeout(timer); preference.removeEventListener('change', reduceMotion); if (main) main.inert = previousInert; document.body.style.overflow = previousOverflow; if (!hadIntroClass) document.body.classList.remove('agayo-intro-active'); };
   }, [finished, excluded]);
   if (finished || excluded) return null;
   preload('/agayo-logo-mask.png', { as: 'image' });
   return <div ref={overlay} className="agayo-entry-reveal agayo-light-intro" role="region" aria-label="Вступление AGAYO" onAnimationEnd={event => { if (event.target === event.currentTarget) setFinished(true); }}>
-    <div className="intro-light-field" aria-hidden="true"><i /><i /><i /></div>
-    <div className="intro-light-ribbon" aria-hidden="true" />
-    <div className="intro-light-logo" aria-hidden="true" />
-    <div className="intro-light-caption" aria-hidden="true">ПОЧУВСТВУЙ. ПРОЖИВИ. ЗАПОМНИ.</div>
+    <div className="intro-light-field" aria-hidden="true" />
+    <div className="intro-light-lockup" aria-hidden="true">
+      <div className="intro-light-logo" />
+      <div className="intro-light-caption">ПОЧУВСТВУЙ. ПРОЖИВИ. ЗАПОМНИ.</div>
+    </div>
     <button className="agayo-entry-skip" type="button" onClick={() => setFinished(true)}>Пропустить ↗</button>
   </div>;
 }

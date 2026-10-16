@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { BrowserCodeReader, BrowserQRCodeReader, type IScannerControls } from '@zxing/browser';
 
 type ScanResult = {
-  result: 'accepted' | 'already_used' | 'invalid' | 'not_found';
+  result: 'accepted' | 'already_used' | 'invalid' | 'not_found' | 'choose_ticket';
   ticket?: { public_id:string; event_slug:string; owner_name:string; category_name:string; status:string; used_at:string|null };
+  tickets?: NonNullable<ScanResult['ticket']>[];
   error?: string;
 };
 
@@ -45,7 +46,12 @@ export default function AdminScanner() {
 
   async function submit(raw: string) {
     const token = extractToken(raw);
-    if (token.length < 16 || submittingRef.current || waitingForOkRef.current) return;
+    if (submittingRef.current || waitingForOkRef.current) return;
+    if (token.length < 3) {
+      waitingForOkRef.current = true;
+      setResult({ result: 'not_found', error: 'Введи номер билета, заказа или QR.' });
+      return;
+    }
     submittingRef.current = true;
     setBusy(true);
     try {
@@ -175,13 +181,17 @@ export default function AdminScanner() {
         <div className="scanner-frame" aria-hidden="true"><i/><i/><i/><i/></div>
         {cameraState !== 'active' ? <div className="scanner-camera-cover"><b>{cameraTitle}</b><p>{cameraMessage}</p>{cameraState !== 'starting' ? <button type="button" onClick={() => void startCamera()}>Включить камеру</button> : null}</div> : <div className="scanner-camera-live"><span>LIVE</span><button type="button" onClick={() => void stopCamera()}>Выключить</button></div>}
       </div>
-      <form className="scanner-manual" onSubmit={(event) => { event.preventDefault(); void submit(manual); }}><label><span>РУЧНАЯ ПРОВЕРКА</span><input value={manual} disabled={Boolean(result)} onChange={(event) => setManual(event.target.value)} placeholder="AGAYO-TICKET:… или ссылка на билет" /></label><button disabled={busy || Boolean(result)} type="submit">{busy ? 'ПРОВЕРЯЕМ…' : 'ПРОВЕРИТЬ'}</button></form>
+      <form className="scanner-manual" onSubmit={(event) => { event.preventDefault(); void submit(manual); }}><label><span>РУЧНАЯ ПРОВЕРКА</span><input value={manual} disabled={Boolean(result)} onChange={(event) => setManual(event.target.value)} placeholder="Номер билета, заказа или ссылка на билет" /></label><button disabled={busy || Boolean(result)} type="submit">{busy ? 'ПРОВЕРЯЕМ…' : 'ПРОВЕРИТЬ'}</button></form>
     </section>
 
     {result ? <div className="scanner-status-modal-v133" role="dialog" aria-modal="true" aria-label="Статус билета">
       <div className={`scanner-status-card-v133 ${tone}`}>
-        <span>{result.result === 'accepted' ? 'ПРОХОД РАЗРЕШЁН' : result.result === 'already_used' ? 'УЖЕ ИСПОЛЬЗОВАН' : result.result === 'invalid' ? 'БИЛЕТ НЕДЕЙСТВИТЕЛЕН' : 'БИЛЕТ НЕ НАЙДЕН'}</span>
+        <span>{result.result === 'choose_ticket' ? 'ВЫБЕРИ БИЛЕТ ГОСТЯ' : result.result === 'accepted' ? 'ПРОХОД РАЗРЕШЁН' : result.result === 'already_used' ? 'УЖЕ ИСПОЛЬЗОВАН' : result.result === 'invalid' ? 'БИЛЕТ НЕДЕЙСТВИТЕЛЕН' : 'БИЛЕТ НЕ НАЙДЕН'}</span>
+        {result.result === 'choose_ticket' ? <><p>{result.error}</p>{result.tickets?.map(ticket => <button type="button" key={ticket.public_id} onClick={() => {
+          waitingForOkRef.current = false; setResult(null); void submit(ticket.public_id);
+        }}>{ticket.public_id} · {ticket.owner_name} · {ticket.category_name} · {ticket.status === 'valid' ? 'Проверить вход' : ticket.status === 'used' ? 'Уже использован' : 'Недействителен'}</button>)}</> : null}
         {result.ticket ? <><h2>{result.ticket.owner_name}</h2><div className="scanner-ticket-category-v134"><span>КАТЕГОРИЯ БИЛЕТА</span><strong>{result.ticket.category_name}</strong></div><p>Билет: {result.ticket.public_id}</p><p>Событие: {result.ticket.event_slug}</p><b>Статус: {result.ticket.status === 'valid' ? 'действителен' : result.ticket.status === 'used' ? 'использован' : result.ticket.status}</b>{result.ticket.used_at && result.result === 'already_used' ? <b>Первый проход: {new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'medium'}).format(new Date(result.ticket.used_at))}</b> : null}</> : <p>{result.error || 'Проверь QR и попробуй ещё раз.'}</p>}
+        {result.ticket && result.error ? <p>{result.error}</p> : null}
         <button type="button" autoFocus onClick={acknowledgeResult}>ОК · СКАНИРОВАТЬ ДАЛЬШЕ</button>
       </div>
     </div> : null}

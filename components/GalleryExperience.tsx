@@ -13,7 +13,7 @@ function searchableDate(value: string) {
   return value.replace(/[.\-/]/g, " ");
 }
 
-export default function GalleryExperience({ photos, total, publishedEvents }: { photos: GalleryPhoto[]; total: number; publishedEvents: GalleryEvent[] }) {
+export default function GalleryExperience({ photos, total, publishedEvents, notice='' }: { photos: GalleryPhoto[]; total: number; publishedEvents: GalleryEvent[]; notice?:string }) {
   const [query, setQuery] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
@@ -21,7 +21,7 @@ export default function GalleryExperience({ photos, total, publishedEvents }: { 
   const [loadedPhotos, setLoadedPhotos] = useState(photos);
   const [totalPhotos, setTotalPhotos] = useState(total);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState('');
+  const [loadError, setLoadError] = useState(notice);
   const initial = useRef(true);
   const moreRequest = useRef<AbortController | null>(null);
   const touchStartX = useRef<number | null>(null);
@@ -222,14 +222,14 @@ export default function GalleryExperience({ photos, total, publishedEvents }: { 
                     aria-label={`Открыть фотографию ${event.title}`}
                   >
                     <Image
-                      src={photo.src}
+                      src={photo.src} unoptimized={photo.id.startsWith('vk:')}
                       alt={`${event.title} — ${event.dateLabel}`}
                       fill
                       sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 42vw"
                       className="gallery-editorial-image"
                     />
                   </button>
-                  <FavoriteButton photoId={photo.id} />
+                  {!photo.id.startsWith('vk:') ? <FavoriteButton photoId={photo.id} /> : null}
                   <div className="gallery-photo-index">{String(index + 1).padStart(2, "0")}</div>
                 </div>
                 <div className="gallery-editorial-caption">
@@ -314,7 +314,7 @@ function Lightbox({
     }} className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${eventTitle}, фотография ${position}`}>
       <button type="button" className="gallery-lightbox-close" onClick={onClose} aria-label="Закрыть фотографию">×</button>
       <div className="gallery-lightbox-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <Image src={photo.src} alt={`${eventTitle} — ${eventDate}`} fill sizes="100vw" className="gallery-lightbox-image" priority />
+        <Image src={photo.src} unoptimized={photo.id.startsWith('vk:')} alt={`${eventTitle} — ${eventDate}`} fill sizes="100vw" className="gallery-lightbox-image" priority />
         <button type="button" className="gallery-lightbox-nav gallery-lightbox-prev" onClick={onPrevious} aria-label="Предыдущая фотография">←</button>
         <button type="button" className="gallery-lightbox-nav gallery-lightbox-next" onClick={onNext} aria-label="Следующая фотография">→</button>
       </div>
@@ -325,7 +325,7 @@ function Lightbox({
         </div>
         <div className="gallery-lightbox-actions">
           <span>{String(position).padStart(2, "0")} / {String(total).padStart(2, "0")}</span>
-          <FavoriteButton photoId={photo.id} />
+          {!photo.id.startsWith('vk:') ? <FavoriteButton photoId={photo.id} /> : null}
         </div>
       </div>
     </div>
