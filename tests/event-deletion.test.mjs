@@ -3,19 +3,24 @@ import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { loadTs, loadTsx } from './load-ts.mjs';
-import { fixture, actor } from './database-fixture.mjs';
+import { fixture as databaseFixture, actor } from './database-fixture.mjs';
+import { postgresDriverSql } from './postgres-driver-sql.mjs';
+async function fixture(options) { const value = await databaseFixture(options); return { ...value, sql: postgresDriverSql(value.pg) }; }
 
 const deletion = await loadTs('../lib/server/event-deletion.ts');
 const personal = await loadTs('../lib/server/personal-ticket-store.ts');
 const lifecycle = await loadTs('../lib/events.ts');
+const legal = await loadTs('../lib/legal.ts');
+const hot = await loadTs('../lib/server/hot-tickets.ts');
 const eventId = async pg => (await pg.query("SELECT id FROM events WHERE slug='test-halloween'")).rows[0].id;
 
-class AdminAccessError extends Error { constructor(message = 'Недостаточно прав') { super(message); this.status = 403; } }
+class AdminAccessError extends Error { constructor(message = 'Недостаточно прав', status = 403) { super(message); this.status = status; } }
 async function api(sql, requireAdminPermission, invalidated = []) {
   return loadTsx('../app/api/admin/events/[id]/route.ts', {
     '@/lib/server/db': { db: () => sql },
     '@/lib/server/admin': { AdminAccessError, requireAdminPermission },
     '@/lib/server/event-deletion': deletion,
+    '@/lib/server/hot-tickets': hot,
     '@/lib/server/public-content': { invalidatePublicContent: kind => invalidated.push(kind) },
     'next/cache': { revalidatePath: path => invalidated.push(path) },
   });
@@ -44,7 +49,7 @@ test('deletion requires management permission, event scope and explicit confirma
   } finally { await pg.close(); }
 });
 
-test('deletion removes only an unused event, categories, program and stale event access; commits audit and expires public pages', async () => {
+test('deletion durably retires an event without destroying its page, categories, program or event access', async () => {
   const { pg, sql } = await fixture({ guests: 0 });
   try {
     const id = await eventId(pg);
@@ -54,30 +59,34 @@ test('deletion removes only an unused event, categories, program and stale event
     const { DELETE } = await api(sql, async () => ({ userId: actor }), invalidated);
     assert.equal((await DELETE(request(), { params: Promise.resolve({ id }) })).status, 200);
     for (const table of ['events', 'event_ticket_categories', 'event_program_items']) {
-      assert.equal((await pg.query(`SELECT count(*)::int AS n FROM ${table}`)).rows[0].n, 0);
+      assert.equal((await pg.query(`SELECT count(*)::int AS n FROM ${table}`)).rows[0].n, 1);
     }
-    assert.deepEqual((await pg.query('SELECT event_slug FROM admin_event_access')).rows, [{ event_slug: 'another-event' }]);
+    assert.deepEqual((await pg.query('SELECT event_slug FROM admin_event_access ORDER BY event_slug')).rows, [{ event_slug: 'another-event' }, { event_slug: 'test-halloween' }]);
+    const [event] = (await pg.query('SELECT status,sales_state,deleted_at FROM events')).rows;
+    assert.equal(event.status, 'published'); assert.equal(event.sales_state, 'closed'); assert.ok(event.deleted_at);
     assert.deepEqual((await pg.query("SELECT action,details->>'slug' AS slug FROM admin_audit_log")).rows, [{ action: 'event.delete', slug: 'test-halloween' }]);
     assert.deepEqual(invalidated, ['events', '/events/test-halloween', '/events/test-halloween/rules']);
   } finally { await pg.close(); }
 });
 
-test('every order status protects the event and financial history, including cancelled purchases and zero-price gifts', async () => {
+test('all order statuses and zero-price history survive retirement; retries do not duplicate the deletion audit', async () => {
   const { pg, sql } = await fixture({ guests: 0 });
   try {
     const id = await eventId(pg);
     for (const status of ['pending', 'paid', 'cancelled', 'refunded', 'expired']) {
       await pg.query('INSERT INTO orders(public_id,user_id,event_slug,email,owner_name,status,subtotal,total) VALUES($1,$2,$3,$4,$5,$6,0,0)', [status, actor, 'test-halloween', 'owner@example.test', 'Гость', status]);
-      await assert.rejects(deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween'), error => error.status === 409 && /заказы или билеты/.test(error.message));
     }
+    await deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween');
+    await deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween');
     assert.equal((await pg.query('SELECT count(*)::int AS n FROM orders')).rows[0].n, 5);
     assert.equal((await pg.query('SELECT count(*)::int AS n FROM events')).rows[0].n, 1);
     assert.equal((await pg.query('SELECT count(*)::int AS n FROM event_ticket_categories')).rows[0].n, 1);
-    assert.equal((await pg.query('SELECT count(*)::int AS n FROM admin_audit_log')).rows[0].n, 0);
+    assert.equal((await pg.query('SELECT count(*)::int AS n FROM admin_audit_log')).rows[0].n, 1);
+    assert.equal((await pg.query('SELECT count(*)::int AS n FROM events e WHERE (to_jsonb(e)->>\'deleted_at\') IS NULL')).rows[0].n, 0);
   } finally { await pg.close(); }
 });
 
-test('related photos, reviews, promos and prepared personal campaigns prevent orphaning their content', async () => {
+test('related photos, reviews, promos and prepared personal campaigns remain attached to the historical event', async () => {
   const { pg, sql } = await fixture({ guests: 1 });
   try {
     const id = await eventId(pg);
@@ -87,12 +96,10 @@ test('related photos, reviews, promos and prepared personal campaigns prevent or
       ['promo_codes', "INSERT INTO promo_codes(event_slug,code,discount_type,discount_value) VALUES('test-halloween','GUEST','fixed',10)"],
     ]) {
       await pg.exec(statement);
-      await assert.rejects(deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween'), error => error.status === 409 && /связанные материалы/.test(error.message));
-      assert.equal((await pg.query(`SELECT count(*)::int AS n FROM ${table} WHERE event_slug='test-halloween'`)).rows[0].n, 1);
-      await pg.exec(`DELETE FROM ${table} WHERE event_slug='test-halloween'`);
     }
     await personal.savePersonalCampaign(sql, { actorId: actor, eventSlug: 'test-halloween', categoryId: 'standard', title: 'Для своих', description: 'Приглашение', levels: ['GOLD'] });
-    await assert.rejects(deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween'), error => error.status === 409 && /персональные выпуски/.test(error.message));
+    await deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween');
+    for (const table of ['media_photos', 'media_reviews', 'promo_codes']) assert.equal((await pg.query(`SELECT count(*)::int AS n FROM ${table} WHERE event_slug='test-halloween'`)).rows[0].n, 1);
     assert.equal((await pg.query('SELECT count(*)::int AS n FROM personal_ticket_campaigns')).rows[0].n, 1);
   } finally { await pg.close(); }
 });
@@ -109,12 +116,13 @@ test('audit failure rolls deletion back, and a committed deletion is not revived
     await deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween');
     const seeded = { ...lifecycle.events[0], slug: 'test-halloween' };
     const { ensureSeedEvents } = await loadTsx('../lib/server/seed-events.ts', {
-      '@/lib/events': { events: [seeded, { ...seeded, slug: 'fresh-built-in' }] }, './db': { db: () => sql }, './event-deletion': deletion,
+      '@/lib/events': { events: [seeded, { ...seeded, slug: 'fresh-built-in' }] }, './db': { db: () => sql }, './event-deletion': deletion, './hot-tickets': hot,
     });
     process.env.DATABASE_URL = 'isolated-fixture';
     await ensureSeedEvents();
     await ensureSeedEvents();
-    assert.deepEqual((await pg.query('SELECT slug FROM events')).rows, [{ slug: 'fresh-built-in' }]);
+    assert.deepEqual((await pg.query('SELECT slug FROM events e WHERE (to_jsonb(e)->>\'deleted_at\') IS NULL')).rows, [{ slug: 'fresh-built-in' }]);
+    assert.equal((await pg.query("SELECT count(*)::int AS n FROM events WHERE slug='test-halloween'")).rows[0].n, 1);
   } finally {
     if (configured === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = configured;
     await pg.close();
@@ -130,9 +138,78 @@ test('personal preparation after deletion rechecks the locked event and creates 
   } finally { await pg.close(); }
 });
 
+test('reload excludes retired events from public and scoped management lists but preserves their direct page', async () => {
+  const { pg, sql } = await fixture({ guests: 0 });
+  const configured = process.env.DATABASE_URL;
+  try {
+    process.env.DATABASE_URL = 'isolated-fixture';
+    const published = await loadTsx('../lib/server/events.ts', { './db': { db: () => sql }, './hot-tickets': hot, '../events': lifecycle, '../legal': legal, react: { cache: callback => callback } });
+    const access = { userId: actor, allEvents: false, eventSlugs: ['test-halloween'] };
+    const managed = await loadTsx('../app/api/admin/events/route.ts', {
+      '@/lib/server/db': { db: () => sql }, '@/lib/server/admin': { AdminAccessError, requireAdminPermission: async () => access, canAccessEvent: (access, slug) => access.eventSlugs.includes(slug) },
+      '@/lib/server/seed-events': { ensureSeedEvents: async () => {} }, '@/lib/server/public-content': { invalidatePublicContent() {} }, 'next/cache': { revalidatePath() {} },
+      '@/lib/server/hot-tickets': hot,
+    });
+    // Legacy schema has no deleted_at yet: the compatibility predicate is safe.
+    assert.equal((await published.getPublicEventCatalogServer()).length, 1);
+    assert.equal((await (await managed.GET()).json()).events.length, 1);
+    await deletion.deleteUnusedEvent(sql, await eventId(pg), actor, 'test-halloween');
+    assert.equal((await published.getPublicEventCatalogServer()).length, 0);
+    assert.equal((await published.getAllEventsServer()).length, 0);
+    assert.equal((await (await managed.GET()).json()).events.length, 0);
+    const historical = await published.getEventServer('test-halloween');
+    assert.equal(historical.title, 'AGAYO HALLOWEEN'); assert.equal(historical.salesState, 'closed'); assert.equal(historical.tickets.length, 1);
+    // Audit retention cannot revive business state or reopen its page for sales.
+    await pg.exec("DELETE FROM admin_audit_log; UPDATE events SET sales_state='open'");
+    assert.equal((await published.getPublicEventCatalogServer()).length, 0);
+    assert.equal((await published.getEventServer('test-halloween')).salesState, 'closed');
+  } finally {
+    if (configured === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = configured;
+    await pg.close();
+  }
+});
+
+test('a stale editor cannot publish an event retired between its first read and the row lock', async () => {
+  const { pg, sql } = await fixture({ guests: 0 });
+  try {
+    const id = await eventId(pg);
+    const { PATCH, GET } = await api(sql, async () => { await deletion.deleteUnusedEvent(sql, id, actor, 'test-halloween'); return { userId: actor }; });
+    const request = new Request('https://example.test/api/admin/events/fixture', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Нельзя оживлять', startsAt: '2080-11-01T18:00:00Z', status: 'published', salesState: 'open' }) });
+    assert.equal((await PATCH(request, { params: Promise.resolve({ id }) })).status, 410);
+    assert.equal((await GET(new Request('https://example.test'), { params: Promise.resolve({ id }) })).status, 410);
+    assert.deepEqual((await pg.query('SELECT title,sales_state FROM events')).rows, [{ title: 'AGAYO HALLOWEEN', sales_state: 'closed' }]);
+  } finally { await pg.close(); }
+});
+
+test('a stale open checkout cannot reserve or charge a retired event even if its sales flag was reopened separately', async () => {
+  const { pg, sql } = await fixture({ guests: 0 });
+  const paymentsEnabled = process.env.PAYMENTS_ENABLED;
+  try {
+    process.env.PAYMENTS_ENABLED = '1';
+    await deletion.deleteUnusedEvent(sql, await eventId(pg), actor, 'test-halloween');
+    await pg.exec("UPDATE events SET sales_state='open'");
+    const unexpected = () => { throw new Error('External payment must not be called'); };
+    const security = await loadTs('../lib/server/security.ts');
+    const orderInput = await loadTs('../lib/order-input.ts');
+    const { POST } = await loadTsx('../app/api/orders/route.ts', {
+      '@/lib/server/db': { db: () => sql }, '@/lib/server/events': { getEventServer: async () => ({ ...lifecycle.events[0], slug: 'test-halloween', status: 'published', salesState: 'open', startsAt: '2080-11-01T18:00:00Z', tickets: [{ id: 'standard', name: 'STANDARD', price: 300 }] }) },
+      '@/lib/events': lifecycle, '@/lib/server/security': security, '@/lib/server/yookassa': { isYooKassaConfigured: () => true, isReceiptConfigurationReady: () => true, createPayment: unexpected },
+      '@/lib/legal': { DEFAULT_EVENT_RULES: 'Правила', LEGAL_VERSION: 'fixture' }, '@/lib/order-input': orderInput,
+    });
+    const response = await POST(new Request('https://example.test/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventSlug: 'test-halloween', categoryId: 'standard', quantity: 1, email: 'owner@example.test', name: 'Owner', acceptedDocuments: true, acceptedPrivacy: true }) }));
+    assert.equal(response.status, 409);
+    assert.equal((await pg.query('SELECT count(*)::int AS n FROM orders')).rows[0].n, 0);
+    assert.equal((await pg.query('SELECT count(*)::int AS n FROM ticket_inventory_reservations')).rows[0].n, 0);
+  } finally {
+    if (paymentsEnabled === undefined) delete process.env.PAYMENTS_ENABLED; else process.env.PAYMENTS_ENABLED = paymentsEnabled;
+    await pg.close();
+  }
+});
+
 test('event list exposes deletion only to event managers within their event scope', async () => {
   const { default: Manager } = await loadTsx('../components/AdminEventsManager.tsx', {
     '@/lib/client/upload': {}, '@/lib/event-palette': {}, '@/lib/legal': { DEFAULT_EVENT_RULES: '' },
+    '@/lib/admin-ticket-theme': await loadTsx('../lib/admin-ticket-theme.ts'),
   });
   const events = [{ id: actor, slug: 'allowed', title: 'Событие', starts_at: '2080-11-01', ends_at: null, status: 'draft', sales_state: 'closed', ticket_mode: 'zones' }];
   const html = access => renderToStaticMarkup(createElement(Manager, { access, previewMode: false, events, setEvents: () => {} }));
