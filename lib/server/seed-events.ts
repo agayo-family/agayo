@@ -1,6 +1,7 @@
 import { events as staticEvents } from "@/lib/events";
 import { db } from "./db";
 import { EVENT_SEED_LOCK } from './event-deletion';
+import { ensureHotTicketSchema } from './hot-tickets';
 
 function endIso(startsAt: string, timeLabel: string) {
   const end = timeLabel.includes("—") ? timeLabel.split("—")[1]?.trim() : "";
@@ -16,6 +17,7 @@ function endIso(startsAt: string, timeLabel: string) {
 export async function ensureSeedEvents() {
   if (!process.env.DATABASE_URL) return;
   const sql = db();
+  await ensureHotTicketSchema(sql);
 
   for (const event of staticEvents) {
     await sql.begin(async (tx: any) => {
@@ -47,11 +49,11 @@ export async function ensureSeedEvents() {
         const ticket = event.tickets[index];
         await tx`
           INSERT INTO event_ticket_categories(
-            event_id,category_key,name,price,note,inventory,hot_enabled,hot_displayed_remaining,
+            event_id,category_key,name,price,note,inventory,hot_enabled,hot_displayed_remaining,hot_batch_started_at,
             theme_primary,theme_secondary,theme_accent,sort_order
           ) VALUES(
             ${eventId},${ticket.id},${ticket.name},${ticket.price},${ticket.note},${ticket.inventory ?? null},
-            ${Boolean(ticket.hotTickets?.enabled)},${ticket.hotTickets?.displayedRemaining ?? null},
+            ${Boolean(ticket.hotTickets?.enabled)},${null},CASE WHEN ${Boolean(ticket.hotTickets?.enabled)} THEN now() ELSE NULL END,
             ${ticket.theme?.primary ?? event.ticketTheme?.primary ?? null},
             ${ticket.theme?.secondary ?? event.ticketTheme?.secondary ?? null},
             ${ticket.theme?.accent ?? event.ticketTheme?.accent ?? null},${index}

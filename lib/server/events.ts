@@ -1,7 +1,8 @@
 import { db } from "./db";
 import { AgayoEvent, events as staticEvents, isEventOnOrAfterToday } from "../events";
-import { DEFAULT_EVENT_RULES } from "../legal";
+import { resolveEventRules } from "../legal";
 import { cache } from "react";
+import { hotBatchRemaining } from "./hot-tickets";
 
 function fmtDate(value: Date) {
   return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "Europe/Moscow" }).format(value);
@@ -28,7 +29,7 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
     address: row.address ? String(row.address) : undefined,
     alcoholFree: Boolean(row.alcohol_free),
     status: String(row.status) as AgayoEvent["status"],
-    salesState: String(row.sales_state) as AgayoEvent["salesState"],
+    salesState: row.deleted_at ? "closed" : String(row.sales_state) as AgayoEvent["salesState"],
     ticketMode: String(row.ticket_mode) as AgayoEvent["ticketMode"],
     heroImage: String(row.hero_image || row.poster_image || "/events/vernite-lampovost-poster.jpg"),
     posterImage: row.poster_image ? String(row.poster_image) : undefined,
@@ -39,7 +40,7 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
     },
     description: String(row.description || ""),
     secondaryDescription: String(row.secondary_description || ""),
-    eventRules: String(row.event_rules || DEFAULT_EVENT_RULES),
+    eventRules: resolveEventRules(row.event_rules, start),
     tickets: tickets
       .filter((ticket) => String(ticket.event_id) === String(row.id))
       .map((ticket) => {
@@ -48,6 +49,7 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
         const reserved = reservedByCategory.get(`${eventSlug}:${String(ticket.category_key)}`) || 0;
         const unreservedPending = unreservedPendingByCategory.get(`${eventSlug}:${String(ticket.category_key)}`) || 0;
         const remaining = inventory == null ? null : Math.max(0, inventory - sold - reserved - unreservedPending);
+        const batchRemaining = hotBatchRemaining(Boolean(ticket.hot_enabled), ticket.hot_paid_units, remaining);
         return {
           id: String(ticket.category_key),
           name: String(ticket.name),
@@ -56,10 +58,7 @@ function eventFromRow(row: any, tickets: any[], program: any[], reservedByCatego
           inventory,
           remaining,
           soldOut: remaining === 0,
-          hotTickets:
-            ticket.hot_enabled && remaining != null && remaining > 0 && remaining < 5
-              ? { enabled: true, displayedRemaining: remaining as 1 | 2 | 3 | 4 }
-              : undefined,
+          hotTickets: batchRemaining ? { enabled: true, batchRemaining } : undefined,
           theme: ticket.theme_primary
             ? {
                 primary: String(ticket.theme_primary),
@@ -81,7 +80,7 @@ async function loadDbEvents(): Promise<AgayoEvent[]> {
 
   let rows: any[] = [];
   try {
-    rows = (await sql`SELECT * FROM events ORDER BY starts_at DESC`) as any[];
+    rows = (await sql`SELECT * FROM events e WHERE (to_jsonb(e)->>'deleted_at') IS NULL ORDER BY starts_at DESC`) as any[];
   } catch (error) {
     console.warn("Events DB rows:", error instanceof Error ? error.message : error);
     return [];
@@ -105,7 +104,14 @@ async function loadDbEvents(): Promise<AgayoEvent[]> {
           WHERE t.event_slug=event_for_ticket.slug
             AND t.category_id=c.category_key
             AND t.status IN ('valid','used')
-        ),0)::int AS sold_count
+        ),0)::int AS sold_count,
+        COALESCE((
+          SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.id=oi.order_id
+          JOIN events event_for_paid ON event_for_paid.id=c.event_id
+          WHERE o.event_slug=event_for_paid.slug AND oi.ticket_category_id=c.category_key
+            AND o.total>0 AND o.paid_at IS NOT NULL
+            AND o.paid_at >= NULLIF(to_jsonb(c)->>'hot_batch_started_at','')::timestamptz
+        ),0)::bigint AS hot_paid_units
       FROM event_ticket_categories c
       ORDER BY c.event_id, c.sort_order, c.name
     `) as any[];
@@ -174,7 +180,13 @@ async function loadDbEventBySlug(slug: string): Promise<AgayoEvent | null> {
           WHERE t.event_slug=${slug}
             AND t.category_id=c.category_key
             AND t.status IN ('valid','used')
-        ),0)::int AS sold_count
+        ),0)::int AS sold_count,
+        COALESCE((
+          SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.id=oi.order_id
+          WHERE o.event_slug=${slug} AND oi.ticket_category_id=c.category_key
+            AND o.total>0 AND o.paid_at IS NOT NULL
+            AND o.paid_at >= NULLIF(to_jsonb(c)->>'hot_batch_started_at','')::timestamptz
+        ),0)::bigint AS hot_paid_units
       FROM event_ticket_categories c
       WHERE c.event_id=${String(row.id)}
       ORDER BY c.sort_order, c.name
@@ -246,11 +258,11 @@ export const getEventServer = cache(async (slug: string) => {
 export async function getPublicEventCatalogServer(): Promise<AgayoEvent[]> {
   if (!process.env.DATABASE_URL) return staticEvents.filter((event) => event.status === "published");
   const sql = db();
-  const rows = await sql`SELECT * FROM events WHERE status='published' ORDER BY starts_at DESC`;
+  const rows = await sql`SELECT * FROM events e WHERE status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL ORDER BY starts_at DESC`;
   const categories = await sql`
     SELECT c.event_id,c.category_key,c.name,c.price,c.note,c.sort_order
     FROM event_ticket_categories c JOIN events e ON e.id=c.event_id
-    WHERE e.status='published' ORDER BY c.event_id,c.sort_order
+    WHERE e.status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL ORDER BY c.event_id,c.sort_order
   `;
   return rows.map((row) => eventFromRow(row, categories as any[], [], new Map()));
 }
@@ -264,7 +276,7 @@ export async function getPublicEventProgramServer(slug: string): Promise<AgayoEv
   const rows = await sql`
     SELECT p.time_label, p.title
     FROM event_program_items p JOIN events e ON e.id=p.event_id
-    WHERE e.slug=${slug} AND e.status='published'
+    WHERE e.slug=${slug} AND e.status='published' AND (to_jsonb(e)->>'deleted_at') IS NULL
     ORDER BY p.sort_order
   `;
   return rows.map((row) => [String(row.time_label), String(row.title)] as [string, string]);

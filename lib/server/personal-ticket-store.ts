@@ -16,42 +16,74 @@ CREATE TABLE IF NOT EXISTS personal_ticket_grants (
 );
 CREATE INDEX IF NOT EXISTS personal_ticket_campaigns_event_idx ON personal_ticket_campaigns(event_slug);
 CREATE INDEX IF NOT EXISTS personal_ticket_grants_user_idx ON personal_ticket_grants(user_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS personal_ticket_requests (
+  request_id uuid PRIMARY KEY, actor_id uuid NOT NULL REFERENCES users(id),
+  campaign_id uuid NOT NULL UNIQUE REFERENCES personal_ticket_campaigns(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+-- Older postgres.js calls inferred jsonb for a JSON string and encoded twice.
+-- Only authenticated preparation repairs those rows; public reads never do DDL.
+DO $repair$ DECLARE r record; decoded jsonb; BEGIN
+  FOR r IN SELECT id,levels,recipients FROM personal_ticket_campaigns
+    WHERE jsonb_typeof(levels)='string' OR jsonb_typeof(recipients)='string' LOOP
+    BEGIN
+      decoded := CASE WHEN jsonb_typeof(r.levels)='string' THEN (r.levels #>> '{}')::jsonb ELSE r.levels END;
+      IF jsonb_typeof(decoded)='array' THEN UPDATE personal_ticket_campaigns SET levels=decoded WHERE id=r.id; END IF;
+      decoded := CASE WHEN jsonb_typeof(r.recipients)='string' THEN (r.recipients #>> '{}')::jsonb ELSE r.recipients END;
+      IF jsonb_typeof(decoded)='array' THEN UPDATE personal_ticket_campaigns SET recipients=decoded WHERE id=r.id; END IF;
+    EXCEPTION WHEN invalid_text_representation THEN NULL;
+    END;
+  END LOOP;
+END $repair$;
 `;
 
 const identifier = (prefix: string) => `${prefix}-${randomBytes(6).toString('hex').toUpperCase()}`;
 export class PersonalTicketError extends Error {}
 export async function personalSchemaReady(sql: postgres.Sql) {
-  const [row] = await sql`SELECT to_regclass('public.personal_ticket_grants') IS NOT NULL AS ready`;
+  const [row] = await sql`SELECT to_regclass('public.personal_ticket_grants') IS NOT NULL
+    AND to_regclass('public.personal_ticket_campaigns') IS NOT NULL AS ready`;
   return Boolean(row?.ready);
 }
 
 export async function savePersonalCampaign(sql: postgres.Sql, input: { actorId: string; eventSlug: string; categoryId: string; title: string; description: string; levels: string[] }) {
   return sql.begin(async tx => {
     await tx`SELECT pg_advisory_xact_lock(714206013)`;
-    const [event] = await tx`SELECT id,status FROM events WHERE slug=${input.eventSlug} FOR UPDATE`;
+    const [event] = await tx`SELECT id,status FROM events e WHERE slug=${input.eventSlug}
+      AND (to_jsonb(e)->>'deleted_at') IS NULL FOR UPDATE`;
     if (!event || event.status !== 'published') throw new PersonalTicketError('Мероприятие недоступно для подготовки приглашений');
     await tx.unsafe(PERSONAL_SCHEMA_SQL);
     const recipients = await tx`SELECT id FROM users WHERE email IS NOT NULL AND email <> ''
-      AND loyalty_level IN (SELECT jsonb_array_elements_text(${JSON.stringify(input.levels)}::jsonb)) ORDER BY id LIMIT 5000`;
+      AND loyalty_level IN (SELECT jsonb_array_elements_text(${JSON.stringify(input.levels)}::text::jsonb)) ORDER BY id LIMIT 5000`;
     if (!recipients.length) throw new PersonalTicketError('У выбранных уровней нет получателей с email');
     const [campaign] = await tx`INSERT INTO personal_ticket_campaigns(event_slug,category_id,title,description,levels,recipients,created_by)
-      VALUES(${input.eventSlug},${input.categoryId},${input.title},${input.description},${JSON.stringify(input.levels)}::jsonb,${JSON.stringify(recipients.map(row => String(row.id)))}::jsonb,${input.actorId}) RETURNING *`;
+      VALUES(${input.eventSlug},${input.categoryId},${input.title},${input.description},${JSON.stringify(input.levels)}::text::jsonb,${JSON.stringify(recipients.map(row => String(row.id)))}::text::jsonb,${input.actorId}) RETURNING *`;
     await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
-      VALUES(${input.actorId},'personal_ticket.prepare','campaign',${campaign.id},${JSON.stringify({ recipients: recipients.length, eventSlug: input.eventSlug })}::jsonb)`;
+      VALUES(${input.actorId},'personal_ticket.prepare','campaign',${campaign.id},${JSON.stringify({ recipients: recipients.length, eventSlug: input.eventSlug })}::text::jsonb)`;
     return campaign;
   });
 }
 
 export async function issuePersonalBatch(sql: postgres.Sql, campaignId: string, actorId: string, size = 10) {
-  return sql.begin(async tx => {
+  await sql.begin(async tx => {
+    await tx`SELECT pg_advisory_xact_lock(714206013)`;
+    await tx.unsafe(PERSONAL_SCHEMA_SQL);
+  });
+  return sql.begin(tx => issueCampaignBatch(tx, campaignId, actorId, size));
+}
+
+async function issueCampaignBatch(tx: postgres.TransactionSql, campaignId: string, actorId: string, size = 10) {
     const [campaign] = await tx`SELECT * FROM personal_ticket_campaigns WHERE id=${campaignId} FOR UPDATE`;
     if (!campaign) throw new PersonalTicketError('Выпуск не найден');
+    // Same event -> category lock order as paid checkout and limit changes.
+    const [event] = await tx`SELECT id FROM events e WHERE slug=${campaign.event_slug}
+      AND (to_jsonb(e)->>'deleted_at') IS NULL FOR UPDATE`;
+    if (!event) throw new PersonalTicketError('Мероприятие удалено или недоступно');
     const [category] = await tx`SELECT c.id,c.inventory,c.name,e.status,e.starts_at,e.ends_at,e.ticket_mode FROM event_ticket_categories c JOIN events e ON e.id=c.event_id
       WHERE e.slug=${campaign.event_slug} AND c.category_key=${campaign.category_id} FOR UPDATE OF c`;
     if (!category || category.status !== 'published' || Date.parse(String(category.ends_at || category.starts_at)) <= Date.now()) throw new PersonalTicketError('Мероприятие недоступно для выдачи');
     if (category.ticket_mode === 'seats') throw new PersonalTicketError('Для нумерованных мест сначала требуется схема распределения мест');
     const recipients = await tx`SELECT u.id,u.email,u.phone,u.display_name FROM users u
-      WHERE u.id::text IN (SELECT jsonb_array_elements_text(${JSON.stringify(campaign.recipients)}::jsonb))
+      WHERE u.id::text IN (SELECT jsonb_array_elements_text(${JSON.stringify(campaign.recipients)}::text::jsonb))
       AND NOT EXISTS (SELECT 1 FROM personal_ticket_grants g WHERE g.campaign_id=${campaign.id} AND g.user_id=u.id)
       ORDER BY u.id LIMIT ${Math.max(1, Math.min(10, size))}`;
     if (category.inventory != null) {
@@ -75,8 +107,45 @@ export async function issuePersonalBatch(sql: postgres.Sql, campaignId: string, 
       await tx`INSERT INTO ticket_deliveries(ticket_id,channel,destination) VALUES(${ticket.id},'email',${user.email})`;
     }
     await tx`INSERT INTO admin_audit_log(actor_user_id,action,target_type,target_id,details)
-      VALUES(${actorId},'personal_ticket.issue','campaign',${campaign.id},${JSON.stringify({ issued: recipients.length })}::jsonb)`;
+      VALUES(${actorId},'personal_ticket.issue','campaign',${campaign.id},${JSON.stringify({ issued: recipients.length })}::text::jsonb)`;
     return { issued: recipients.length };
+}
+
+export async function issueIndividualTicket(sql: postgres.Sql, input: {
+  requestId: string; actorId: string; eventSlug: string; categoryId: string;
+  email: string; title: string; description: string;
+}) {
+  return sql.begin(async tx => {
+    await tx`SELECT pg_advisory_xact_lock(714206013)`;
+    await tx.unsafe(PERSONAL_SCHEMA_SQL);
+    const [existing] = await tx`SELECT r.actor_id,c.id,c.event_slug,c.category_id,
+      u.email FROM personal_ticket_requests r JOIN personal_ticket_campaigns c ON c.id=r.campaign_id
+      JOIN users u ON u.id::text=c.recipients->>0 WHERE r.request_id=${input.requestId}`;
+    if (existing) {
+      if (String(existing.actor_id) !== input.actorId || existing.event_slug !== input.eventSlug
+        || existing.category_id !== input.categoryId || existing.email !== input.email) {
+        throw new PersonalTicketError('Этот запрос уже использован для другого приглашения. Обнови форму');
+      }
+      return { campaignId: String(existing.id), issued: false };
+    }
+    const [event] = await tx`SELECT id,status,starts_at,ends_at,ticket_mode FROM events e
+      WHERE slug=${input.eventSlug} AND (to_jsonb(e)->>'deleted_at') IS NULL FOR UPDATE`;
+    if (!event || event.status !== 'published' || event.ticket_mode === 'seats'
+      || Date.parse(String(event.ends_at || event.starts_at)) <= Date.now()) {
+      throw new PersonalTicketError('Выбери актуальное опубликованное событие без нумерованных мест');
+    }
+    const [category] = await tx`SELECT id FROM event_ticket_categories
+      WHERE event_id=${event.id} AND category_key=${input.categoryId} FOR UPDATE`;
+    if (!category) throw new PersonalTicketError('Категория не найдена');
+    const [user] = await tx`INSERT INTO users(email) VALUES(${input.email})
+      ON CONFLICT(email) DO UPDATE SET updated_at=users.updated_at RETURNING id`;
+    const [campaign] = await tx`INSERT INTO personal_ticket_campaigns(event_slug,category_id,title,description,levels,recipients,created_by)
+      VALUES(${input.eventSlug},${input.categoryId},${input.title},${input.description},'[]'::jsonb,
+        ${JSON.stringify([String(user.id)])}::text::jsonb,${input.actorId}) RETURNING id`;
+    await tx`INSERT INTO personal_ticket_requests(request_id,actor_id,campaign_id)
+      VALUES(${input.requestId},${input.actorId},${campaign.id})`;
+    await issueCampaignBatch(tx, String(campaign.id), input.actorId, 1);
+    return { campaignId: String(campaign.id), issued: true };
   });
 }
 
@@ -84,6 +153,6 @@ export async function personalTicketDescriptions(sql: postgres.Sql, ticketIds: s
   if (!ticketIds.length || !await personalSchemaReady(sql)) return new Map<string, { title: string; description: string }>();
   const rows = await sql`SELECT t.public_id,c.title,c.description FROM personal_ticket_grants g
     JOIN personal_ticket_campaigns c ON c.id=g.campaign_id JOIN tickets t ON t.id=g.ticket_id
-    WHERE t.public_id IN (SELECT jsonb_array_elements_text(${JSON.stringify(ticketIds)}::jsonb))`;
+    WHERE t.public_id IN (SELECT jsonb_array_elements_text(${JSON.stringify(ticketIds)}::text::jsonb))`;
   return new Map(rows.map(row => [String(row.public_id), { title: String(row.title), description: String(row.description) }]));
 }
