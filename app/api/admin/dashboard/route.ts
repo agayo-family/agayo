@@ -86,8 +86,8 @@ export async function GET(request: Request) {
 
     const upcomingRows = await sql`
       SELECT slug,title,starts_at,status,sales_state,age_label
-      FROM events
-      WHERE status='published' AND starts_at >= now()
+      FROM events e
+      WHERE status='published' AND starts_at >= now() AND (to_jsonb(e)->>'deleted_at') IS NULL
       ORDER BY starts_at ASC
       LIMIT 12
     `;
