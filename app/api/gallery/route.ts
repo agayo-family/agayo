@@ -8,6 +8,10 @@ export async function GET(request: Request) {
   const raw = params.get('events');
   const eventSlugs = raw === null ? undefined : raw.split(',').filter(Boolean).slice(0, 100);
   if (eventSlugs?.some(slug => slug.length > 200)) return NextResponse.json({ error: 'Некорректное событие' }, { status: 400 });
-  const data = await getPublicPhotoPage({ offset, sort: params.get('sort') === 'oldest' ? 'oldest' : 'newest', eventSlugs });
-  return NextResponse.json(data, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' } });
+  try {
+    const data = await getPublicPhotoPage({ offset, sort: params.get('sort') === 'oldest' ? 'oldest' : 'newest', eventSlugs });
+    return NextResponse.json(data, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' } });
+  } catch {
+    return NextResponse.json({error:'Внешний альбом временно недоступен. Фотографии сохранены у источника — попробуй ещё раз.'},{status:503});
+  }
 }
