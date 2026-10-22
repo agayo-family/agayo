@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       SELECT
         t.id,t.public_id,t.event_slug,t.owner_name,t.category_id,t.category_name,t.status,t.zone,t.seat,t.used_at,t.created_at,
         u.email,u.phone,u.agayo_id,
-        o.id AS order_id,o.public_id AS order_public_id,o.status AS order_status,o.subtotal,o.total,o.refunded_amount,
+        o.id AS order_id,o.public_id AS order_public_id,o.status AS order_status,o.email AS order_email,o.subtotal,o.total,o.refunded_amount,
         o.yookassa_payment_id,o.paid_at,o.legal_version,o.npd_receipt_status,o.npd_receipt_id,o.npd_receipt_url,o.npd_receipt_amount,
         e.starts_at AS event_starts_at,
         oi.unit_price,
@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         t.public_id ILIKE ${term} OR
         t.owner_name ILIKE ${term} OR
         o.public_id ILIKE ${term} OR
+        COALESCE(o.email,'') ILIKE ${term} OR
         COALESCE(u.email,'') ILIKE ${term} OR
         COALESCE(u.phone,'') ILIKE ${term} OR
         COALESCE(u.agayo_id,'') ILIKE ${term} OR
