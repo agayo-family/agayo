@@ -8,6 +8,7 @@ import { taggedSql } from './database-fixture.mjs';
 const owner = '00000000-0000-0000-0000-000000000001', other = '00000000-0000-0000-0000-000000000002';
 const ticketId = '00000000-0000-0000-0000-000000000003';
 const security = await loadTs('../lib/server/security.ts');
+const transport = await loadTsx('../lib/server/email-transport.ts');
 const names = ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_USERNAME', 'TELEGRAM_WEBHOOK_SECRET'];
 const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
 before(() => { process.env.TELEGRAM_BOT_TOKEN = '123456:ISOLATED_FAKE_TOKEN_DO_NOT_SEND'; process.env.TELEGRAM_BOT_USERNAME = 'agayo_fixture_bot'; process.env.TELEGRAM_WEBHOOK_SECRET = 'ISOLATED_WEBHOOK_SECRET_DO_NOT_SEND_12345'; });
@@ -155,10 +156,10 @@ test('profile link requires an authenticated same-origin owner and webhook rejec
 test('ticket sender suppresses Resend on confirmed Telegram delivery and preserves email fallback', async () => {
   const presentation = await loadTs('../lib/event-presentation.ts'), art = await loadTs('../lib/halloween-art.ts');
   let handled = true, uncertain = false, telegramCalls = 0, emailCalls = 0;
-  const { sendTicketEmail } = await loadTsx('../lib/server/email.ts', { '@/lib/event-presentation': presentation, '@/lib/halloween-art': art, './telegram': { deliverTicketTelegram: async () => { telegramCalls++; if (uncertain) throw new Error('Uncertain delivery'); return { handled }; } } });
+  const { sendTicketEmail } = await loadTsx('../lib/server/email.ts', { '@/lib/event-presentation': presentation, '@/lib/halloween-art': art, './email-transport': transport, './telegram': { deliverTicketTelegram: async () => { telegramCalls++; if (uncertain) throw new Error('Uncertain delivery'); return { handled }; } } });
   const oldFetch = globalThis.fetch, oldKey = process.env.EMAIL_PROVIDER_API_KEY, oldFrom = process.env.EMAIL_FROM;
   process.env.EMAIL_PROVIDER_API_KEY = 'ISOLATED_DO_NOT_SEND'; process.env.EMAIL_FROM = 'fixture@example.test';
-  globalThis.fetch = async url => { assert.equal(url, 'https://api.resend.com/emails'); emailCalls++; return Response.json({}); };
+  globalThis.fetch = async url => { assert.equal(url, 'https://api.resend.com/emails'); emailCalls++; return Response.json({id:'isolated-email-id'}); };
   try {
     const ticket = { eventTitle: 'AGAYO', eventDate: '01.01.80', eventTime: '18:00', eventCity: 'Йошкар-Ола', eventAge: '14+', alcoholFree: true, ticketId: input.ticketId, ticketUrl: input.ticketUrl, qrToken: 'ISOLATED_DO_NOT_SEND', ownerName: 'Гость', categoryName: 'STANDARD' };
     await sendTicketEmail('owner@example.test', ticket); assert.equal(emailCalls, 0);

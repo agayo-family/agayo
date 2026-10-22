@@ -2,11 +2,12 @@ import { db } from './db';
 import { resolveBlobToken } from './blob';
 import { isSmsConfigured } from './sms';
 import { isReceiptConfigurationReady, isYooKassaConfigured } from './yookassa';
+import { emailConfiguration } from './email-transport';
 
 export type SystemStatus = {
-  database: { configured:boolean; reachable:boolean; schemaReady:boolean };
+  database: { configured:boolean; reachable:boolean; schemaReady:boolean; missingMigrations:string[] };
   auth: { configured:boolean };
-  email: { configured:boolean };
+  email: { configured:boolean; sandbox:boolean; productionReady:boolean };
   blob: { configured:boolean };
   yookassa: { configured:boolean; paymentsEnabled:boolean };
   fiscal: { required:boolean; configured:boolean; confirmed:boolean; ready:boolean };
@@ -20,6 +21,7 @@ export async function getSystemStatus(): Promise<SystemStatus> {
   const databaseConfigured = Boolean(process.env.DATABASE_URL);
   let databaseReachable = false;
   let databaseSchemaReady = false;
+  let missingMigrations: string[] = [];
   if (databaseConfigured) {
     try {
       const rows = await db()`
@@ -33,15 +35,30 @@ export async function getSystemStatus(): Promise<SystemStatus> {
           to_regclass('public.ticket_refunds') IS NOT NULL AS ticket_refunds,
           EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='npd_receipt_status') AS npd_receipts,
           EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='loyalty_levels' AND column_name='visual_mode') AS loyalty_visuals,
-          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='media_photos' AND column_name='source_key') AS media_resume
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='media_photos' AND column_name='source_key') AS media_resume,
+          to_regclass('public.site_pages') IS NOT NULL AS site_content,
+          to_regclass('public.personal_ticket_grants') IS NOT NULL AS personal_tickets,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='events' AND column_name='deleted_at') AS event_retirement,
+          to_regclass('public.admin_refund_requests') IS NOT NULL AS refund_requests,
+          to_regclass('public.event_gallery_sources') IS NOT NULL AS external_gallery,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='event_ticket_categories' AND column_name='hot_batch_started_at') AS hot_batches
       `;
       databaseReachable = Number(rows[0]?.ok) === 1;
-      databaseSchemaReady = Boolean(rows[0]?.promo_reservations && rows[0]?.loyalty_levels && rows[0]?.refund_columns && rows[0]?.flexible_loyalty && rows[0]?.loyalty_override && rows[0]?.ticket_refunds && rows[0]?.npd_receipts && rows[0]?.loyalty_visuals && rows[0]?.media_resume);
+      const required = [
+        ['008', 'promo_reservations'], ['008', 'loyalty_levels'], ['008', 'refund_columns'],
+        ['009', 'flexible_loyalty'], ['010', 'loyalty_override'], ['011', 'ticket_refunds'],
+        ['011', 'npd_receipts'], ['011', 'loyalty_visuals'], ['012', 'site_content'],
+        ['013', 'personal_tickets'], ['014', 'event_retirement'], ['015', 'refund_requests'],
+        ['016', 'external_gallery'], ['018', 'hot_batches'],
+      ];
+      missingMigrations = [...new Set(required.filter(([, field]) => !rows[0]?.[field]).map(([migration]) => migration))];
+      databaseSchemaReady = missingMigrations.length === 0 && Boolean(rows[0]?.media_resume);
     } catch { databaseReachable = false; databaseSchemaReady = false; }
   }
 
   const authConfigured = String(process.env.AUTH_SECRET || '').length >= 32;
-  const emailConfigured = Boolean(process.env.EMAIL_PROVIDER_API_KEY && process.env.EMAIL_FROM);
+  const email = emailConfiguration();
+  const emailConfigured = email.productionReady;
   const blobConfigured = Boolean(resolveBlobToken());
   const yookassaConfigured = isYooKassaConfigured();
   const paymentsEnabled = process.env.PAYMENTS_ENABLED === '1';
@@ -55,9 +72,9 @@ export async function getSystemStatus(): Promise<SystemStatus> {
   const ownerConfigured = Boolean(process.env.AGAYO_OWNER_EMAIL);
 
   return {
-    database:{ configured:databaseConfigured,reachable:databaseReachable,schemaReady:databaseSchemaReady },
+    database:{ configured:databaseConfigured,reachable:databaseReachable,schemaReady:databaseSchemaReady,missingMigrations },
     auth:{ configured:authConfigured },
-    email:{ configured:emailConfigured },
+    email:{ configured:email.configured, sandbox:email.sandbox, productionReady:email.productionReady },
     blob:{ configured:blobConfigured },
     yookassa:{ configured:yookassaConfigured,paymentsEnabled },
     fiscal:{ required:fiscalRequired,configured:fiscalConfigured,confirmed:fiscalConfirmed,ready:fiscalReady },

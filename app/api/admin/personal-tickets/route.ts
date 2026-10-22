@@ -9,7 +9,7 @@ import { getEventCatalogBadge } from '@/lib/events';
 import { siteOrigin } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 180;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const clean = (value: unknown, max: number) => String(value || '').trim().slice(0, max);
 async function campaigns() {

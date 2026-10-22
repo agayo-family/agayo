@@ -4,6 +4,7 @@ import { retryOrderTicketDelivery, syncYooKassaPayment } from "@/lib/server/paym
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 180;
 
 export async function GET(
   request: Request,
@@ -55,11 +56,11 @@ export async function GET(
     const [delivery] = await sql`
       SELECT
         COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE status='sent')::int AS sent,
-        COUNT(*) FILTER (WHERE status='failed')::int AS failed
+        COUNT(*) FILTER (WHERE d.status='sent')::int AS sent,
+        COUNT(*) FILTER (WHERE d.status='failed')::int AS failed
       FROM ticket_deliveries d
       JOIN tickets t ON t.id=d.ticket_id
-      WHERE t.order_id=${order.id} AND d.channel='email'
+      WHERE t.order_id=${order.id} AND d.channel='email' AND t.status IN ('valid','used')
     `;
 
     return NextResponse.json({

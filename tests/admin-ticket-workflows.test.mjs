@@ -144,7 +144,7 @@ test('expired unknown idempotency never sends money again; another ticket/order 
 });
 
 async function refundProcessor(sql,payment,refund) {
-  return loadTsx('../lib/server/payment-processing.ts', {
+  return loadTsx('../lib/server/payment-processing.ts', { './email-transport': await loadTsx('../lib/server/email-transport.ts'),
     '@/lib/server/db':{db:()=>sql},'@/lib/server/events':{},'@/lib/server/email':{},
     '@/lib/server/yookassa':{getPayment:async()=>payment,getRefund:async()=>refund},'@/lib/server/security':security,
     '@/lib/server/loyalty':{updateUserLoyaltyByVisits:async()=>{}},'@/lib/server/npd':{markNpdAfterRefund:async()=>{}},

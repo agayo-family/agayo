@@ -1,0 +1,302 @@
+{
+  "date": "2026-10-22",
+  "pages": [
+    "app/(landing)/page.tsx",
+    "app/about/page.tsx",
+    "app/admin/page.tsx",
+    "app/admin/scanner/page.tsx",
+    "app/admin-preview/page.tsx",
+    "app/auth/page.tsx",
+    "app/checkout/success/page.tsx",
+    "app/events/[slug]/checkout/page.tsx",
+    "app/events/[slug]/page.tsx",
+    "app/events/[slug]/rules/page.tsx",
+    "app/events/agayo-night/tickets/page.tsx",
+    "app/events/page.tsx",
+    "app/gallery/page.tsx",
+    "app/legal/offer/page.tsx",
+    "app/legal/page.tsx",
+    "app/legal/privacy/page.tsx",
+    "app/legal/user-agreement/page.tsx",
+    "app/profile/favorites/page.tsx",
+    "app/profile/page.tsx",
+    "app/tickets/[token]/page.tsx",
+    "app/tickets/demo-agayo-night/page.tsx",
+    "app/tickets/demo-vernite-lampovost/page.tsx"
+  ],
+  "apiRoutes": [
+    {
+      "file": "app/api/admin/about/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/admin/blob/upload/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/buyers/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/dashboard/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/events/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/admin/events/[id]/stats/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/events/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/loyalty/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/admin/loyalty/user/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/admin/loyalty/visual-upload/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/me/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/media/event-photos/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/admin/media/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/admin/media/upload/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/media/vk/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/media/yandex/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/npd/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/admin/personal-tickets/categories/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/personal-tickets/individual-events/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/personal-tickets/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/promos/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/admin/system/capacity/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/system/email/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/system/status/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/team/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/admin/tickets/action/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/tickets/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/admin/tickets/scan/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/admin/upload-poster/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/auth/logout/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/auth/request-code/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/auth/verify-code/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/cron/ticket-delivery/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/favorites/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/gallery/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/me/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/orders/[publicId]/status/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/orders/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/payments/yookassa/webhook/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/profile/telegram/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/promos/validate/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/telegram/webhook/route.ts",
+      "methods": [
+        "POST"
+      ]
+    }
+  ]
+}

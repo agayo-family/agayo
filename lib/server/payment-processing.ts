@@ -5,6 +5,7 @@ import { getPayment, getRefund } from "@/lib/server/yookassa";
 import { publicId, randomToken } from "@/lib/server/security";
 import { updateUserLoyaltyByVisits } from "@/lib/server/loyalty";
 import { markNpdAfterRefund, markNpdReceiptRequired } from "@/lib/server/npd";
+import { assertEmailRetrySafe, emailErrorMessage } from './email-transport';
 
 export type SyncResult = {
   state: "missing" | "pending" | "paid" | "canceled" | "refunded" | "partial_refund";
@@ -12,7 +13,7 @@ export type SyncResult = {
 };
 
 function errorText(error: unknown) {
-  return (error instanceof Error ? error.message : String(error)).slice(0, 1000);
+  return emailErrorMessage(error);
 }
 
 function exactMoney(value:unknown) {
@@ -43,13 +44,14 @@ export async function deliverOrderTickets(order: any, event: any, baseUrl: strin
     const delivery = await sql.begin(async (tx: any) => {
       await tx`INSERT INTO ticket_deliveries(ticket_id,channel,destination,status)
         VALUES(${ticket.id},'email',${order.email},'pending') ON CONFLICT (ticket_id,channel) DO NOTHING`;
-      const [row] = await tx`SELECT id,status FROM ticket_deliveries WHERE ticket_id=${ticket.id} AND channel='email' FOR UPDATE`;
+      const [row] = await tx`SELECT id,status,created_at,last_error FROM ticket_deliveries WHERE ticket_id=${ticket.id} AND channel='email' FOR UPDATE`;
       return row?.status === 'sent' ? null : row;
     });
     if (!delivery) continue;
     // Provider I/O must never hold an order lock or SQL connection. Concurrent
     // retries use the same provider key; a late failure cannot undo a success.
     try {
+      assertEmailRetrySafe(delivery);
       await sendTicketEmail(String(order.email), {
         eventTitle:String(event.title), eventSlug:String(event.slug), eventDate:String(event.dateLabel),
         eventTime:String(event.timeLabel), eventCity:String(event.city), eventAge:String(event.ageLabel),

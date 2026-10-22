@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { syncYooKassaPayment, syncYooKassaRefund } from "@/lib/server/payment-processing";
 
 export const runtime = "nodejs";
+export const maxDuration = 180;
 
 export async function POST(request: Request) {
   try {

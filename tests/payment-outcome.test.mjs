@@ -33,7 +33,7 @@ test('lost provider response retains inventory, late succeeded webhook issues on
     tracked.begin=async callback=>{activeTransactions++;try{return await sql.begin(callback);}finally{activeTransactions--;}};
     const payment={id:'isolated-payment',status:'succeeded',paid:true,amount:{value:'300.00',currency:'RUB'},metadata:{orderPublicId:order.public_id}};
     const {syncYooKassaPayment}=await loadTsx('../lib/server/payment-processing.ts',{
-      '@/lib/server/db':{db:()=>tracked},'@/lib/server/events':{getEventServer:async()=>event},
+      './email-transport':await loadTsx('../lib/server/email-transport.ts'),'@/lib/server/db':{db:()=>tracked},'@/lib/server/events':{getEventServer:async()=>event},
       '@/lib/server/email':{sendTicketEmail:async(_to,input)=>{assert.equal(activeTransactions,0);assert.ok(input.deliveryKey);emails++;}},
       '@/lib/server/yookassa':{getPayment:async()=>payment,getRefund:async()=>null},'@/lib/server/security':security,
       '@/lib/server/loyalty':{updateUserLoyaltyByVisits:async()=>{}},'@/lib/server/npd':{markNpdReceiptRequired:async()=>{},markNpdAfterRefund:async()=>{}},
