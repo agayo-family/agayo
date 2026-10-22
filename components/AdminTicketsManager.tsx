@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminIndividualTicketsManager from './AdminIndividualTicketsManager';
 
 type TicketRow = {
   id:string; public_id:string; event_slug:string; owner_name:string; category_name:string; status:string;
   zone:string|null; seat:string|null; used_at:string|null; created_at:string;
   email:string|null; phone:string|null; agayo_id:string|null;
-  order_id:string; order_public_id:string; order_status:string; subtotal:number; total:number; refunded_amount:number; yookassa_payment_id:string|null; paid_at:string|null;
+  order_id:string; order_public_id:string; order_status:string; order_email:string|null; subtotal:number; total:number; refunded_amount:number; yookassa_payment_id:string|null; paid_at:string|null;
   order_ticket_count:number; event_starts_at:string|null; paid_share:number;
   refund_quote_percent:0|30|50|100; refund_quote_amount:number; refund_quote_label:string; days_before_event:number;
   ticket_refund_id:string|null; ticket_refund_yookassa_id:string|null; ticket_refund_percent:number|null; ticket_refund_amount:number; ticket_refund_status:string|null;
@@ -45,6 +45,9 @@ export default function AdminTicketsManager() {
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
   const [busyId,setBusyId]=useState("");
+  const resendRequests = useRef(new Map<string,string>());
+  const resendBusy = useRef(false);
+  const [resendPending,setResendPending] = useState<Record<string,boolean>>({});
   const [npdInputs,setNpdInputs]=useState<Record<string,string>>({});
   const [refundInputs,setRefundInputs]=useState<Record<string,{amount:string;reason:string}>>({});
 
@@ -64,6 +67,35 @@ export default function AdminTicketsManager() {
   useEffect(() => { void load(); }, [load]);
 
   const uniqueOrders=useMemo(()=>new Set(tickets.map((ticket)=>ticket.order_id)).size,[tickets]);
+
+  const firstByOrder=useMemo(()=>{
+    const first=new Map<string,string>();
+    for(const ticket of tickets) if(!first.has(ticket.order_id)) first.set(ticket.order_id,ticket.id);
+    return first;
+  },[tickets]);
+
+  async function resendOrder(ticket:TicketRow) {
+    if(resendBusy.current) return;
+    const existing=resendRequests.current.get(ticket.order_id);
+    if(!existing && !window.confirm(`Повторно отправить билеты заказа ${ticket.order_public_id} на ${ticket.order_email||ticket.email||'почту из заказа'}?\nНомера и QR-коды сохранятся.`)) return;
+    const requestId=existing||crypto.randomUUID();
+    resendRequests.current.set(ticket.order_id,requestId);
+    resendBusy.current=true;setBusyId(`resend:${ticket.order_id}`);setMessage('');
+    setResendPending(current=>({...current,[ticket.order_id]:true}));
+    try {
+      const response=await fetch(`/api/admin/orders/${encodeURIComponent(ticket.order_public_id)}/resend`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId})
+      });
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||'Не удалось подтвердить отправку');
+      if(data.status==='sent') {
+        resendRequests.current.delete(ticket.order_id);
+        setResendPending(current=>({...current,[ticket.order_id]:false}));
+      }
+      await load(query);setMessage(data.message||'Проверка отправки завершена');
+    }catch(error){setMessage(error instanceof Error?error.message:'Не удалось подтвердить отправку. Повтори проверку.');}
+    finally{resendBusy.current=false;setBusyId('');}
+  }
 
   async function action(ticket:TicketRow, name:"cancel_ticket"|"restore_ticket"|"reset_scan"|"refund_order"|"refund_ticket_policy"|"refund_ticket_custom") {
     let confirmText = "";
@@ -129,12 +161,13 @@ export default function AdminTicketsManager() {
               <div><small>ВЛАДЕЛЕЦ</small><b>{ticket.owner_name}</b><span>{ticket.agayo_id||"—"}</span></div>
               <div><small>СТАТУС</small><b>{statusLabel(ticket.status)}</b>{ticket.used_at?<span>Проход: {new Intl.DateTimeFormat("ru-RU",{dateStyle:"short",timeStyle:"short"}).format(new Date(ticket.used_at))}</span>:null}</div>
               <div><small>КОНТАКТ</small><b>{ticket.email||ticket.phone||"—"}</b><span>{ticket.phone||(ticket.email?"email":"")}</span></div>
-              <div><small>ЗАКАЗ</small><b>{ticket.order_public_id}</b><span>{permissions.canRefund?`${money(ticket.paid_share)} ₽ за билет · `:""}{ticket.order_ticket_count} шт.</span></div>
+              <div><small>ЗАКАЗ</small><b>{ticket.order_public_id}</b>{ticket.order_email?<span>Почта заказа: {ticket.order_email}</span>:null}<span>{permissions.canRefund?`${money(ticket.paid_share)} ₽ за билет · `:""}{ticket.order_ticket_count} шт.</span></div>
             </div>
 
             {permissions.canRefund?<div className="admin-refund-policy-v134"><span>ВОЗВРАТ ПО ПРАВИЛАМ</span><b>{ticket.refund_quote_label}</b>{ticket.ticket_refund_status?<small>Этот билет: {ticket.ticket_refund_status==="succeeded"?`возвращено ${money(ticket.ticket_refund_amount)} ₽ (${ticket.ticket_refund_percent}%)`:ticket.ticket_refund_status==="pending"?"возврат обрабатывается":"предыдущая попытка возврата не завершилась"}</small>:ticket.refund_quote_percent>0?<small>Расчёт: {money(ticket.refund_quote_amount)} ₽ от фактически оплаченной доли билета</small>:<small>Автоматический добровольный возврат сейчас равен 0%.</small>}</div>:null}
 
             <div className="admin-ticket-actions-v133">
+              {permissions.canManageTickets&&firstByOrder.get(ticket.order_id)===ticket.id?<button className="admin-secondary" type="button" disabled={Boolean(busyId)||ticket.order_status!=='paid'} title={ticket.order_status==='paid'?'Отправить те же билеты на почту из заказа':'Доступно для оплаченного заказа'} onClick={()=>void resendOrder(ticket)}>{busyId===`resend:${ticket.order_id}`?'ОТПРАВЛЯЕМ…':resendPending[ticket.order_id]?'Проверить повторную отправку':ticket.order_ticket_count>1?'Отправить билеты повторно':'Отправить билет повторно'}</button>:null}
               {permissions.canRefund && ticket.refund_request ? <button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={() => void action(ticket,ticket.refund_request?.ticket_id ? 'refund_ticket_policy' : 'refund_order')}>Проверить возврат · {money(ticket.refund_request.amount)} ₽</button> : null}
               {permissions.canManageTickets&&ticket.status==="valid"?<button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={()=>void action(ticket,"cancel_ticket")}>Отменить билет</button>:null}
               {permissions.canManageTickets&&ticket.status==="cancelled"&&ticket.order_status==="paid"&&!ticket.ticket_refund_id?<button className="admin-secondary" type="button" disabled={busyId===ticket.id} onClick={()=>void action(ticket,"restore_ticket")}>Восстановить</button>:null}

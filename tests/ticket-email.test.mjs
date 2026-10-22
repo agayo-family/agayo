@@ -29,3 +29,17 @@ test('email contains personal description, palette, Halloween atmosphere and att
     assert.ok(payload.attachments.some(attachment=>attachment.filename.endsWith('.svg')));
   }finally{globalThis.fetch=previous;if(key===undefined)delete process.env.EMAIL_PROVIDER_API_KEY;else process.env.EMAIL_PROVIDER_API_KEY=key;if(from===undefined)delete process.env.EMAIL_FROM;else process.env.EMAIL_FROM=from;}
 });
+
+test('explicit email resend bypasses a linked Telegram preference while normal delivery still honors it',async()=>{
+  let telegramCalls=0;const messages=[];
+  const sender=await loadTsx('../lib/server/email.ts',{
+    '@/lib/event-presentation':presentation,'@/lib/halloween-art':art,
+    './telegram':{deliverTicketTelegram:async()=>{telegramCalls++;return{handled:true};}},
+    './email-transport':{sendProviderEmail:async(...args)=>{messages.push(args);return{channel:'email',providerId:'isolated-resend-id'};}}
+  });
+  assert.deepEqual(await sender.sendTicketEmail('original@example.test',input),{channel:'telegram'});
+  assert.equal(telegramCalls,1);assert.equal(messages.length,0);
+  assert.deepEqual(await sender.sendTicketEmail('original@example.test',input,{emailOnly:true}),{channel:'email',providerId:'isolated-resend-id'});
+  assert.equal(telegramCalls,1);assert.equal(messages.length,1);
+  assert.deepEqual(messages[0][0].to,['original@example.test']);assert.equal(messages[0][1],input.deliveryKey);
+});

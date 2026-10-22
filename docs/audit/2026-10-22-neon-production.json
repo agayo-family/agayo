@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-22",
+  "scope": "neon-agayo / main / neondb",
+  "mode": "Read-only aggregate SELECT; no customer addresses, QR tokens or credentials selected; no production writes",
+  "orders": {
+    "paid": 17,
+    "refunded": 2,
+    "cancelled": 9
+  },
+  "tickets": {
+    "used": 1,
+    "valid": 13,
+    "refunded": 2,
+    "cancelled": 3
+  },
+  "deliveries": [
+    {
+      "count": 19,
+      "status": "sent",
+      "channel": "email",
+      "attempts": 19,
+      "last_sent_at": "2026-10-21T13:15:53.921031+00:00",
+      "first_created_at": "2026-09-15T11:48:02.138013+00:00"
+    }
+  ],
+  "observed_at": "2026-10-22T11:20:37.763374+00:00",
+  "database_bytes": 11943936,
+  "paid_orders_without_ticket": 0,
+  "manual_resend_table_present": false,
+  "pending_orders_without_payment_id": 0,
+  "active_paid_tickets_without_email_record": 0,
+  "interpretation": "Historical application status sent does not establish inbox delivery or provider-side delivered/bounced state. No production mail was sent for this audit."
+}

@@ -102,13 +102,13 @@ export function ticketSvg(input:TicketEmailInput, qrBase64:string) {
 </svg>`;
 }
 
-export async function sendTicketEmail(to: string, input:TicketEmailInput) {
+export async function sendTicketEmail(to: string, input:TicketEmailInput, options: { emailOnly?: boolean } = {}) {
   const qrBuffer = await QRCode.toBuffer(`AGAYO-TICKET:${input.qrToken}`, {
     type:"png",margin:1,width:560,errorCorrectionLevel:"M",
     color:{dark:"#0B0B0C",light:"#F2F0EA"},
   });
   const qrBase64=qrBuffer.toString("base64");
-  const telegram = await deliverTicketTelegram(to, {
+  const telegram = options.emailOnly ? { handled: false } : await deliverTicketTelegram(to, {
     ticketId: input.ticketId, ticketUrl: input.ticketUrl, deliveryKey: input.deliveryKey, qrBuffer,
     caption: [input.eventTitle, `${input.eventDate} · ${input.eventTime} · ${input.eventCity}`, `${input.eventAge}${input.alcoholFree ? ' · ALCOHOL FREE' : ''}`, `Владелец: ${input.ownerName}`, `Категория: ${input.categoryName}`, `Билет: ${input.ticketId}`, 'Один билет = один вход. QR находится в приложенном файле.', input.personalTitle, input.personalDescription, [input.zone, input.seat].filter(Boolean).join(' · ')].filter(Boolean).join('\n'),
   });

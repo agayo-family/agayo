@@ -137,6 +137,12 @@
       ]
     },
     {
+      "file": "app/api/admin/orders/[publicId]/resend/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
       "file": "app/api/admin/personal-tickets/categories/route.ts",
       "methods": [
         "POST"
