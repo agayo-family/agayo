@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { needsOrderStatusRefresh } from '@/lib/checkout-status';
 
 type OrderStatus = {
   orderId: string;
@@ -42,12 +43,12 @@ export default function CheckoutStatus({ orderPublicId }: { orderPublicId?: stri
         setData(result);
         setError("");
 
-        if (result.status === "pending") {
+        if (needsOrderStatusRefresh(result)) {
           if (attempts >= maxAutomaticChecks) {
             setStalled(true);
             return;
           }
-          timer = setTimeout(check, 2200);
+          timer = setTimeout(check, result.status === 'paid' ? 10000 : 2200);
         } else {
           setStalled(false);
         }
@@ -81,16 +82,20 @@ export default function CheckoutStatus({ orderPublicId }: { orderPublicId?: stri
     }
     const status = data?.status || "pending";
     if (status === "paid") {
+      if (!data?.ticketCount) return { mark: '✓', title: 'ОПЛАТА\nПРОШЛА',
+        text: 'Оплата подтверждена. Проверяем статус билетов — его также можно посмотреть в AGAYO ID.' };
       const failed = Number(data?.delivery.failed || 0);
       const mailPending = Boolean(data && data.ticketCount > 0 && data.delivery.sent < data.ticketCount);
       return {
         mark: "✓",
         title: "ОПЛАТА\nПРОШЛА",
         text: failed > 0
-          ? "Билет уже выпущен и сохранён в AGAYO ID. С отправкой письма возникла ошибка, но сам билет не потерян — страница безопасно повторяет доставку при проверке статуса."
+          ? stalled
+            ? "Билет сохранён в AGAYO ID, но отправка пока не подтверждена. Открой билет в профиле или нажми «Проверить ещё раз»."
+            : "Билет сохранён в AGAYO ID. Отправка пока не подтверждена — мы повторяем проверку. Билет уже можно открыть в профиле."
           : mailPending
             ? "Билет уже выпущен и сохранён в AGAYO ID. Письмо ещё отправляется — сам билет от этого не потеряется."
-            : "Билет выпущен, сохранён в AGAYO ID и отправлен на почту из заказа.",
+            : "Билет сохранён в AGAYO ID и передан службе доставки выбранным способом. Для почты проверь также папку «Спам».",
       };
     }
     if (status === "cancelled" || status === "expired") {
@@ -119,7 +124,7 @@ export default function CheckoutStatus({ orderPublicId }: { orderPublicId?: stri
   const eventHref = data?.eventSlug ? `/events/${encodeURIComponent(data.eventSlug)}` : "/events";
   const retryHref = data?.eventSlug ? `/events/${encodeURIComponent(data.eventSlug)}/checkout` : "/events";
   const isClosed = data?.status === "cancelled" || data?.status === "expired";
-  const pending = Boolean(orderPublicId && (!data || data.status === "pending"));
+  const pending = Boolean(orderPublicId && (!data || needsOrderStatusRefresh(data)));
 
   return (
     <section className="checkout-success-shell">

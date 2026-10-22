@@ -4,8 +4,9 @@ import sharp from 'sharp';
 import QRCode from 'qrcode';
 import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, MultiFormatReader, DecodeHintType, BarcodeFormat } from '@zxing/library';
 import {loadTs,loadTsx} from './load-ts.mjs';
+const transport = await loadTsx('../lib/server/email-transport.ts');
 const presentation=await loadTs('../lib/event-presentation.ts'),art=await loadTs('../lib/halloween-art.ts');
-const {ticketSvg,sendTicketEmail}=await loadTsx('../lib/server/email.ts',{'@/lib/event-presentation':presentation,'@/lib/halloween-art':art,'./telegram':{deliverTicketTelegram:async()=>({handled:false})}});
+const {ticketSvg,sendTicketEmail}=await loadTsx('../lib/server/email.ts',{'@/lib/event-presentation':presentation,'@/lib/halloween-art':art,'./email-transport':transport,'./telegram':{deliverTicketTelegram:async()=>({handled:false})}});
 const input={eventTitle:'AGAYO HALLOWEEN: ПОСЛЕДНЯЯ УЛЫБКА',eventSlug:'agayo-halloween-история-одного-клоуна',eventDate:'07.11.26',eventTime:'18:00–21:00',eventCity:'Йошкар-Ола',eventAge:'14+',alcoholFree:true,ticketId:'AGY-PERSONAL-FIXTURE',ticketUrl:'https://www.agayo.ru/tickets/isolated-test-token',qrToken:'isolated-test-token',ownerName:'Сергей <script>alert(1)</script>',categoryName:'GOLD',personalTitle:'Для тебя',personalDescription:'Все слова в коротком описании сохраняются полностью.',theme:{primary:'#101018',secondary:'#7f1430',accent:'#cb385f'},deliveryKey:'ISOLATED-TEST-ONLY'};
 test('Halloween SVG uses event colors, escapes text and its unobstructed QR decodes after rasterization',async()=>{
   const png=await QRCode.toBuffer(`AGAYO-TICKET:${input.qrToken}`,{width:560,margin:1});
@@ -20,7 +21,7 @@ test('email contains personal description, palette, Halloween atmosphere and att
   const previous=globalThis.fetch,key=process.env.EMAIL_PROVIDER_API_KEY,from=process.env.EMAIL_FROM;
   process.env.EMAIL_PROVIDER_API_KEY='isolated-do-not-send';process.env.EMAIL_FROM='fixture@example.test';
   let payload;
-  globalThis.fetch=async(url,options)=>{assert.equal(url,'https://api.resend.com/emails');assert.equal(options.headers['Idempotency-Key'],input.deliveryKey);payload=JSON.parse(options.body);return new Response('{}',{status:200});};
+  globalThis.fetch=async(url,options)=>{assert.equal(url,'https://api.resend.com/emails');assert.equal(options.headers['Idempotency-Key'],input.deliveryKey);payload=JSON.parse(options.body);return Response.json({id:'isolated-email-id'});};
   try {
     await sendTicketEmail('guest@example.test',input);
     assert.ok(payload.html.includes(input.personalDescription));assert.ok(payload.html.includes('halloween-ticket-atmosphere.png'));

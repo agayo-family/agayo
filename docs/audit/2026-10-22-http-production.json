@@ -1,0 +1,213 @@
+{
+  "date": "2026-10-22",
+  "origin": "https://www.agayo.ru",
+  "mode": "read-only GET requests; no real orders or emails",
+  "passed": 10,
+  "total": 25,
+  "checks": [
+    {
+      "path": "/",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 6633,
+      "finalUrl": "https://www.agayo.ru/",
+      "bytes": 64142,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/events",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 6391,
+      "finalUrl": "https://www.agayo.ru/events",
+      "bytes": 16128,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8",
+      "eventLinks": [
+        "/events/agayo-halloween-%D0%B8%D1%81%D1%82%D0%BE%D1%80%D0%B8%D1%8F-%D0%BE%D0%B4%D0%BD%D0%BE%D0%B3%D0%BE-%D0%BA%D0%BB%D0%BE%D1%83%D0%BD%D0%B0",
+        "/events/%D0%B2%D0%B5%D1%80%D0%BD%D0%B8%D1%82%D0%B5-%D0%BB%D0%B0%D0%BC%D0%BF%D0%BE%D0%B2%D0%BE%D1%81%D1%82%D1%8C"
+      ]
+    },
+    {
+      "path": "/about",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 6490,
+      "finalUrl": "https://www.agayo.ru/about",
+      "bytes": 15587,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/gallery",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 4776,
+      "finalUrl": "https://www.agayo.ru/gallery",
+      "bytes": 111063,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/legal",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 4724,
+      "finalUrl": "https://www.agayo.ru/legal",
+      "bytes": 15245,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/legal/privacy",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 4515,
+      "finalUrl": "https://www.agayo.ru/legal/privacy",
+      "bytes": 29974,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/legal/offer",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 4767,
+      "finalUrl": "https://www.agayo.ru/legal/offer",
+      "bytes": 36830,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/legal/user-agreement",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 4760,
+      "finalUrl": "https://www.agayo.ru/legal/user-agreement",
+      "bytes": 24850,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/auth",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 4641,
+      "finalUrl": "https://www.agayo.ru/auth",
+      "bytes": 13269,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/profile",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "durationMs": 5030,
+      "finalUrl": "https://www.agayo.ru/profile",
+      "bytes": 26966,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/admin",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/admin/scanner",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/admin-preview",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/tickets/demo-agayo-night",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/tickets/demo-vernite-lampovost",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/checkout/success",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/events/does-not-exist-audit-20261022",
+      "expected": 404,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/tickets/invalid-audit-token-20261022",
+      "expected": 404,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/api/me",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/api/admin/system/status",
+      "expected": 403,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/api/admin/tickets",
+      "expected": 403,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/api/gallery",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/robots.txt",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/sitemap.xml",
+      "expected": 200,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "path": "/api/orders/invalid-audit-order-20261022/status",
+      "expected": 404,
+      "passed": false,
+      "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>"
+    }
+  ]
+}

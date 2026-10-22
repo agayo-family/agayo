@@ -2,8 +2,7 @@ import QRCode from "qrcode";
 import { isHalloweenEvent } from '@/lib/event-presentation';
 import { CIRCUS_ART, CLOWN_ART, BAT_ART } from '@/lib/halloween-art';
 import { deliverTicketTelegram } from './telegram';
-
-const endpoint = "https://api.resend.com/emails";
+import { sendProviderEmail } from './email-transport';
 
 type EmailAttachment = {
   filename: string;
@@ -70,20 +69,7 @@ function wrapSvgText(value:string,maxChars=23,maxLines=2) {
 }
 
 async function sendEmail(to: string, subject: string, html: string, attachments:EmailAttachment[] = [], idempotencyKey?:string) {
-  const key = process.env.EMAIL_PROVIDER_API_KEY;
-  const from = process.env.EMAIL_FROM;
-  if (!key || !from) throw new Error("Email provider is not configured");
-  const response = await fetch(endpoint, {
-    method: "POST",
-    signal: AbortSignal.timeout(8000),
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
-    body: JSON.stringify({ from, to: [to], subject, html, ...(attachments.length ? {attachments} : {}) }),
-  });
-  if (!response.ok) {
-    let details="";
-    try { details=JSON.stringify(await response.json()); } catch {}
-    throw new Error(`Email provider error: ${response.status}${details?` · ${details.slice(0,300)}`:""}`);
-  }
+  return sendProviderEmail({ to: [to.trim().toLowerCase()], subject, html, ...(attachments.length ? {attachments} : {}) }, idempotencyKey);
 }
 
 export async function sendLoginCode(to: string, code: string) {
@@ -126,7 +112,7 @@ export async function sendTicketEmail(to: string, input:TicketEmailInput) {
     ticketId: input.ticketId, ticketUrl: input.ticketUrl, deliveryKey: input.deliveryKey, qrBuffer,
     caption: [input.eventTitle, `${input.eventDate} · ${input.eventTime} · ${input.eventCity}`, `${input.eventAge}${input.alcoholFree ? ' · ALCOHOL FREE' : ''}`, `Владелец: ${input.ownerName}`, `Категория: ${input.categoryName}`, `Билет: ${input.ticketId}`, 'Один билет = один вход. QR находится в приложенном файле.', input.personalTitle, input.personalDescription, [input.zone, input.seat].filter(Boolean).join(' · ')].filter(Boolean).join('\n'),
   });
-  if (telegram.handled) return;
+  if (telegram.handled) return { channel: 'telegram' as const };
   const svg=ticketSvg(input,qrBase64);
   const primary=safeHex(input.theme?.primary,"#0B0B0C");
   const secondary=safeHex(input.theme?.secondary,"#4B0F19");

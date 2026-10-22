@@ -35,7 +35,7 @@ test('generic order retry never sends a second unpersonalized email for a gift c
     const [order]=(await pg.query('SELECT * FROM orders')).rows;
     let calls=0;
     const {retryOrderTicketDelivery,deliverOrderTickets}=await loadTsx('../lib/server/payment-processing.ts',{
-      '@/lib/server/db':{db:()=>sql},'@/lib/server/events':{getEventServer:async()=>({slug:'test-halloween'})},
+      './email-transport':await loadTsx('../lib/server/email-transport.ts'),'@/lib/server/db':{db:()=>sql},'@/lib/server/events':{getEventServer:async()=>({slug:'test-halloween'})},
       '@/lib/server/email':{sendTicketEmail:async()=>{calls++;}},'@/lib/server/yookassa':{},
       '@/lib/server/security':{},'@/lib/server/loyalty':{},'@/lib/server/npd':{},
     });
