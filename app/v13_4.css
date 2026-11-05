@@ -2,11 +2,12 @@
 
 /* Filled controls always have explicit readable foregrounds. */
 .admin-primary,.admin-primary:visited,.admin-refund-button-v133,.admin-refund-button-v133:visited,
-.button-link-accent,.button-link-accent:visited,.ticket-select,.ticket-select:visited,
+.button-link-accent,.button-link-accent:visited,
 .scanner-camera-cover button,.scanner-manual button,.scanner-status-card-v133 button {
   color:#F2F0EA !important;
 }
 .admin-primary *,.admin-refund-button-v133 *,.button-link-accent *,.ticket-select * { color:inherit !important; }
+/* Ticket selection owns its foreground: hot batches use a light button surface. */
 
 /* Event pages: every block has a deliberate foreground/background relationship. */
 .event-page-themed .event-v2-hero-overlay {
